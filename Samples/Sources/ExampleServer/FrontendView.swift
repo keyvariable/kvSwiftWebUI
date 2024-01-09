@@ -91,16 +91,16 @@ struct FrontendView : View {
             }
 
             Self.section2(header: Text("Gradients")) {
-                VStack {
+                VStack(spacing: .em(0.5)) {
                     let width: KvCssLength = 120
                     let height: KvCssLength = 48
 
                     ForEach([ LinearGradient.Anchor.trailing, .bottom, .bottomLeading ], id: \.self) {
-                        LinearGradient(colors: [ .violet, .indigo ], endPoint: $0)
+                        LinearGradient(colors: [ .violet, .cyan, .indigo ], endPoint: $0)
                             .frame(width: width, height: height)
                     }
 
-                    LinearGradient(gradient: .init(colors: [ .indigo, .violet ]), axis: .angle(0.1 * .pi))
+                    LinearGradient(gradient: .init(colors: [ .indigo, .cyan, .violet ]), axis: .angle(0.1 * .pi))
                         .frame(width: width, height: height)
 
                     LinearGradient(stops: [ .init(color: .violet, location: 0.50),
