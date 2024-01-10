@@ -44,10 +44,10 @@ protocol KvHtmlBody {
 struct KvHtmlBodyImpl : KvHtmlBody {
 
     init<Content : KvView>(content: Content) {
-        let backgroundStyle = Self.firstBackgroundStyle(of: content) ?? KvColor.tertiarySystemBackground.eraseToAnyShapeStyle()
+        let backgroundStyle = Self.firstBackgroundStyle(of: content) ?? Constants.backgroundColor.eraseToAnyShapeStyle()
 
         self.rootRepresentationProvider = { context in
-            RootView(backgroundColor: backgroundStyle.bottomBackgroundColor(), content: content)
+            RootView(backgroundColor: backgroundStyle.bottomBackgroundColor() ?? Constants.backgroundColor, content: content)
                 .htmlRepresentation(in: context)
         }
 
@@ -60,6 +60,16 @@ struct KvHtmlBodyImpl : KvHtmlBody {
 
     /// Background style from the content if provided.
     private let backgroundStyle: KvAnyShapeStyle?
+
+
+
+    // MARK: .Constants
+
+    private struct Constants { private init() { }
+
+        static let backgroundColor = KvColor.tertiarySystemBackground
+
+    }
 
 
 
@@ -86,11 +96,11 @@ struct KvHtmlBodyImpl : KvHtmlBody {
 
     private struct RootView<Content : KvView> : KvView {
 
-        let backgroundColor: KvColor?
+        let backgroundColor: KvColor
         let content: Content
 
 
-        init(backgroundColor: KvColor?, content: Content) {
+        init(backgroundColor: KvColor, content: Content) {
             self.backgroundColor = backgroundColor
             self.content = content
         }
@@ -110,15 +120,11 @@ struct KvHtmlBodyImpl : KvHtmlBody {
         var body: some KvView {
             VStack(spacing: 0) {
                 content
-                    .frame(minHeight: .vh(100) - (.em(1) + 2 * Constants.signatureBannerPadding))
                 signatureBanner
             }
-            .frame(minWidth: .vw(100), minHeight: .vh(100))
         }
 
         private var signatureBanner: some View {
-            let backgroundColor = backgroundColor ?? .black
-
             let text =
             Text("Made with ")
             + Text("kvSwiftWebUI")
@@ -127,7 +133,7 @@ struct KvHtmlBodyImpl : KvHtmlBody {
             return text
                 .padding(.horizontal)
                 .padding(.vertical, Constants.signatureBannerPadding)
-                .frame(width: .percents(100))
+                .frame(width: .vw(100))
                 .fixedSize(horizontal: false, vertical: true)
                 .font(.system(.footnote).weight(.light))
                 .foregroundStyle(backgroundColor.label.tertiary)

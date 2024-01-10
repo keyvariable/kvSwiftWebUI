@@ -489,6 +489,10 @@ extension KvText : KvHtmlRenderable {
 
 extension KvText {
 
+    /// A space character. Is a shorthad for `Text(verbatim: " ")`.
+    @inlinable
+    public static var space: Self { .init(" ") }
+
     /// No-break space (NBSP).
     ///
     /// - SeeAlso: ``nnbsp``.
