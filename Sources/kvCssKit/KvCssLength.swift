@@ -184,6 +184,16 @@ public indirect enum KvCssLength : Hashable, ExpressibleByFloatLiteral, Expressi
     public static func *<T : BinaryInteger>(value: Self, scale: T) -> Self { .scaled(Double(scale), value) }
 
 
+    @inlinable
+    public static func /(value: Self, scale: Double) -> Self { .scaled(1.0 / scale, value) }
+
+    @inlinable
+    public static func /<T : BinaryFloatingPoint>(value: Self, scale: T) -> Self { .scaled(1.0 / Double(scale), value) }
+
+    @inlinable
+    public static func /<T : BinaryInteger>(value: Self, scale: T) -> Self { .scaled(1.0 / Double(scale), value) }
+
+
 
     // MARK: .Unit
 
