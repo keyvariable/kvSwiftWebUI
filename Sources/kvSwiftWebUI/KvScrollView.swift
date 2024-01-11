@@ -70,7 +70,7 @@ extension KvScrollView : KvHtmlRenderable {
             axes.contains(.vertical) ? "height:100%" : nil
         )
 
-        return context.representation(cssAttributes: scrollCSS) { context, cssAttributes, viewConfiguration in
+        return context.representation(cssAttributes: scrollCSS) { context, cssAttributes in
             content
                 .htmlRepresentation(in: context)
                 .mapBytes {

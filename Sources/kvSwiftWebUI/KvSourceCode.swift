@@ -84,7 +84,7 @@ extension KvSourceCode : KvView {
 extension KvSourceCode : KvHtmlRenderable {
 
     func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
-        context.representation(cssAttributes: .init(style: "overflow-x:scroll")) { context, cssAttributes, viewConfiguration in
+        context.representation(cssAttributes: .init(style: "overflow-x:scroll")) { context, cssAttributes in
             KvText(verbatim: content)
                 .font(font ?? Defaults.font)
                 .htmlRepresentation(in: context)

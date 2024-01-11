@@ -75,7 +75,7 @@ extension KvVStack : KvHtmlRenderable {
                 context.html.cssFlexClass(for: alignment, as: .crossItems),
                 style: "row-gap:\((spacing ?? KvDefaults.vStackSpacing).css)"
             )
-        ) { context, cssAttributes, viewConfiguration in
+        ) { context, cssAttributes in
             content
                 .htmlRepresentation(in: context)
                 .mapBytes { .tag(.div, css: cssAttributes, innerHTML: $0) }

@@ -23,36 +23,14 @@
 //  Created by Svyatoslav Popov on 21.11.2023.
 //
 
-// MARK: Auxiliaries
-
-extension KvView {
-
-    /// - Parameter transform: Argument is always non-nil.
-    @inline(__always)
-    @usableFromInline
-    consuming func withModifiedEnvironment(_ transform: (inout KvEnvironmentValues?) -> Void) -> some KvView {
-        modified { configuration in
-            if configuration.environment == nil {
-                configuration.environment = .init()
-            }
-            transform(&configuration.environment)
-            return nil
-        }
-    }
-
-}
-
-
-
 // MARK: Environment Modifiers
 
 extension KvView {
 
     // TODO: DOC
-    @inlinable
     public consuming func environment<T>(_ keyPath: WritableKeyPath<EnvironmentValues, T>, _ value: T) -> some KvView {
-        withModifiedEnvironment {
-            $0![keyPath: keyPath] = value
+        mapEnvironment {
+            $0[keyPath: keyPath] = value
         }
     }
 

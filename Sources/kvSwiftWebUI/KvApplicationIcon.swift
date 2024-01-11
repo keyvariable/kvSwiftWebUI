@@ -82,7 +82,7 @@ public struct KvApplicationIcon {
 
                 enumerateLinkAttributes(forFileAt: url, contentType: contentType) {
                     htmlResources.insert(
-                        .init(content: .url(url), contentType: contentType, uri: url.lastPathComponent, linkAttributes: $0)
+                        .init(content: .local(.url(url), .init(path: url.lastPathComponent)), contentType: contentType, linkAttributes: $0)
                     )
                 }
             }

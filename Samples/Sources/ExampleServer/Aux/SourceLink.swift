@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 //
-//  Copyright (c) 2023 Svyatoslav Popov (info@keyvar.com).
+//  Copyright (c) 2024 Svyatoslav Popov (info@keyvar.com).
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 //  License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
@@ -17,27 +17,31 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvGridCellViewModifiers.swift
-//  kvSwiftWebUI
+//  SourceLink.swift
+//  Samples-kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 27.11.2023.
+//  Created by Svyatoslav Popov on 11.01.2024.
 //
 
-// MARK: Grid Layout Modifiers
-
-extension KvView {
-
-    // TODO: DOC
-    @inlinable
-    public consuming func gridColumnAlignment(_ alignment: KvHorizontalAlignment) -> some KvView { mapConfiguration {
-        $0!.gridColumnAlignment = alignment
-    } }
+import kvSwiftWebUI
 
 
-    // TODO: DOC
-    @inlinable
-    public consuming func gridCellColumns(_ count: Int) -> some KvView { mapConfiguration {
-        $0!.gridCellColumnSpan = count
-    } }
+
+struct SourceLink : View {
+
+    init(to sourceFilePath: String) {
+        self.sourceFilePath = sourceFilePath
+    }
+
+
+    private let sourceFilePath: String
+
+
+    var body: some View {
+        Text("Source")
+        + Text(verbatim: ": ")
+        + Text(verbatim: sourceFilePath)
+            .link(Constants.kvSwiftWebUI_GitHubURL.appendingPathComponent("blob/main/Samples/Sources/ExampleServer/\(sourceFilePath)"))
+    }
 
 }

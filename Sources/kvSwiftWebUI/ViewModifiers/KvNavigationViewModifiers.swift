@@ -23,27 +23,6 @@
 //  Created by Svyatoslav Popov on 21.11.2023.
 //
 
-// MARK: Auxiliaries
-
-extension KvView {
-
-    /// - Parameter transform: Argument is always non-nil.
-    @inline(__always)
-    @usableFromInline
-    consuming func withModifiedNavigation(_ transform: (inout KvViewConfiguration.Navigation?) -> Void) -> some KvView {
-        modified { configuration in
-            if configuration.navigation == nil {
-                configuration.navigation = .init()
-            }
-            transform(&configuration.navigation)
-            return nil
-        }
-    }
-
-}
-
-
-
 // MARK: Navigation Modifiers
 
 extension KvView {
@@ -51,23 +30,48 @@ extension KvView {
     // TODO: stringgen function
     // TODO: DOC
     @inlinable
-    public consuming func navigationTitle(_ titleKey: KvLocalizedStringKey) -> some KvView { withModifiedNavigation {
+    public consuming func navigationTitle(_ titleKey: KvLocalizedStringKey) -> some KvView { mapConfiguration {
         // TODO: I18n
-        $0!.title = KvText(titleKey)
+        $0!.navigationTitle = KvText(titleKey)
     } }
 
 
     // TODO: DOC
     @inlinable
-    public consuming func navigationTitle(_ title: String) -> some KvView { withModifiedNavigation {
-        $0!.title = KvText(verbatim: title)
+    public consuming func navigationTitle(_ title: String) -> some KvView { mapConfiguration {
+        $0!.navigationTitle = KvText(verbatim: title)
     } }
 
 
     // TODO: DOC
     @inlinable
-    public consuming func navigationTitle(_ title: KvText) -> some KvView { withModifiedNavigation {
-        $0!.title = title
+    public consuming func navigationTitle(_ title: KvText) -> some KvView { mapConfiguration {
+        $0!.navigationTitle = title
     } }
+
+
+    
+    @usableFromInline
+    consuming func navigationDestination<C : KvView>(destination: @escaping (String) -> C?) -> some KvView {
+        mapConfiguration {
+            $0!.appendNavigationDestinations(destination)
+        }
+    }
+
+
+    // TODO: DOC
+    public consuming func navigationDestination<D, Content>(for data: D.Type, @KvViewBuilder destination: @escaping (D) -> Content) -> some KvView
+    where D : LosslessStringConvertible, Content : KvView
+    {
+        navigationDestination { D($0).map(destination) }
+    }
+
+
+    // TODO: DOC
+    public consuming func navigationDestination<D, Content>(for data: D.Type, @KvViewBuilder destination: @escaping (D) -> Content) -> some KvView
+    where D : RawRepresentable, D.RawValue : LosslessStringConvertible, Content : KvView
+    {
+        navigationDestination { D.RawValue($0).flatMap(D.init(rawValue:)).map(destination) }
+    }
 
 }

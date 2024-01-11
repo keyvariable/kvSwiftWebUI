@@ -70,7 +70,7 @@ extension KvZStack : KvHtmlRenderable {
                 context.html.cssFlexClass(for: alignment.vertical, as: .crossItems),
                 style: "max-width:100%"
             )
-        ) { context, cssAttributes, viewConfiguration in
+        ) { context, cssAttributes in
             content
                 .htmlRepresentation(in: context)
                 .mapBytes { .tag(.div, css: cssAttributes, innerHTML: $0) }

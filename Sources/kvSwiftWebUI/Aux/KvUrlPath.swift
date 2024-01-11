@@ -17,50 +17,36 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvEnvironment.swift
+//  KvUrlPath.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 21.11.2023.
+//  Created by Svyatoslav Popov on 29.12.2023.
 //
 
-public typealias Environment = KvEnvironment
+import kvHttpKit
 
 
 
-// MARK: - KvEnvironmentProtocol
+extension KvUrlPath : Comparable {
 
-/// This protocol is used to enumerate properties with ``KvEnvironment`` wrapper.
-protocol KvEnvironmentProtocol : AnyObject {
+    public static func <(lhs: Self, rhs: Self) -> Bool {
+        var lhs = lhs.components.makeIterator()
+        var rhs = rhs.components.makeIterator()
 
-    var keyPath: PartialKeyPath<KvEnvironmentValues> { get }
+        while let lhs = lhs.next(),
+              let rhs = rhs.next()
+        {
+            switch lhs.compare(rhs) {
+            case .orderedAscending:
+                return true
+            case .orderedDescending:
+                return false
+            case .orderedSame:
+                break
+            }
+        }
 
-    var source: KvEnvironmentNode! { get set }
-
-}
-
-
-
-// MARK: - KvEnvironment
-
-// TODO: DOC
-@propertyWrapper
-public class KvEnvironment<Value> : KvEnvironmentProtocol {
-
-    let keyPath: PartialKeyPath<KvEnvironmentValues>
-
-    weak var source: KvEnvironmentNode!
-
-    let valueGetter: (borrowing KvEnvironmentNode) -> Value?
-
-
-
-    public init(_ keyPath: KeyPath<KvEnvironmentValues, Value?>) {
-        self.keyPath = keyPath
-        valueGetter = { $0[keyPath] }
+        return rhs.next() != nil
     }
-
-
-
-    public var wrappedValue: Value? { valueGetter(source) }
 
 }

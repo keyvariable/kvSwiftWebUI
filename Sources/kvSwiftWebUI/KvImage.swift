@@ -121,26 +121,26 @@ extension KvImage : KvHtmlRenderable {
     func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
         switch renderingMode {
         case .original, nil:
-            return context.representation { context, cssAttributes, viewConfiguration in
-                renderContentHTML(in: context, cssAttributes: cssAttributes, alignment: viewConfiguration?.container?.frame?.alignment)
+            return context.representation { context, cssAttributes in
+                renderContentHTML(in: context, cssAttributes: cssAttributes, alignment: context.environment?[viewConfiguration: \.frame]?.alignment)
             }
 
         case .template:
-            return context.representation { context, cssAttributes, viewConfiguration in
-                let alignment = viewConfiguration?.container?.frame?.alignment
+            return context.representation { context, cssAttributes in
+                let alignment = context.environment?[viewConfiguration: \.frame]?.alignment
                 let mask = cssBackground(in: context, alignment: alignment)
 
                 let resizingCssAttributes: KvHtmlKit.CssAttributes? = resizingMode != nil ? .init(classes: "resizable") : nil
 
                 return context
-                    .representation(cssAttributes: .union(.init(style: "display:block;visibility:hidden"), resizingCssAttributes)) { context, cssAttributes, viewConfiguration in
+                    .representation(cssAttributes: .union(.init(style: "display:block;visibility:hidden"), resizingCssAttributes)) { context, cssAttributes in
                         renderContentHTML(in: context, cssAttributes: cssAttributes, alignment: alignment)
                     }
                     .mapBytes {
                         let maskContainer = KvHtmlBytes.tag(
                             .div,
                             css: .union(
-                                .init(styles: context.environment.foregroundStyle?.cssBackgroundStyle(context.html, nil),
+                                .init(styles: context.environment?[\.foregroundStyle]?.cssBackgroundStyle(context.html, nil),
                                       "-webkit-mask:\(mask.css);mask:\(mask.css)"),
                                 resizingCssAttributes
                             ),

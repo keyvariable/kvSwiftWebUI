@@ -25,15 +25,23 @@
 
 struct KvHtmlRepresentation {
 
+    typealias NavigationDestinations = KvViewConfiguration.NavigationDestinations
+
+
+
     private(set) var bytes: KvHtmlBytes
 
     /// First declared title.
     var title: KvHtmlBytes?
 
+    /// All declared destinations.
+    var navigationDestinations: NavigationDestinations?
 
-    init(bytes: KvHtmlBytes, title: KvHtmlBytes? = nil) {
+
+    init(bytes: KvHtmlBytes, title: KvHtmlBytes? = nil, navigationDestinations: NavigationDestinations? = nil) {
         self.bytes = bytes
         self.title = title
+        self.navigationDestinations = navigationDestinations
     }
 
 
@@ -73,7 +81,10 @@ struct KvHtmlRepresentation {
                        _ i2: consuming Self
     ) -> Self {
         let i1 = i1, i2 = i2
-        return .init(bytes: .joined(i1.bytes, i2.bytes), title: i1.title ?? i2.title)
+        return .init(bytes: .joined(i1.bytes, i2.bytes),
+                     title: i1.title ?? i2.title,
+                     navigationDestinations: .merged(i1.navigationDestinations, i2.navigationDestinations)
+        )
     }
     
 
@@ -85,8 +96,9 @@ struct KvHtmlRepresentation {
 
         let bytes: KvHtmlBytes = .joined(i1.bytes, i2.bytes, i3.bytes)
         let title: KvHtmlBytes? = i1.title ?? i2.title ?? i3.title
+        let navigationDestinations: NavigationDestinations? = .merged(i1.navigationDestinations, i2.navigationDestinations, i3.navigationDestinations)
 
-        return .init(bytes: bytes, title: title)
+        return .init(bytes: bytes, title: title, navigationDestinations: navigationDestinations)
     }
     
     
@@ -99,8 +111,9 @@ struct KvHtmlRepresentation {
 
         let bytes: KvHtmlBytes = .joined(i1.bytes, i2.bytes, i3.bytes, i4.bytes)
         let title: KvHtmlBytes? = i1.title ?? i2.title ?? i3.title ?? i4.title
+        let navigationDestinations: NavigationDestinations? = .merged(i1.navigationDestinations, i2.navigationDestinations, i3.navigationDestinations, i4.navigationDestinations)
 
-        return .init(bytes: bytes, title: title)
+        return .init(bytes: bytes, title: title, navigationDestinations: navigationDestinations)
     }
 
 
@@ -126,21 +139,19 @@ struct KvHtmlRepresentation {
 // MARK: - KvHtmlRepresentationContext
 
 // TODO: Review this class. Currently it's unintuitive and complicated, some methods produce side-effects.
-struct KvHtmlRepresentationContext {
+class KvHtmlRepresentationContext {
 
     let html: KvHtmlContext
 
-    private(set) var environment: KvEnvironmentValues
+    private(set) var environment: KvEnvironmentNode?
 
     /// Context of current container.
     private(set) var containerAttributes: ContainerAttributes?
 
-    private(set) var viewConfiguration: KvViewConfiguration?
-
 
 
     private init(html: KvHtmlContext,
-                 environment: KvEnvironmentValues,
+                 environment: KvEnvironmentNode?,
                  containerAttributes: ContainerAttributes?,
                  viewConfiguration: KvViewConfiguration?,
                  cssAttributes: KvHtmlKit.CssAttributes?
@@ -153,18 +164,24 @@ struct KvHtmlRepresentationContext {
     }
 
 
-    init(html: KvHtmlContext, viewConfiguration: KvViewConfiguration? = nil) {
-        self.init(html: html,
-                  environment: viewConfiguration?.environment ?? .init(),
-                  containerAttributes: nil,
-                  viewConfiguration: viewConfiguration,
-                  cssAttributes: nil)
-    }
 
-
+    /// Merged view configuration environments.
+    private var viewConfiguration: KvViewConfiguration?
 
     /// Attributes to apply to the synthesized representation.
     private var cssAttributes: KvHtmlKit.CssAttributes?
+
+
+
+    // MARK: Fabrics
+
+    static func root(html: KvHtmlContext, environment: KvEnvironmentValues? = nil) -> KvHtmlRepresentationContext {
+        .init(html: html,
+              environment: environment.map { .init(values: $0) },
+              containerAttributes: nil,
+              viewConfiguration: environment?.viewConfiguration,
+              cssAttributes: nil)
+    }
 
 
 
@@ -296,41 +313,26 @@ struct KvHtmlRepresentationContext {
     // MARK: Operations
 
     func representation(
-        environment: KvEnvironmentValues? = nil,
         containerAttributes: ContainerAttributes? = nil,
         cssAttributes: KvHtmlKit.CssAttributes? = nil,
         options: Options = [ ],
-        _ body: (borrowing KvHtmlRepresentationContext, borrowing KvHtmlKit.CssAttributes?, borrowing KvViewConfiguration?) -> KvHtmlRepresentation
+        _ body: (borrowing KvHtmlRepresentationContext, borrowing KvHtmlKit.CssAttributes?) -> KvHtmlRepresentation
     ) -> KvHtmlRepresentation {
-        // Here self.container is passed to apply it in the droped CSS.
-        var context = self.descendant(containerAttributes: self.containerAttributes)
+        // Here `self.containerAttributes` is passed to apply it in the extracted CSS.
+        let context = self.descendant(containerAttributes: self.containerAttributes)
 
         // TODO: Pass frame CSS to descendant context in come cases.
-        let needsContainer = !options.contains(.noContainer) && viewConfiguration?.container?.frame != nil
-        let containerCSS: KvHtmlKit.CssAttributes?
-
-        switch consume needsContainer {
-        case true:
-            containerCSS = context.dropCssAttributes()
-
-            context = context.descendant(environment: environment)
-
-        case false:
-            containerCSS = nil
-
-            if let environment {
-                context.formUnion(environment: environment)
-            }
-        }
+        let needsContainer = !options.contains(.noContainer) && viewConfiguration?.frame != nil
+        let containerCSS = needsContainer ? context.extractCssAttributes() : nil
 
         var representation : KvHtmlRepresentation
         do {
-            let innerCSS = context.dropCssAttributes(mergedWith: cssAttributes)
+            let innerCSS = context.extractCssAttributes(mergedWith: cssAttributes)
 
             context.containerAttributes = containerAttributes
 
             // - NOTE: `self.viewConfiguration` is important.
-            representation = body(context, innerCSS, self.viewConfiguration)
+            representation = body(context, innerCSS)
         }
 
         if let containerCSS {
@@ -344,57 +346,57 @@ struct KvHtmlRepresentationContext {
 
 
 
-    /// - Parameter environment: If provided then it's parent is set to the receiver's environment.
     /// - Parameter container: Context of container the resulting context is inside.
     /// - Parameter cssAttributes: Attributes to merge with the receiver's attributes.
     ///
     /// - Returns: New context with given values and optionally inherited values.
-    func descendant(environment: KvEnvironmentValues? = nil,
-                    containerAttributes: ContainerAttributes? = nil,
+    func descendant(containerAttributes: ContainerAttributes? = nil,
                     cssAttributes: KvHtmlKit.CssAttributes? = nil
-    ) -> Self {
-        var descendant = KvHtmlRepresentationContext(html: html,
-                                                     environment: self.environment,
-                                                     containerAttributes: containerAttributes,
-                                                     viewConfiguration: self.viewConfiguration,
-                                                     cssAttributes: self.cssAttributes)
+    ) -> KvHtmlRepresentationContext {
+        let cssAttributes = KvHtmlKit.CssAttributes.union(self.cssAttributes, cssAttributes)
 
-        if let environment = environment {
-            descendant.formUnion(environment: environment)
-        }
-        if let cssAttributes = cssAttributes {
-            descendant.formUnion(cssAttributes: cssAttributes)
-        }
-
-        return descendant
+        return .init(html: html,
+                     environment: environment,
+                     containerAttributes: containerAttributes,
+                     viewConfiguration: self.viewConfiguration,
+                     cssAttributes: cssAttributes)
     }
 
 
-    /// Prodcuces descendant context where CSS attribute contets are merged or replaced with with given *viewConfiguration* whether possible.
-    /// If it impossible to merge then replaced CSS atributes are writted into *droppedCssAttributes*.
+    /// If *environment* contains view configuration then
+    /// method prodcuces descendant context where view configuration is merged or replaced with given value.
+    /// If it's impossible to merge then replaced view configuration is converted to CSS and the result is written into *extractedCssAttributes*.
     ///
     /// - Returns: The resulting context.
-    func descendant(viewConfiguration: KvViewConfiguration,
-                    droppedCssAttributes: inout KvHtmlKit.CssAttributes?
+    func descendant(environment: KvEnvironmentValues,
+                    extractedCssAttributes: inout KvHtmlKit.CssAttributes?
     ) -> KvHtmlRepresentationContext {
-        var descendant: KvHtmlRepresentationContext
+        let descendant: KvHtmlRepresentationContext
 
-        switch KvViewConfiguration.merged(viewConfiguration, over: self.viewConfiguration) {
-        case .merged(let mergeResult):
+        let environment = KvEnvironmentNode(parent: self.environment, values: environment)
+
+
+        func Descendant(_ viewConfiguration: KvViewConfiguration? = nil) -> KvHtmlRepresentationContext {
             // Container is passed to descendant in this case.
-            descendant = self.descendant(environment: viewConfiguration.environment,
-                                         containerAttributes: self.containerAttributes)
-            descendant.viewConfiguration = mergeResult
+            .init(html: html,
+                  environment: environment,
+                  containerAttributes: self.containerAttributes,
+                  viewConfiguration: viewConfiguration ?? self.viewConfiguration,
+                  cssAttributes: self.cssAttributes)
+        }
+
+
+        switch KvViewConfiguration.merged(environment.values.viewConfiguration, over: self.viewConfiguration) {
+        case .merged(let mergeResult):
+            descendant = Descendant(mergeResult)
 
         case .incompatibility:
-            descendant = self
-            droppedCssAttributes = descendant.dropCssAttributes()
+            // The receiver is cloned to extract CSS then.
+            descendant = Descendant()
 
-            if let environment = viewConfiguration.environment {
-                descendant.formUnion(environment: environment)
-            }
+            extractedCssAttributes = descendant.extractCssAttributes()
 
-            descendant.viewConfiguration = viewConfiguration
+            descendant.viewConfiguration = environment.values.viewConfiguration
             descendant.containerAttributes = nil
         }
 
@@ -407,11 +409,11 @@ struct KvHtmlRepresentationContext {
         containerAttributes?.gridNeedsSpanNextRow = false
 
         // Container context is passed to reset it later.
-        var context = self.descendant(containerAttributes: containerAttributes)
+        let context = self.descendant(containerAttributes: containerAttributes)
 
         // Container context is changed here.
         if let gridAttributes = context.gridCssAttributes(verticalAlignment) {
-            context.formUnion(cssAttributes: gridAttributes)
+            context.push(cssAttributes: gridAttributes)
         }
 
         return context
@@ -421,8 +423,9 @@ struct KvHtmlRepresentationContext {
 
     /// - Returns: Extracted the receiver's CSS attributes optionaly merged with given *attributes*.
     ///
-    /// - Note: The receiver's contents related to CSS attributes are reset. So the method's name starts with "drop" as similar methods in stadard collections.
-    mutating func dropCssAttributes(mergedWith attributes: consuming KvHtmlKit.CssAttributes? = nil) -> KvHtmlKit.CssAttributes? {
+    /// - Note: The receiver's contents related to CSS attributes are reset.
+    /// - Important: Extraction of CSS has some side effects.
+    private func extractCssAttributes(mergedWith attributes: consuming KvHtmlKit.CssAttributes? = nil) -> KvHtmlKit.CssAttributes? {
         var cssAttributes = KvHtmlKit.CssAttributes.union(viewConfiguration?.cssAttributes(in: self), self.cssAttributes)
 
 
@@ -445,10 +448,10 @@ struct KvHtmlRepresentationContext {
     }
 
 
-    private mutating func gridCssAttributes(_ verticalAlignment: KvVerticalAlignment? = nil) -> KvHtmlKit.CssAttributes? {
+    private func gridCssAttributes(_ verticalAlignment: KvVerticalAlignment? = nil) -> KvHtmlKit.CssAttributes? {
         guard let container = containerAttributes else { return nil }
 
-        container.gridColumnCounder?.increase(viewConfiguration?.gridCell?.gridCellColumnSpan ?? 1)
+        container.gridColumnCounder?.increase(viewConfiguration?.gridCellColumnSpan ?? 1)
 
         guard let (rowContainerAttributes, rowIndex, spanFlag) = container.nextGridRow(verticalAlignment) else { return nil }
 
@@ -467,16 +470,13 @@ struct KvHtmlRepresentationContext {
     }
 
 
-    mutating func formUnion(environment: KvEnvironmentValues) {
-        guard environment !== self.environment else { return }
-
-        environment.parent = self.environment
-        self.environment = environment
+    func push(environment: KvEnvironmentValues) {
+        self.environment = .init(parent: self.environment, values: environment)
     }
 
 
     /// Merges given *cssAttributes* into the receiver's CSS attributes.
-    mutating func formUnion(cssAttributes: consuming KvHtmlKit.CssAttributes) {
+    private func push(cssAttributes: consuming KvHtmlKit.CssAttributes) {
         self.cssAttributes?.formUnion(cssAttributes)
         ?? (self.cssAttributes = cssAttributes)
     }

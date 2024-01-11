@@ -23,27 +23,6 @@
 //  Created by Svyatoslav Popov on 21.11.2023.
 //
 
-// MARK: Auxiliaries
-
-extension KvView {
-
-    /// - Parameter transform: Argument is always non-nil.
-    @inline(__always)
-    @usableFromInline
-    consuming func withModifiedAppearance(_ transform: (inout KvViewConfiguration.Appearance?) -> Void) -> some KvView {
-        modified { configuration in
-            if configuration.appearance == nil {
-                configuration.appearance = .init()
-            }
-            transform(&configuration.appearance)
-            return nil
-        }
-    }
-
-}
-
-
-
 // MARK: Style Modifiers
 
 extension KvView {
@@ -51,7 +30,7 @@ extension KvView {
     // TODO: DOC
     /// - SeeAlso: ``background(_:)``.
     @inlinable
-    public consuming func foregroundStyle<S : KvShapeStyle>(_ style: S) -> some KvView { withModifiedAppearance {
+    public consuming func foregroundStyle<S : KvShapeStyle>(_ style: S) -> some KvView { mapConfiguration {
         $0!.foregroundStyle = style.eraseToAnyShapeStyle()
     } }
 
@@ -65,14 +44,14 @@ extension KvView {
 
     // TODO: DOC
     @inlinable
-    public consuming func font(_ font: KvFont) -> some KvView { withModifiedAppearance {
+    public consuming func font(_ font: KvFont) -> some KvView { mapConfiguration {
         $0!.font = font
     } }
 
 
     // TODO: DOC
     @inlinable
-    public consuming func multilineTextAlignment(_ textAlignment: KvTextAlignment) -> some KvView { withModifiedAppearance {
+    public consuming func multilineTextAlignment(_ textAlignment: KvTextAlignment) -> some KvView { mapConfiguration {
         $0!.multilineTextAlignment = textAlignment
     } }
 
@@ -86,7 +65,7 @@ extension KvView {
 
     // TODO: DOC
     @inlinable
-    public consuming func textCase(_ textCase: KvText.Case?) -> some KvView { withModifiedAppearance {
+    public consuming func textCase(_ textCase: KvText.Case?) -> some KvView { mapConfiguration {
         $0!.textCase = textCase
     } }
 
@@ -105,8 +84,8 @@ extension KvView {
 
     // TODO: DOC
     @inlinable
-    public consuming func fixedSize(horizontal: Bool, vertical: Bool) -> some KvView { withModifiedAppearance {
-        let fixedSize: KvViewConfiguration.Appearance.FixedSize = switch (horizontal, vertical) {
+    public consuming func fixedSize(horizontal: Bool, vertical: Bool) -> some KvView { mapConfiguration {
+        let fixedSize: KvViewConfiguration.FixedSize = switch (horizontal, vertical) {
         case (true, true): [ .horizontal, .vertical ]
         case (true, false): .horizontal
         case (false, true): .vertical

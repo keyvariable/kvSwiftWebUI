@@ -61,7 +61,7 @@ public struct KvShapeStyleView : KvView {
 
 
         func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
-            context.representation { context, cssAttributes, viewConfiguration in
+            context.representation { context, cssAttributes in
                 var htmlBytes: KvHtmlBytes = .tag(.div, css: .init(styles: content.cssBackgroundStyle(context.html, nil), "width:100%;height:100%"))
 
                 if let cssAttributes = cssAttributes {

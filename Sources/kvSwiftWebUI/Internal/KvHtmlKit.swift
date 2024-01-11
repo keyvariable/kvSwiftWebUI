@@ -317,6 +317,7 @@ extension KvHtmlKit {
         case p
         case pre
         case span
+        case style
         case sub
         case sup
 
@@ -355,6 +356,7 @@ extension KvHtmlKit {
             case .p: "p"
             case .pre: "pre"
             case .span: "span"
+            case .style: "style"
             case .sub: "sub"
             case .sup: "sup"
 
@@ -364,7 +366,7 @@ extension KvHtmlKit {
 
         var properties: Properties {
             switch self {
-            case .a, .body, .div, .h1, .h2, .h3, .h4, .h5, .h6, .p, .pre, .span, .sub, .sup: .requiresEndingTag
+            case .a, .body, .div, .h1, .h2, .h3, .h4, .h5, .h6, .p, .pre, .span, .style, .sub, .sup: .requiresEndingTag
             case .br, .img, .link, .meta: [ ]
             case .raw(_, let properties): properties
             }
@@ -570,6 +572,7 @@ extension KvHtmlKit {
 
         mutating func formUnion(_ rhs: Self) {
             classes.formUnion(rhs.classes)
+
             style = switch (style, rhs.style) {
             case (.none, .none):
                 nil
@@ -588,6 +591,12 @@ extension KvHtmlKit {
             case .none:
                 self.style = style
             }
+        }
+
+
+        mutating func append(style: KvHtmlBytes?) {
+            guard let style else { return }
+            append(style: style)
         }
 
 

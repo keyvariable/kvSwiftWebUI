@@ -82,7 +82,7 @@ extension KvGrid : KvHtmlRenderable {
                                  context.html.cssFlexClass(for: alignment.vertical, as: .crossItems),
                                  context.html.cssFlexClass(for: alignment.horizontal, as: .mainItems),
                                  style: "gap:\(gap.css)")
-        ) { context, cssAttributes, viewConfiguration in
+        ) { context, cssAttributes in
             content
                 .htmlRepresentation(in: context)
                 .mapBytes {

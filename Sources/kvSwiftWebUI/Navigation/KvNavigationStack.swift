@@ -17,33 +17,46 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  RegularSection.swift
-//  Samples-kvSwiftWebUI
+//  KvNavigationStack.swift
+//  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 23.11.2023.
+//  Created by Svyatoslav Popov on 19.12.2023.
 //
 
-import kvCssKit
-import kvSwiftWebUI
+public typealias NavigationStack = KvNavigationStack
 
 
 
-struct RegularSection<Content : View> : View {
+// TODO: DOC
+public struct KvNavigationStack<Root> : KvView
+where Root : KvView
+{
 
-    let content: Content
+    @usableFromInline
+    let rootView: Root
 
 
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
+    // TODO: DOC
+    @inlinable
+    public init(@KvViewBuilder root: () -> Root) {
+        rootView = root()
     }
 
 
-    var body: some View {
-        content
-            .padding(FrontendView.Constants.rootPadding)
-            .frame(width: min(.vw(100), FrontendView.Constants.maximumRegularWidth), alignment: .leading)
-            .background(.systemBackground)
-            .frame(width: .vw(100))
+    // MARK: : KvView
+
+    public var body: KvNeverView { Body() }
+
+}
+
+
+
+// MARK: : KvHtmlRenderable
+
+extension KvNavigationStack : KvHtmlRenderable {
+
+    func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
+        rootView.htmlRepresentation(in: context)
     }
 
 }

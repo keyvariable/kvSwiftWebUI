@@ -175,10 +175,13 @@ public struct KvColor : KvShapeStyle, Hashable, ExpressibleByIntegerLiteral {
         /// - Tip: Consider ``hex(_:alpha:))`` shorthand fabric and initialization from an integer literal..
         @inlinable
         public init<I : BinaryInteger>(hex: I, alpha: Double? = nil) {
-            self.init(red: Double((hex >> 16) & 0xFF) * (1.0 / 255.0) as Double,
-                      green: Double((hex >> 8) & 0xFF) * (1.0 / 255.0) as Double,
-                      blue: Double(hex & 0xFF) * (1.0 / 255.0) as Double,
-                      alpha: alpha)
+            let mask: I = 0xFF
+            let scale: Double = 1.0 / 255.0
+
+            @inline(__always)
+            func Normalized(shift: Int) -> Double { Double((hex >> shift) & mask) * scale }
+
+            self.init(red: Normalized(shift: 16), green: Normalized(shift: 8), blue: Normalized(shift: 0), alpha: alpha)
         }
 
 
@@ -219,7 +222,8 @@ public struct KvColor : KvShapeStyle, Hashable, ExpressibleByIntegerLiteral {
 
             func UInt8Component(_ component: Double) -> UInt8 {
                 let clamped: Double = max(0.0 as Double, min(1.0 as Double, component))
-                return UInt8((clamped * 255.0).rounded())
+                let scaled: Double = (clamped * 255.0).rounded()
+                return UInt8(scaled)
             }
 
             return (red: UInt8Component(red), green: UInt8Component(green), blue: UInt8Component(blue), alpha.map(UInt8Component(_:)))

@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 //
-//  Copyright (c) 2023 Svyatoslav Popov (info@keyvar.com).
+//  Copyright (c) 2024 Svyatoslav Popov (info@keyvar.com).
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 //  License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
@@ -17,27 +17,18 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvGridCellViewModifiers.swift
-//  kvSwiftWebUI
+//  Colors.swift
+//  Samples-kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 27.11.2023.
+//  Created by Svyatoslav Popov on 10.01.2024.
 //
 
-// MARK: Grid Layout Modifiers
-
-extension KvView {
-
-    // TODO: DOC
-    @inlinable
-    public consuming func gridColumnAlignment(_ alignment: KvHorizontalAlignment) -> some KvView { mapConfiguration {
-        $0!.gridColumnAlignment = alignment
-    } }
+import kvSwiftWebUI
 
 
-    // TODO: DOC
-    @inlinable
-    public consuming func gridCellColumns(_ count: Int) -> some KvView { mapConfiguration {
-        $0!.gridCellColumnSpan = count
-    } }
+
+extension ShapeStyle where Self == Color {
+
+    static var accent: Self { .light(0x483D8B, dark: 0x211C40) }
 
 }

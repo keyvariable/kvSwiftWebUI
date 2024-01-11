@@ -429,7 +429,7 @@ extension KvText : KvView { public var body: KvNeverView { Body() } }
 extension KvText : KvHtmlRenderable {
 
     func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
-        context.representation(cssAttributes: attributes?.cssAttributes(in: context.html)) { context, cssAttributes, viewConfiguration in
+        context.representation(cssAttributes: attributes?.cssAttributes(in: context.html)) { context, cssAttributes in
 
             func InnerHTML(_ text: KvText) -> KvHtmlBytes {
                 let innerBytes: KvHtmlBytes = switch text.content {
@@ -453,7 +453,7 @@ extension KvText : KvHtmlRenderable {
             case .text(let text): InnerHTML(text)
             }
 
-            let textStyle = context.environment.textStyle ?? attributes?.font?.textStyle
+            let textStyle = context.environment?[\.font]?.textStyle ?? attributes?.font?.textStyle
 
             return .init(bytes: .tag(
                 Self.tag(for: textStyle),

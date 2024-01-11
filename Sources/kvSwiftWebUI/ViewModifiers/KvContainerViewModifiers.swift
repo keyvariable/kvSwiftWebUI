@@ -27,28 +27,6 @@ import kvCssKit
 
 
 
-// MARK: Auxiliaries
-
-extension KvView {
-
-    /// - Parameter transform: Argument is always non-nil.
-    @inline(__always)
-    @usableFromInline
-    consuming func withModifiedContainer(_ transform: (inout KvViewConfiguration.Container?) -> KvViewConfiguration.Container?) -> some KvView {
-        modified { configuration in
-            if configuration.container == nil {
-                configuration.container = .init()
-            }
-            return transform(&configuration.container).map {
-                KvViewConfiguration(container: $0)
-            }
-        }
-    }
-
-}
-
-
-
 // MARK: Style Modifiers
 
 extension KvView {
@@ -56,7 +34,7 @@ extension KvView {
     // TODO: DOC
     /// - SeeAlso: ``foregroundStyle(_:)``.
     @inlinable
-    public consuming func background<S : KvShapeStyle>(_ style: S) -> some KvView { withModifiedContainer {
+    public consuming func background<S : KvShapeStyle>(_ style: S) -> some KvView { mapConfiguration {
         $0!.modify(background: style.eraseToAnyShapeStyle())
     } }
 
@@ -77,7 +55,7 @@ extension KvView {
 
     // TODO: DOC
     @inlinable
-    public consuming func padding(_ edges: KvCssEdgeInsets.Edge.Set = .all, _ inset: KvCssLength? = nil) -> some KvView { withModifiedContainer {
+    public consuming func padding(_ edges: KvCssEdgeInsets.Edge.Set = .all, _ inset: KvCssLength? = nil) -> some KvView { mapConfiguration {
         $0!.modify(paddingBlock: { padding in
             return .sum(padding, KvCssEdgeInsets(edges, inset.map { .max(0.0, $0) } ?? KvDefaults.padding))
         })
@@ -86,7 +64,7 @@ extension KvView {
 
     // TODO: DOC
     @inlinable
-    public consuming func padding(_ insets: KvCssEdgeInsets) -> some KvView { withModifiedContainer {
+    public consuming func padding(_ insets: KvCssEdgeInsets) -> some KvView { mapConfiguration {
         $0!.modify(padding: insets)
     } }
 
@@ -94,8 +72,8 @@ extension KvView {
     // TODO: DOC
     @inlinable
     public consuming func frame(width: KvCssLength? = nil, height: KvCssLength? = nil, alignment: KvAlignment = .center) -> some KvView {
-        withModifiedContainer {
-            typealias Size = KvViewConfiguration.Container.Frame.Size
+        mapConfiguration {
+            typealias Size = KvViewConfiguration.Frame.Size
 
             return $0!.modify(frame: .init(width: .init(ideal: width), height: .init(ideal: height), alignment: alignment))
         }
@@ -110,8 +88,8 @@ extension KvView {
                                 minHeight: KvCssLength? = nil, idealHeight: KvCssLength? = nil, maxHeight: KvCssLength? = nil,
                                 alignment: KvAlignment = .center
     ) -> some KvView {
-        withModifiedContainer {
-            typealias Size = KvViewConfiguration.Container.Frame.Size
+        mapConfiguration {
+            typealias Size = KvViewConfiguration.Frame.Size
 
             let width = Size(minimum: minWidth, ideal: idealWidth, maximum: maxWidth)
             let height = Size(minimum: minHeight, ideal: idealHeight, maximum: maxHeight)
@@ -130,7 +108,7 @@ extension KvView {
 
     // TODO: DOC
     @inlinable
-    public consuming func clipShape<S : Shape>(_ shape: S) -> some View { withModifiedContainer {
+    public consuming func clipShape<S : Shape>(_ shape: S) -> some View { mapConfiguration {
         $0!.modify(clipShape: shape.clipShape)
     } }
 

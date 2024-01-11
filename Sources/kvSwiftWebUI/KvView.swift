@@ -73,7 +73,7 @@ extension KvView {
                 switch binding.keyPath {
                 case \.horizontalSizeClass:
                     // If size class is provided then no modifications required.
-                    guard sourceEnvironment.horizontalSizeClass == nil else { break }
+                    guard sourceEnvironment?[\.horizontalSizeClass] == nil else { break }
 
                     accumulator = KvHtmlRepresentationModifiers.automaticSizeClass(base: accumulator)
 
@@ -111,17 +111,16 @@ fileprivate struct KvHtmlRepresentationModifiers { private init() { }
 
     static func automaticSizeClass(base baseProvider: @escaping RepresentationProvider) -> RepresentationProvider {
         return { context in
-            // Separate container for injected values preventing change of the source containers.
-            let envValues = KvEnvironmentValues()
-
             assert(!KvUserInterfaceSizeClass.allCases.isEmpty)
 
-            return .joined(KvUserInterfaceSizeClass.allCases.lazy.map {
-                envValues.horizontalSizeClass = $0
+            return .joined(KvUserInterfaceSizeClass.allCases.lazy.map { horizontalSizeClass in
+                let context = context.descendant(
+                    containerAttributes: context.containerAttributes,    // Preserving container context.
+                    cssAttributes: .init(classes: horizontalSizeClass.cssHorizontalClass)
+                )
+                context.push(environment: .init { $0.horizontalSizeClass = horizontalSizeClass })
 
-                return baseProvider(context.descendant(environment: envValues,
-                                                       containerAttributes: context.containerAttributes,    // Preserving container context.
-                                                       cssAttributes: .init(classes: $0.cssHorizontalClass)))
+                return baseProvider(context)
             })
         }
     }

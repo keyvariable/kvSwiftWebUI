@@ -34,7 +34,7 @@ import kvServerKit
 @main
 struct ExampleServer : KvServer {
 
-    private let frontendBundle = try! KvHtmlBundle(rootView: { FrontendView() })
+    private let frontendBundle = try! KvHtmlBundle(rootView: { RootView() })
 
 
     // MARK: : KvServer
