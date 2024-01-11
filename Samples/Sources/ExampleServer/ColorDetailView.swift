@@ -76,6 +76,7 @@ struct ColorDetailView<ID : ColorID> : View {
         .foregroundStyle(labelColor)
         .padding(.em(1))
         .background(color)
+        .navigationTitle("Color.\(colorID.rawValue)")
     }
 
 }

@@ -43,6 +43,11 @@ struct ColorCatalogView : View {
              subtitle: Text("This page contains previews of some colors available in kvSwiftWebUI framework."),
              sourceFilePath: "ColorCatalogView.swift"
         ) {
+            Text("Colors below are available as static properties of") + .space
+            + Text(verbatim: "Color")
+                .font(.system(.body, design: .monospaced))
+            + .space + Text("type.")
+
             ColorSection<StandardColorID>(header: Text("Standard Colors"))
             ColorSection<WebColorID>(header: Text("Web Colors"))
         }
