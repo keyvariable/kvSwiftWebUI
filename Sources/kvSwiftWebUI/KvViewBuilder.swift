@@ -94,7 +94,7 @@ public struct KvViewBuilder {
 
     // MARK: .ConditionalView
 
-    public struct ConditionalView<TrueView, FalseView> : KvView, KvHtmlRenderable
+    public struct ConditionalView<TrueView, FalseView> : KvView, KvHtmlRenderable, KvConditionalViewProtocol
     where TrueView : KvView, FalseView : KvView
     {
 
@@ -134,6 +134,16 @@ public struct KvViewBuilder {
                 return trueView.htmlRepresentation(in: context)
             case .falseView(let falseView):
                 return falseView.htmlRepresentation(in: context)
+            }
+        }
+
+
+        // MARK: : KvConditionalViewProtocol
+
+        var contentView: any KvView {
+            return switch content {
+            case .trueView(let trueView): trueView
+            case .falseView(let falseView): falseView
             }
         }
 
@@ -245,5 +255,16 @@ public struct KvViewBuilder {
         }
 
     }
+
+}
+
+
+
+// MARK: - KvConditionalViewProtocol
+
+/// Sometimes is needed to handle conditional views in type-erased manner to access it's content.
+protocol KvConditionalViewProtocol {
+
+    var contentView: any KvView { get }
 
 }

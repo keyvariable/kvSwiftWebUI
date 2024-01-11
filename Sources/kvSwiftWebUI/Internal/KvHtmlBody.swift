@@ -167,6 +167,9 @@ struct KvHtmlBodyImpl : KvHtmlBody {
                     view = modifiedView.sourceProvider()
                 }
 
+            case let conditionalView as any KvConditionalViewProtocol:
+                view = conditionalView.contentView
+
             case is KvHtmlRenderable:
                 return nil
 
