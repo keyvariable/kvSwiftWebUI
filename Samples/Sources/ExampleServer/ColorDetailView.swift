@@ -66,25 +66,16 @@ struct ColorDetailView<ID : ColorID> : View {
                 .foregroundStyle(labelColor.tertiary)
 
             (Text(verbatim: "Color\n")
-                .font(.title)
+                .font(.system(.title, design: .monospaced))
                 .foregroundStyle(labelColor.secondary)
              + Text(verbatim: ".\(colorID.label)")
-                .font(.largeTitle))
+                .font(.system(.largeTitle, design: .monospaced)))
             .multilineTextAlignment(.leading)
             .padding(.vertical, .em(4))
         }
         .foregroundStyle(labelColor)
         .padding(.em(1))
         .background(color)
-    }
-
-
-    private func title(foreground foregroundColor: Color) -> Text {
-        Text(verbatim: "Color\n")
-            .font(.title)
-            .foregroundStyle(foregroundColor.secondary)
-         + Text(verbatim: ".\(colorID.label)")
-            .font(.largeTitle)
     }
 
 }

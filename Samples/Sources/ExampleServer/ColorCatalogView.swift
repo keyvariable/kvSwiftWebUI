@@ -70,8 +70,8 @@ struct ColorCatalogView : View {
         var body: some View {
             Section1(header: header) {
                 let (numberOfColumns, font): (Int, Font) = switch horizontalSizeClass {
-                case .regular: (3, .body)
-                case .compact, .none: (2, .caption)
+                case .regular: (3, .system(.body, design: .monospaced))
+                case .compact, .none: (2, .system(.caption, design: .monospaced))
                 }
 
                 let allCases = ID.allCases
