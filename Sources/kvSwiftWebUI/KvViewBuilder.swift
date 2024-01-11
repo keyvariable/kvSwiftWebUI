@@ -35,17 +35,21 @@ public struct KvViewBuilder {
 
 
     @inlinable
-    public static func buildBlock<Component>(_ component: Component) -> Component
+    public static func buildExpression<Component>(_ component: Component) -> Component
     where Component : KvView
     { component }
 
 
     @inlinable
+    public static func buildExpression<Component>(_ component: Component?) -> ConditionalView<Component, KvEmptyView>
+    where Component : KvView
+    { component.map { .init(trueView: $0) } ?? .init(falseView: .init()) }
+
+
+    @inlinable
     public static func buildOptional<Component>(_ component: Component?) -> ConditionalView<Component, KvEmptyView>
     where Component : KvView
-    {
-        component.map { .init(trueView: $0) } ?? .init(falseView: .init())
-    }
+    { buildExpression(component) }
 
 
     @inlinable
