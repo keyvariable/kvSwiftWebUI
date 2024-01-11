@@ -413,7 +413,18 @@ extension KvHtmlContext {
             familyID = "'\(resource.name)'"
 
         case .system(let design):
-            familyID = design.cssFamilyID
+            let cssAsset: KvCssAsset.Prototype?
+
+            (familyID, cssAsset) = switch design {
+            case .default: ("system-ui", nil)
+            case .monospaced: ("var(--ui-monospace)", .foundation)
+            case .rounded: ("var(--ui-rounded)", .foundation)
+            case .serif: ("var(--ui-serif)", .foundation)
+            }
+
+            if let cssAsset {
+                insert(cssAsset)
+            }
         }
 
         let lineHeight: String = font.leading.map { "/\($0.cssLineHeight)" } ?? ""
