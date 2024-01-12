@@ -31,16 +31,17 @@ struct KvHtmlRepresentation {
 
     private(set) var bytes: KvHtmlBytes
 
-    /// First declared title.
-    var title: KvHtmlBytes?
 
+    /// First non-nil navigation title.
+    var navigationTitle: KvText?
     /// All declared destinations.
     var navigationDestinations: NavigationDestinations?
 
 
-    init(bytes: KvHtmlBytes, title: KvHtmlBytes? = nil, navigationDestinations: NavigationDestinations? = nil) {
+
+    init(bytes: KvHtmlBytes, navigationTitle: KvText? = nil, navigationDestinations: NavigationDestinations? = nil) {
         self.bytes = bytes
-        self.title = title
+        self.navigationTitle = navigationTitle
         self.navigationDestinations = navigationDestinations
     }
 
@@ -82,7 +83,7 @@ struct KvHtmlRepresentation {
     ) -> Self {
         let i1 = i1, i2 = i2
         return .init(bytes: .joined(i1.bytes, i2.bytes),
-                     title: i1.title ?? i2.title,
+                     navigationTitle: i1.navigationTitle ?? i2.navigationTitle,
                      navigationDestinations: .merged(i1.navigationDestinations, i2.navigationDestinations)
         )
     }
@@ -95,10 +96,10 @@ struct KvHtmlRepresentation {
         let i1 = i1, i2 = i2, i3 = i3
 
         let bytes: KvHtmlBytes = .joined(i1.bytes, i2.bytes, i3.bytes)
-        let title: KvHtmlBytes? = i1.title ?? i2.title ?? i3.title
+        let navigationTitle = i1.navigationTitle ?? i2.navigationTitle ?? i3.navigationTitle
         let navigationDestinations: NavigationDestinations? = .merged(i1.navigationDestinations, i2.navigationDestinations, i3.navigationDestinations)
 
-        return .init(bytes: bytes, title: title, navigationDestinations: navigationDestinations)
+        return .init(bytes: bytes, navigationTitle: navigationTitle, navigationDestinations: navigationDestinations)
     }
     
     
@@ -110,10 +111,10 @@ struct KvHtmlRepresentation {
         let i1 = i1, i2 = i2, i3 = i3, i4 = i4
 
         let bytes: KvHtmlBytes = .joined(i1.bytes, i2.bytes, i3.bytes, i4.bytes)
-        let title: KvHtmlBytes? = i1.title ?? i2.title ?? i3.title ?? i4.title
+        let navigationTitle = i1.navigationTitle ?? i2.navigationTitle ?? i3.navigationTitle ?? i4.navigationTitle
         let navigationDestinations: NavigationDestinations? = .merged(i1.navigationDestinations, i2.navigationDestinations, i3.navigationDestinations, i4.navigationDestinations)
 
-        return .init(bytes: bytes, title: title, navigationDestinations: navigationDestinations)
+        return .init(bytes: bytes, navigationTitle: navigationTitle, navigationDestinations: navigationDestinations)
     }
 
 

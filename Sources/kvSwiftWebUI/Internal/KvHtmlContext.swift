@@ -39,14 +39,19 @@ class KvHtmlContext {
 
 
     let rootPath: KvUrlPath?
-    let navigationPath: KvUrlPath.Slice
+    let navigationPath: KvNavigationPath
 
-    
+    /// Joined `.rootPath` and `.navigationPath.urlPath`.
+    private(set) lazy var absolutePath: KvUrlPath = { urlPath in
+        rootPath.map { $0 + urlPath } ?? urlPath
+    }(navigationPath.urlPath)
+
+
 
     init(_ assets: KvHtmlBundleAssets,
          cssAsset: KvCssAsset.Prototype? = nil,
          rootPath: KvUrlPath?,
-         navigationPath: KvUrlPath.Slice,
+         navigationPath: KvNavigationPath,
          extraHeaders: KvHtmlBytes? = nil
     ) {
         self.assets = assets
@@ -71,12 +76,6 @@ class KvHtmlContext {
 
 
     // MARK: Operations
-
-    /// Joined `.rootPath` and `navigationPath`.
-    var absolutePath: KvUrlPath {
-        rootPath.map { $0 + navigationPath } ?? .init(navigationPath)
-    }
-
 
     /// All HTML headers registered in the receiver.
     var headers: KvHtmlBytes {

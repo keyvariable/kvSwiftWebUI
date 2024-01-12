@@ -320,6 +320,7 @@ extension KvHtmlKit {
         case style
         case sub
         case sup
+        case title
 
         case raw(_ name: String, _ properties: Properties)
 
@@ -359,6 +360,7 @@ extension KvHtmlKit {
             case .style: "style"
             case .sub: "sub"
             case .sup: "sup"
+            case .title: "title"
 
             case .raw(let name, _): name
             }
@@ -366,7 +368,7 @@ extension KvHtmlKit {
 
         var properties: Properties {
             switch self {
-            case .a, .body, .div, .h1, .h2, .h3, .h4, .h5, .h6, .p, .pre, .span, .style, .sub, .sup: .requiresEndingTag
+            case .a, .body, .div, .h1, .h2, .h3, .h4, .h5, .h6, .p, .pre, .span, .style, .sub, .sup, .title: .requiresEndingTag
             case .br, .img, .link, .meta: [ ]
             case .raw(_, let properties): properties
             }

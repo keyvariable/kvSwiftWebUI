@@ -40,7 +40,7 @@ public class KvHtmlBundle {
         do {
             self.rootBody = KvHtmlBodyImpl(content: rootView())
 
-            let rootContext = KvHtmlContext(assets, rootPath: rootPath, navigationPath: [ ], extraHeaders: iconHeaders)
+            let rootContext = KvHtmlContext(assets, rootPath: rootPath, navigationPath: .init(), extraHeaders: iconHeaders)
 
             // Root body is rendered to fill context.
             _ = KvHtmlBodyImpl(content: rootView()).renderHTML(in: rootContext)
@@ -82,7 +82,7 @@ public class KvHtmlBundle {
 
 
             init(body: KvHtmlBody, assets: KvHtmlBundleAssets, cssAssets: CssAssets?, rootPath: KvUrlPath?, iconHeaders: KvHtmlBytes?) {
-                let context = KvHtmlContext(assets, cssAsset: cssAssets?.payload, rootPath: rootPath, navigationPath: [ ], extraHeaders: iconHeaders)
+                let context = KvHtmlContext(assets, cssAsset: cssAssets?.payload, rootPath: rootPath, navigationPath: .init(), extraHeaders: iconHeaders)
                 let representation = body.renderHTML(in: context)
 
                 self.init(body: body, cssAssets: cssAssets, iconHeaders: iconHeaders, representation: representation, context: context)
@@ -106,20 +106,23 @@ public class KvHtmlBundle {
 
             // MARK: Operations
 
-            #warning("Refactor unsafe argument")
             /// - Warning: path must be equal to the receiver's path with single extra component.
-            func next(at path: KvUrlPath.Slice) -> Self? {
-                let data = String(path.components.last!)
+            func next(for data: Substring) -> Self? {
+                let data = String(data)
 
-                guard let body = representation.navigationDestinations?.destination(for: data) else { return nil }
+                guard let destination = representation.navigationDestinations?.destination(for: data) else { return nil }
 
+                let body = destination.body
                 let cssAssets = cssAssets?[data]
+                var navigationPath = context.navigationPath
+
+                navigationPath.append(.init(rawValue: data, data: destination.value, title: representation.navigationTitle))
 
                 let context = KvHtmlContext(
                     context.assets,
                     cssAsset: cssAssets?.payload ?? context.cssAsset.parent,
                     rootPath: context.rootPath,
-                    navigationPath: path,
+                    navigationPath: navigationPath,
                     extraHeaders: iconHeaders
                 )
                 let representation = body.renderHTML(in: context)
@@ -132,8 +135,8 @@ public class KvHtmlBundle {
 
         var node = NavigationNode(body: rootBody, assets: assets, cssAssets: cssAssets, rootPath: rootPath, iconHeaders: iconHeaders)
 
-        for index in 0..<path.components.count {
-            guard let nextNode = node.next(at: path.prefix(index + 1)) else { return nil }
+        for component in path.components {
+            guard let nextNode = node.next(for: component) else { return nil }
 
             node = nextNode
         }
@@ -143,7 +146,17 @@ public class KvHtmlBundle {
 
 
     private static func htmlResponse(rootPath: KvUrlPath?, in context: KvHtmlContext, with bodyRepresentation: KvHtmlRepresentation) -> KvHttpResponseContent {
-        let (data, digest) = KvHtmlDocument.htmlBytes(headers: context.headers, with: bodyRepresentation)
+        let (data, digest) = KvHtmlBytes
+            .joined(
+                "<!DOCTYPE html><html><head>",
+                bodyRepresentation.navigationTitle?.escapedPlainBytes.wrap { .tag(.title, innerHTML: $0) },
+                "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />",
+                "<meta name=\"format-detection\" content=\"telephone=no\" /><meta name=\"format-detection\" content=\"date=no\" /><meta name=\"format-detection\" content=\"address=no\" /><meta name=\"format-detection\" content=\"email=no\" />",
+                context.headers,
+                "</head>",
+                bodyRepresentation.bytes,
+                "</html>"
+            )
             .accumulate()
 
         return .binary { data }

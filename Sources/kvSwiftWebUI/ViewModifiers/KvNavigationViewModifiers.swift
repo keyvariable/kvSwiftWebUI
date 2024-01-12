@@ -52,7 +52,7 @@ extension KvView {
 
     
     @usableFromInline
-    consuming func navigationDestination<C : KvView>(destination: @escaping (String) -> C?) -> some KvView {
+    consuming func navigationDestination<C : KvView>(destination: @escaping (String) -> (view: C, value: Any)?) -> some KvView {
         mapConfiguration {
             $0!.appendNavigationDestinations(destination)
         }
@@ -63,7 +63,9 @@ extension KvView {
     public consuming func navigationDestination<D, Content>(for data: D.Type, @KvViewBuilder destination: @escaping (D) -> Content) -> some KvView
     where D : LosslessStringConvertible, Content : KvView
     {
-        navigationDestination { D($0).map(destination) }
+        navigationDestination { data in D(data).map { value in
+            (destination(value), value: value)
+        } }
     }
 
 
@@ -71,7 +73,9 @@ extension KvView {
     public consuming func navigationDestination<D, Content>(for data: D.Type, @KvViewBuilder destination: @escaping (D) -> Content) -> some KvView
     where D : RawRepresentable, D.RawValue : LosslessStringConvertible, Content : KvView
     {
-        navigationDestination { D.RawValue($0).flatMap(D.init(rawValue:)).map(destination) }
+        navigationDestination { data in D.RawValue(data).flatMap(D.init(rawValue:)).map { value in
+            (destination(value), value: value)
+        } }
     }
 
 }

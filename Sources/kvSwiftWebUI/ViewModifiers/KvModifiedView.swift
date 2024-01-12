@@ -109,7 +109,7 @@ struct KvModifiedView : KvView {
         if let title = environment.viewConfiguration?.navigationTitle,
            !title.isEmpty
         {
-            representation.title = title.escapedPlainBytes
+            representation.navigationTitle = title
         }
 
         if let destinations = environment.viewConfiguration?.navigationDestinations {

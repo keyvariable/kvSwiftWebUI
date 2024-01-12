@@ -313,14 +313,14 @@ extension KvEnvironmentValues {
         }
 
 
-        func navigationDestination(for data: String) -> KvHtmlBody? {
+        func navigationDestination(for data: String) -> NavigationDestinations.Destination? {
             navigationDestinations?.destination(for: data)
         }
 
 
-        mutating func appendNavigationDestinations<C : KvView>(_ destinationProvider: @escaping (String) -> C?) {
-            let destinationProvider: NavigationDestinations.Provider = {
-                destinationProvider($0).map(KvHtmlBodyImpl.init(content:))
+        mutating func appendNavigationDestinations<C : KvView>(_ destinationProvider: @escaping (String) -> (view: C, value: Any)?) {
+            let destinationProvider: NavigationDestinations.Provider = { data in
+                destinationProvider(data).map { (body: KvHtmlBodyImpl(content: $0.view), value: $0.value) }
             }
 
             navigationDestinations?.append(provider: destinationProvider)
@@ -505,7 +505,8 @@ extension KvEnvironmentValues {
 
         struct NavigationDestinations {
 
-            typealias Provider = (String) -> KvHtmlBody?
+            typealias Destination = (body: KvHtmlBody, value: Any)
+            typealias Provider = (String) -> Destination?
 
 
             init(providers: [Provider]) {
@@ -531,7 +532,8 @@ extension KvEnvironmentValues {
 
             // MARK: Operations
 
-            func destination(for data: String) -> KvHtmlBody? {
+            /// - Returns: The body and value the body has been synthesized for.
+            func destination(for data: String) -> Destination? {
                 providers
                     .lazy.compactMap { $0(data) }
                     .first
