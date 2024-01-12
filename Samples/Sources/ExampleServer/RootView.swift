@@ -60,6 +60,7 @@ struct RootView : View {
                 }
             }
         }
+        .navigationTitle("ExampleServer | kvSwiftWebUI")
         .navigationDestination(for: Article.self) { article in
             switch article {
             case .basics:

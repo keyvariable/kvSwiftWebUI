@@ -146,10 +146,17 @@ public class KvHtmlBundle {
 
 
     private static func htmlResponse(rootPath: KvUrlPath?, in context: KvHtmlContext, with bodyRepresentation: KvHtmlRepresentation) -> KvHttpResponseContent {
+        let title: KvHtmlBytes? = context.navigationPath.elements
+            .reversed()
+            .lazy.compactMap { $0.title?.escapedPlainBytes }
+            .reduce(bodyRepresentation.navigationTitle?.escapedPlainBytes) {
+                $0 != nil ? .joined($0!, " | ", $1) : $1
+            }
+
         let (data, digest) = KvHtmlBytes
             .joined(
                 "<!DOCTYPE html><html><head>",
-                bodyRepresentation.navigationTitle?.escapedPlainBytes.wrap { .tag(.title, innerHTML: $0) },
+                title?.wrap { .tag(.title, innerHTML: $0) },
                 "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />",
                 "<meta name=\"format-detection\" content=\"telephone=no\" /><meta name=\"format-detection\" content=\"date=no\" /><meta name=\"format-detection\" content=\"address=no\" /><meta name=\"format-detection\" content=\"email=no\" />",
                 context.headers,
