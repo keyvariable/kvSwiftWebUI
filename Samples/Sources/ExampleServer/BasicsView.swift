@@ -86,8 +86,8 @@ struct BasicsView : View {
                     .font(.system(size: 20, weight: .ultraLight))
                 Text(".system(.body, design: .monospaced)")
                     .font(.system(.body, design: .monospaced))
-                Text(".custom(\"Montserrat Alternates\", fixedSize: 15)")
-                    .font(.custom("Montserrat Alternates", fixedSize: 15))
+                Text(".custom(\"Jura\", fixedSize: 15)")
+                    .font(.custom("Jura", fixedSize: 15))
             }
 
             Section2(header: Text("Clip Shapes")) {
@@ -263,7 +263,7 @@ struct BasicsView : View {
                     .foregroundStyle(.green)
                 + Text(verbatim: " ")
                 + (Text("of custom font ") + Text("with italics").italic())
-                    .font(.custom("Montserrat Alternates", fixedSize: 18))
+                    .font(.custom("Jura", fixedSize: 18))
                 + Text(verbatim: ".")
 
                 Text("Caffeine")
