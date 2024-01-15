@@ -215,39 +215,35 @@ class KvCssAsset {
     var isEmpty: Bool { entryIDs.isEmpty }
 
 
-    var bytes: KvHtmlBytes {
-        .joined(declarations.keys
+    var css: String {
+        declarations.keys
             .sorted(by: { ($0?.cssQuery ?? "") < ($1?.cssQuery ?? "") })
-            .lazy.map { mediaQuery -> KvHtmlBytes in
+            .lazy.map { mediaQuery -> String in
                 let mediaQueryNode = self.declarations[mediaQuery]!
 
-                return .joined(
-                    mediaQueryNode.keys
-                        .sorted(by: { ($0 ?? "") < ($1 ?? "") })
-                        .lazy.map { selector -> KvHtmlBytes in
-                            let selectorNode = mediaQueryNode[selector]!
+                let styles: String = mediaQueryNode.keys
+                    .sorted(by: { ($0 ?? "") < ($1 ?? "") })
+                    .lazy.map { selector -> String in
+                        let selectorNode = mediaQueryNode[selector]!
 
-                            return .joined(
-                                selectorNode.keys
-                                    .sorted()
-                                    .lazy.map { selectorNode[$0]! }
-                            )
-                            .wrap {
-                                switch selector {
-                                case .none: $0
-                                case .some(let selector): .joined(.from(selector), "{", $0, "}")
-                                }
-                            }
+                        let styles: String = selectorNode.keys
+                            .sorted()
+                            .lazy.map { selectorNode[$0]! }
+                            .joined()
+
+                        return switch selector {
+                        case .none: styles
+                        case .some(let selector): "\(selector){\(styles)}"
                         }
-                )
-                .wrap {
-                    switch mediaQuery {
-                    case .none: $0
-                    case .some(let query): .joined("@media ", .from(query.cssQuery), "{", $0, "}")
                     }
+                    .joined()
+
+                return switch mediaQuery {
+                case .none: styles
+                case .some(let query): "@media \(query.cssQuery){\(styles)}"
                 }
             }
-        )
+            .joined()
     }
 
 

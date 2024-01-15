@@ -25,6 +25,6 @@
 
 protocol KvHtmlRenderable {
 
-    func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation
+    func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment
 
 }

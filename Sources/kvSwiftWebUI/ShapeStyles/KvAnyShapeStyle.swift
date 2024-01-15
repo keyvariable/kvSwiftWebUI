@@ -30,7 +30,7 @@ public typealias AnyShapeStyle = KvAnyShapeStyle
 public struct KvAnyShapeStyle : KvShapeStyle {
 
     /// - Parameter property: Optional name of CSS property. Pass `nil` to use default value.
-    typealias CssStyleProvider = (borrowing KvHtmlContext, _ property: KvHtmlBytes?) -> KvHtmlBytes
+    typealias CssStyleProvider = (borrowing KvHtmlContext, _ property: String?) -> String
 
 
     let cssBackgroundStyle: CssStyleProvider

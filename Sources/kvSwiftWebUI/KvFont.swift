@@ -377,7 +377,7 @@ public struct KvFont : Equatable {
 
 
     /// - Returns: "font: ..."
-    func cssStyle(in context: KvHtmlContext) -> KvHtmlBytes {
+    func cssStyle(in context: KvHtmlContext) -> String {
         "font:\(context.cssExpression(for: self))"
     }
 

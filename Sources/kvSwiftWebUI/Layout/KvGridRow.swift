@@ -62,7 +62,7 @@ extension KvGridRow : KvView {
 
 extension KvGridRow : KvHtmlRenderable {
 
-    func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
+    func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
         content.htmlRepresentation(in: context.gridRowDescendant(alignment))
     }
 

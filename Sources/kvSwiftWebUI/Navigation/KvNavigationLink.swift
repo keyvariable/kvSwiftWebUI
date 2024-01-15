@@ -116,7 +116,7 @@ where Label : KvView
 
 extension KvNavigationLink : KvHtmlRenderable {
 
-    func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
+    func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
         let url: URL? = {
             let contextPath = context.html.absolutePath
             var components = URLComponents()

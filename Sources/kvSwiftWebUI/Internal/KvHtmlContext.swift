@@ -52,21 +52,18 @@ class KvHtmlContext {
          cssAsset: KvCssAsset.Prototype? = nil,
          rootPath: KvUrlPath?,
          navigationPath: KvNavigationPath,
-         extraHeaders: KvHtmlBytes? = nil
+         extraHeaders: [String]? = nil
     ) {
         self.assets = assets
         self.cssAsset = .init(parent: cssAsset)
         self.rootPath = rootPath
         self.navigationPath = navigationPath
-
-        if let extraHeaders {
-            self.extraHeaders.append(extraHeaders)
-        }
+        self.extraHeaders = extraHeaders ?? [ ]
     }
 
 
 
-    private var extraHeaders: [KvHtmlBytes] = .init()
+    private var extraHeaders: [String]
 
     // TODO: Use ordered set
     private var resourceLinks: Set<KvHtmlResource.HtmlLink> = .init()
@@ -78,26 +75,28 @@ class KvHtmlContext {
     // MARK: Operations
 
     /// All HTML headers registered in the receiver.
-    var headers: KvHtmlBytes {
-        let inlinedCSS: KvHtmlBytes? = (!cssAsset.isEmpty
-                                        ? cssAsset.bytes.wrap { .tag(.style, innerHTML: $0) }
-                                        : nil)
+    var headers: String {
+        var headers: String = resourceLinks
+            .sorted(by: { $0.uri < $1.uri })
+            .lazy.map { $0.html(basePath: self.rootPath) }
+            .joined()
 
-        let resourceLinks = KvHtmlBytes.joined(
-            .joined(resourceLinks.sorted(by: { $0.uri < $1.uri })
-                .lazy.map { $0.bytes(basePath: self.rootPath) }),
-            inlinedCSS
-        )
+        if !cssAsset.isEmpty {
+            headers.append(KvHtmlKit.Tag.style.html(innerHTML: cssAsset.css))
+        }
 
-        return .joined(resourceLinks, gFonts.resourceLinks, .joined(extraHeaders))
+        headers.append(gFonts.resourceLinks)
+        headers.append(extraHeaders.joined())
+
+        return headers
     }
 
 
     /// Extracts the receiver's CSS asset, inserts it as a resource asset and clears the receiver's CSS asset.
     func makeCssResource() -> KvCssAsset.Prototype {
-        let bytes = cssAsset.bytes
+        let data = cssAsset.css.data(using: .utf8)!
+        let digest = SHA256.hash(data: data)
 
-        let (data, digest) = bytes.accumulate()
         let id = digest.withUnsafeBytes {
             KvBase64.encodeAsString($0, alphabet: .urlSafe)
         }
@@ -113,8 +112,8 @@ class KvHtmlContext {
     }
 
 
-    func insert(headers: KvHtmlBytes) {
-        self.extraHeaders.append(headers)
+    func insert(headers: [String]) {
+        self.extraHeaders.append(contentsOf: headers)
     }
 
 
@@ -467,22 +466,24 @@ extension KvHtmlContext {
 
         // MARK: Operations
 
-        /// Sequence of URIs of the required fonts.
-        var resourceLinks: KvHtmlBytes {
+        /// Sequence of HTML link tags to the required fonts.
+        var resourceLinks: String {
             var urlComponents = URLComponents(string: "https://fonts.googleapis.com/css2")!
 
-            return .joined(elements.lazy.compactMap { family, query in
-                let tuples = query
-                    .sorted()
-                    .lazy.map { "\($0.italic ? "1" : "0"),\($0.weight)" }
-                    .joined(separator: ";")
+            return elements
+                .lazy.compactMap { family, query in
+                    let tuples = query
+                        .sorted()
+                        .lazy.map { "\($0.italic ? "1" : "0"),\($0.weight)" }
+                        .joined(separator: ";")
 
-                urlComponents.queryItems = [ .init(name: "family", value: "\(family):ital,wght@\(tuples)") ]
+                    urlComponents.queryItems = [ .init(name: "family", value: "\(family):ital,wght@\(tuples)") ]
 
-                return KvHtmlResource.css(.external(urlComponents.url!))
-                    .htmlLink?
-                    .bytes(basePath: nil) // URLs to external resources are not resolved against base URL.
-            })
+                    return KvHtmlResource.css(.external(urlComponents.url!))
+                        .htmlLink?
+                        .html(basePath: nil) // URLs to external resources are not resolved against base URL.
+                }
+                .joined()
         }
 
 

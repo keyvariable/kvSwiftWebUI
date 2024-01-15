@@ -58,7 +58,7 @@ where Content : KvView
 
 extension KvZStack : KvHtmlRenderable {
 
-    func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
+    func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
 
         // - NOTE: ZStack is implemented as a 1x1 CSS grid.
 
@@ -71,9 +71,9 @@ extension KvZStack : KvHtmlRenderable {
                 style: "max-width:100%"
             )
         ) { context, cssAttributes in
-            content
-                .htmlRepresentation(in: context)
-                .mapBytes { .tag(.div, css: cssAttributes, innerHTML: $0) }
+            let fragment = content.htmlRepresentation(in: context)
+
+            return .tag(.div, css: cssAttributes, innerHTML: fragment)
         }
     }
 

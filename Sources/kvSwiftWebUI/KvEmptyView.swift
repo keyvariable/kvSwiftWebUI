@@ -44,8 +44,8 @@ public struct KvEmptyView : KvView {
 
 extension KvEmptyView : KvHtmlRenderable {
 
-    func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
-        .init(bytes: .empty)
+    func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
+        .empty
     }
 
 }

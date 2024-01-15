@@ -161,13 +161,13 @@ struct KvHtmlResource : Hashable {
 
         // MARK: Operations
 
-        func bytes(basePath: KvUrlPath?) -> KvHtmlBytes {
+        func html(basePath: KvUrlPath?) -> String {
             let href: KvHtmlKit.Attribute = switch uri {
             case .localPath(let path): .href(path, relativeTo: basePath)
             case .url(let url): .href(url)      // External resources are not resolved against basePath.
             }
 
-            return .tag(.link, attributes: [ linkAttributes, [ href ] ].joined())
+            return KvHtmlKit.Tag.link.html(attributes: [ linkAttributes, [ href ] ].joined())
         }
 
     }

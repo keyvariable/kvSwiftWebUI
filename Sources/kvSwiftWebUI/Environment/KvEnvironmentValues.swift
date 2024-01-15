@@ -237,6 +237,7 @@ extension KvEnvironmentValues {
 
         // MARK: Operations
 
+        /// This method redcuces number of explicit type declarations.
         private static func cast<T>(_ value: Any, as: KeyPath<Self, T?>) -> T { value as! T }
 
 
@@ -405,7 +406,7 @@ extension KvEnvironmentValues {
 
             // MARK: Operations
 
-            func cssFlexShrink(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlBytes? {
+            func cssFlexShrink(in context: borrowing KvHtmlRepresentationContext) -> String? {
                 guard (contains(.horizontal) && context.containerAttributes?.layoutDirection == .horizontal)
                         || (contains(.vertical) && context.containerAttributes?.layoutDirection == .vertical)
                 else { return nil }

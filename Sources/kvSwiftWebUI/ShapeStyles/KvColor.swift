@@ -119,10 +119,10 @@ public struct KvColor : KvShapeStyle, Hashable, ExpressibleByIntegerLiteral {
     public func eraseToAnyShapeStyle() -> KvAnyShapeStyle {
         .init(
             cssBackgroundStyle: { context, property in
-                return .joined(property ?? "background-color", cssBackgroundExpression(in: context), separator: ":")
+                "\(property ?? "background-color"):\(cssBackgroundExpression(in: context))"
             },
             cssForegroundStyle: { context, property in
-                return .joined(property ?? "color", cssExpression(in: context), separator: ":")
+                "\(property ?? "color"):\(cssExpression(in: context))"
             },
             backgroundColor: { self },
             bottomBackgroundColor: { self }
@@ -131,8 +131,8 @@ public struct KvColor : KvShapeStyle, Hashable, ExpressibleByIntegerLiteral {
 
 
     /// - Returns: Expression to be used as rvalue in CSS styles like `background: expr`.
-    func cssBackgroundExpression(in context: borrowing KvHtmlContext) -> KvHtmlBytes {
-        .from(context.cssExpression(for: self))
+    func cssBackgroundExpression(in context: borrowing KvHtmlContext) -> String {
+        context.cssExpression(for: self)
     }
 
 
@@ -140,8 +140,8 @@ public struct KvColor : KvShapeStyle, Hashable, ExpressibleByIntegerLiteral {
     // MARK: CSS
 
     /// - Returns: Expression to be used as rvalue in CSS styles like `color: expr`.
-    func cssExpression(in context: KvHtmlContext) -> KvHtmlBytes {
-        .from(context.cssExpression(for: self))
+    func cssExpression(in context: KvHtmlContext) -> String {
+        context.cssExpression(for: self)
     }
 
 

@@ -72,7 +72,7 @@ public struct KvGrid<Content : KvView> : KvView {
 
 extension KvGrid : KvHtmlRenderable {
 
-    func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
+    func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
         let gap = KvCssGap(verticalSpacing ?? KvDefaults.gridVerticalSpacing,
                            horizontalSpacing ?? KvDefaults.gridHorizontalSpacing)
 
@@ -83,17 +83,20 @@ extension KvGrid : KvHtmlRenderable {
                                  context.html.cssFlexClass(for: alignment.horizontal, as: .mainItems),
                                  style: "gap:\(gap.css)")
         ) { context, cssAttributes in
-            content
-                .htmlRepresentation(in: context)
-                .mapBytes {
-                    var cssAttributes = cssAttributes
+            let fragment = content.htmlRepresentation(in: context)
 
+            // - NOTE: Styles must be calculated after all the child rows are synthesized and number columns are known.
+            return .tag(
+                .div,
+                css: {
+                    var cssAttributes = cssAttributes
                     if let gridColumnCount = context.containerAttributes?.gridColumnCount {
                         cssAttributes?.append(style: "grid-template-columns:repeat(\(gridColumnCount),auto)")
                     }
-
-                    return .tag(.div, css: cssAttributes, innerHTML: $0)
-                }
+                    return cssAttributes
+                },
+                innerHTML: fragment
+            )
         }
     }
 

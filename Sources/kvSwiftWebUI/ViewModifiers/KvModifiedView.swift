@@ -95,28 +95,28 @@ struct KvModifiedView : KvView {
 
     // MARK: HTML Representation
 
-    func htmlRepresentation(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
+    func htmlRepresentation(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
         var containerCSS: KvHtmlKit.CssAttributes?
         let context = context.descendant(environment: environment, extractedCssAttributes: &containerCSS)
 
-        var representation = sourceProvider().htmlRepresentation(in: context)
+        var fragment = sourceProvider().htmlRepresentation(in: context)
 
         // Container with extracted CSS attributes.
         if let containerCSS = containerCSS {
-            representation = representation.mapBytes { .tag(.div, css: containerCSS, innerHTML: $0) }
+            fragment = .tag(.div, css: containerCSS, innerHTML: fragment)
         }
 
         if let title = environment.viewConfiguration?.navigationTitle,
            !title.isEmpty
         {
-            representation.navigationTitle = title
+            fragment.navigationTitle = title
         }
 
         if let destinations = environment.viewConfiguration?.navigationDestinations {
-            representation.navigationDestinations = .merged(representation.navigationDestinations, destinations)
+            fragment.navigationDestinations = .merged(fragment.navigationDestinations, destinations)
         }
 
-        return representation
+        return fragment
     }
 
 }

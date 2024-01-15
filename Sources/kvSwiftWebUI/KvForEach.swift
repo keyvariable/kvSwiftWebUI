@@ -94,30 +94,10 @@ extension KvForEach : KvView where Content : KvView {
 
 extension KvForEach : KvHtmlRenderable where Content : KvView {
 
-    func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
-        var representation = KvHtmlRepresentation.empty
-
-        var iterator = data.makeIterator()
-
-
-        func NextRepresentation() -> KvHtmlRepresentation? {
-            iterator.next().map { content($0).htmlRepresentation(in: context) }
-        }
-
-
-        while let r0 = NextRepresentation() {
-            guard let r1 = NextRepresentation() else {
-                representation = .joined(representation, r0)
-                break
-            }
-            guard let r2 = NextRepresentation() else {
-                representation = .joined(representation, r0, r1)
-                break
-            }
-            representation = .joined(representation, r0, r1, r2)
-        }
-
-        return representation
+    func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
+        .init(data.lazy.map { data in
+            return .fragmentBlock { content(data).htmlRepresentation(in: context) }
+        })
     }
 
 }

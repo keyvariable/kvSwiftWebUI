@@ -47,8 +47,10 @@ struct KvHtmlBodyImpl : KvHtmlBody {
         let backgroundStyle = Self.firstBackgroundStyle(of: content) ?? Constants.backgroundColor.eraseToAnyShapeStyle()
 
         self.rootRepresentationProvider = { context in
-            RootView(backgroundColor: backgroundStyle.bottomBackgroundColor() ?? Constants.backgroundColor, content: content)
-                .htmlRepresentation(in: context)
+            KvHtmlRepresentation(
+                BodyView(backgroundColor: backgroundStyle.bottomBackgroundColor() ?? Constants.backgroundColor, content: content),
+                in: context
+            )
         }
 
         self.backgroundStyle = backgroundStyle
@@ -79,15 +81,38 @@ struct KvHtmlBodyImpl : KvHtmlBody {
         // The foundation CSS is required to provide the default styles.
         htmlContext.insert(.foundation)
 
-        return KvHtmlRepresentationContext.root(html: htmlContext, environment: .init(viewConfiguration))
-            .representation(options: .noContainer) { context, cssAttributes in
-                rootRepresentationProvider(context)
-                    .mapBytes { .tag(
-                        .body,
-                        css: cssAttributes,
-                        innerHTML: $0
-                    ) }
+        return rootRepresentationProvider(.root(html: htmlContext, environment: .init(viewConfiguration)))
+    }
+
+
+
+    // MARK: .BodyView
+
+    private struct BodyView<Content : KvView> : KvView, KvHtmlRenderable {
+
+        let content: RootView<Content>
+
+
+        init(backgroundColor: KvColor, content: Content) {
+            self.content = .init(backgroundColor: backgroundColor, content: content)
+        }
+
+
+        // MARK: : KvView
+
+        var body: KvNeverView { Body() }
+
+
+        // MARK: : KvHtmlRenderable
+
+        func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
+            context.representation(options: .noContainer) { context, cssAttributes in
+                let fragment = content.htmlRepresentation(in: context)
+
+                return .tag(.body, css: cssAttributes, innerHTML: fragment)
             }
+        }
+
     }
 
 
@@ -98,12 +123,6 @@ struct KvHtmlBodyImpl : KvHtmlBody {
 
         let backgroundColor: KvColor
         let content: Content
-
-
-        init(backgroundColor: KvColor, content: Content) {
-            self.backgroundColor = backgroundColor
-            self.content = content
-        }
 
 
         // MARK: .Constants
@@ -167,8 +186,8 @@ struct KvHtmlBodyImpl : KvHtmlBody {
                     view = modifiedView.sourceProvider()
                 }
 
-            case let conditionalView as any KvConditionalViewProtocol:
-                view = conditionalView.contentView
+            case let wrapperView as any KvWrapperView:
+                view = wrapperView.contentView
 
             case is KvHtmlRenderable:
                 return nil

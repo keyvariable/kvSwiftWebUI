@@ -91,22 +91,24 @@ public struct KvApplicationIcon {
         return htmlResources
     }
 
-    var htmlHeaders: KvHtmlBytes? {
-        var headers: [KvHtmlBytes] = .init()
+    var htmlHeaders: String? {
+        typealias Tag = KvHtmlKit.Tag
+
+        var headers: String = .init()
 
         enumerateTintColorValues { tintColor in
             guard let tintColor else { return }
 
             if !tintColor.darkTheme {
-                headers.append(.tag(.meta, attributes: .name("msapplication-TileColor"), .content(tintColor.value)))
+                headers.append(Tag.meta.html(attributes: .name("msapplication-TileColor"), .content(tintColor.value)))
             }
 
-            headers.append(.tag(.meta, attributes: .name("theme-color"), .content(tintColor.value), tintColor.darkTheme ? .media(colorScheme: "dark") : nil))
+            headers.append(Tag.meta.html(attributes: .name("theme-color"), .content(tintColor.value), tintColor.darkTheme ? .media(colorScheme: "dark") : nil))
         }
 
         guard !headers.isEmpty else { return nil }
 
-        return .joined(headers)
+        return headers
     }
 
 
@@ -146,9 +148,7 @@ public struct KvApplicationIcon {
 
 
     /// - Parameter body: A block invoked with value of tint color for provided color scmenes. If there is no tint color value then *body* is invoked once with `nil` argument.
-    private func enumerateTintColorValues(body: ((value: KvHtmlBytes, darkTheme: Bool)?) -> Void) {
-        // TODO: Extract HEX from any color when it will be possible.
-
+    private func enumerateTintColorValues(body: ((value: String, darkTheme: Bool)?) -> Void) {
         guard let tintColor else { return body(nil) }
 
         body((value: "#\(tintColor.light.hexString)", darkTheme: false))

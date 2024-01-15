@@ -23,115 +23,352 @@
 //  Created by Svyatoslav Popov on 26.10.2023.
 //
 
+import Foundation
+
+
+
 struct KvHtmlRepresentation {
 
     typealias NavigationDestinations = KvViewConfiguration.NavigationDestinations
 
 
 
-    private(set) var bytes: KvHtmlBytes
-
-
     /// First non-nil navigation title.
-    var navigationTitle: KvText?
+    let navigationTitle: KvText?
     /// All declared destinations.
-    var navigationDestinations: NavigationDestinations?
+    let navigationDestinations: NavigationDestinations?
 
 
 
-    init(bytes: KvHtmlBytes, navigationTitle: KvText? = nil, navigationDestinations: NavigationDestinations? = nil) {
-        self.bytes = bytes
-        self.navigationTitle = navigationTitle
-        self.navigationDestinations = navigationDestinations
-    }
+    init<V : KvView>(_ view: V, in context: KvHtmlRepresentationContext) {
+        var dataList = DataList()
 
+        var fragment = view.htmlRepresentation(in: context)
 
+        while let payload = fragment.dropFirst() {
+            switch payload {
+            case .data(let data):
+                dataList.append(.data(data))
 
-    // MARK: Fabrics
+            case .dataBlock(let dataBlock):
+                dataList.append(.dataBlock(dataBlock))
 
-    static let empty = Self(bytes: .empty)
+            case .fragmentBlock(let fragmentBlock):
+                var nextFragment = fragmentBlock()
 
-
-
-    // MARK: Merging
-
-    static func joined<S>(_ elements: S) -> Self
-    where S : Sequence, S.Element == Self {
-        var representation = KvHtmlRepresentation.empty
-
-        var iterator = elements.makeIterator()
-
-        while let r0 = iterator.next() {
-            guard let r1 = iterator.next() else {
-                representation = .joined(representation, r0)
-                break
+                nextFragment.append(fragment)
+                fragment = nextFragment
             }
-            guard let r2 = iterator.next() else {
-                representation = .joined(representation, r0, r1)
-                break
-            }
-            representation = .joined(representation, r0, r1, r2)
         }
 
-        return representation
+        self.dataList = dataList
+
+        // For now fragment contains resolved `.navigationTitle` and accumulated `.navigationDestinations`.
+        self.navigationTitle = fragment.navigationTitle
+        self.navigationDestinations = fragment.navigationDestinations
     }
 
 
 
-    static func joined(_ i1: consuming Self,
-                       _ i2: consuming Self
-    ) -> Self {
-        let i1 = i1, i2 = i2
-        return .init(bytes: .joined(i1.bytes, i2.bytes),
-                     navigationTitle: i1.navigationTitle ?? i2.navigationTitle,
-                     navigationDestinations: .merged(i1.navigationDestinations, i2.navigationDestinations)
-        )
+    private let dataList: DataList
+
+
+
+    // MARK: Operations
+
+    func makeDataIterator() -> DataList.Iterator { dataList.makeIterator() }
+
+
+
+    // MARK: .Fragment
+
+    struct Fragment {
+
+        private var first: Node?
+        private var last: Node?
+
+        var navigationTitle: KvText?
+        var navigationDestinations: NavigationDestinations?
+
+
+        init() { }
+
+
+        init(_ payload: Payload) {
+            first = .init(with: payload)
+            last = first
+        }
+
+
+        init(_ string: String) { self.init(.string(string)) }
+
+
+        init(fragmentBlock: @escaping () -> Fragment) { self.init(.fragmentBlock(fragmentBlock)) }
+
+
+        init<S>(_ payload: S) where S : Sequence, S.Element == Payload {
+            payload.forEach { append($0) }
+        }
+
+
+        init(_ payload: Payload...) { self.init(payload) }
+
+
+        init<S>(_ payload: S) where S : Sequence, S.Element == Fragment {
+            payload.forEach { append($0) }
+        }
+
+
+        init(_ payload: Fragment...) {
+            payload.forEach { append($0) }
+        }
+
+
+        // MARK: Fabrics
+
+        static let empty = Fragment()
+
+
+        /// - Note: Assuming one of arguments are non-empty.
+        private static func tag(opening: consuming Payload, innerHTML: consuming Fragment?, closing: consuming Payload?) -> Fragment {
+            var fragment = Fragment(opening)
+            if let innerHTML {
+                fragment.append(innerHTML)
+            }
+            if let closing {
+                fragment.append(closing)
+            }
+            return fragment
+        }
+
+
+        static func tag<Attributes>(_ tag: KvHtmlKit.Tag,
+                                    css: KvHtmlKit.CssAttributes? = nil,
+                                    attributes: Attributes,
+                                    innerHTML: consuming Fragment? = nil
+        ) -> Fragment
+        where Attributes : Sequence, Attributes.Element == KvHtmlKit.Attribute
+        {
+            let hasContent = innerHTML != nil
+            let opening = tag.opening(css: css, attributes: attributes, hasContent: hasContent)
+            let closing = tag.closing(hasContent: hasContent)
+
+            return self.tag(opening: .string(opening), innerHTML: innerHTML, closing: closing.map(Payload.string(_:)))
+        }
+
+
+        static func tag<Attributes>(_ tag: KvHtmlKit.Tag,
+                                    css: @escaping () -> KvHtmlKit.CssAttributes? = { nil },
+                                    attributes: @escaping () -> Attributes = { [ ] },
+                                    innerHTML: consuming Fragment? = nil
+        ) -> Fragment
+        where Attributes : Sequence, Attributes.Element == KvHtmlKit.Attribute
+        {
+            let hasContent = innerHTML != nil
+            let opening = Payload.stringBlock { tag.opening(css: css(), attributes: attributes(), hasContent: hasContent) }
+            let closing = tag.closing(hasContent: hasContent)
+
+            return self.tag(opening: opening, innerHTML: innerHTML, closing: closing.map(Payload.string(_:)))
+        }
+
+
+        static func tag(_ tag: KvHtmlKit.Tag,
+                        css: KvHtmlKit.CssAttributes? = nil,
+                        attributes: KvHtmlKit.Attribute?...,
+                        innerHTML: consuming Fragment? = nil
+        ) -> Self {
+            self.tag(tag, css: css, attributes: attributes.lazy.compactMap { $0 }, innerHTML: innerHTML)
+        }
+
+
+        // MARK: .Payload
+
+        enum Payload : ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
+
+            case data(Data)
+            /// This case is used when the resulting data depends on fragments generated later.
+            case dataBlock(() -> Data)
+            /// This case is used to avoid recursion while travesing view hierarchies.
+            case fragmentBlock(() -> Fragment)
+
+
+            // MARK: Fabrics
+
+            static func string(_ value: String) -> Payload { .data(value.data(using: .utf8)!) }
+
+
+            static func stringBlock(_ block: @escaping () -> String) -> Payload { .dataBlock { block().data(using: .utf8)! } }
+
+
+            // MARK: : ExpressibleByStringLiteral
+
+            init(stringLiteral value: StringLiteralType) { self = .data(value.data(using: .utf8)!) }
+
+        }
+
+
+        // MARK: .Node
+
+        private class Node {
+
+            let payload: Payload
+
+            var next: Node?
+
+
+            init(with payload: Payload) {
+                self.payload = payload
+            }
+
+        }
+
+
+        // MARK: Operations
+
+        var hasPayload: Bool { last != nil }
+
+
+        mutating func append(_ fragment: consuming Fragment) {
+            if fragment.last != nil {
+                switch last != nil {
+                case true:
+                    last!.next = fragment.first
+                case false:
+                    first = fragment.first
+                }
+                last = fragment.last
+            }
+
+            navigationTitle = navigationTitle ?? fragment.navigationTitle
+            navigationDestinations = .merged(navigationDestinations, fragment.navigationDestinations)
+        }
+
+
+        mutating private func append(_ payload: Payload) {
+            let node = Node(with: payload)
+
+            switch last != nil {
+            case true:
+                last!.next = node
+            case false:
+                first = node
+            }
+            last = node
+        }
+
+
+        mutating func append(_ data: Data) { append(.data(data)) }
+
+
+        mutating func dropFirst() -> Payload? {
+            guard last != nil else { return nil }
+
+            let payload = first!.payload
+
+            switch first === last {
+            case false:
+                first = first?.next
+                assert(first != nil)
+            case true:
+                first = nil
+                last = nil
+            }
+
+            return payload
+        }
+
     }
-    
 
-    static func joined(_ i1: consuming Self,
-                       _ i2: consuming Self,
-                       _ i3: consuming Self
-    ) -> Self {
-        let i1 = i1, i2 = i2, i3 = i3
 
-        let bytes: KvHtmlBytes = .joined(i1.bytes, i2.bytes, i3.bytes)
-        let navigationTitle = i1.navigationTitle ?? i2.navigationTitle ?? i3.navigationTitle
-        let navigationDestinations: NavigationDestinations? = .merged(i1.navigationDestinations, i2.navigationDestinations, i3.navigationDestinations)
 
-        return .init(bytes: bytes, navigationTitle: navigationTitle, navigationDestinations: navigationDestinations)
+    // MARK: .DataList
+
+    struct DataList {
+
+        private var first, last: Node?
+
+
+        // MARK: .Payload
+
+        enum Payload {
+            case data(Data)
+            case dataBlock(() -> Data)
+        }
+
+
+        // MARK: .Node
+
+        fileprivate class Node {
+
+            /// - Note: This property replaced data blocks with the resulting data.
+            var data: Data {
+                switch payload {
+                case .data(let data):
+                    return data
+                case .dataBlock(let block):
+                    let data = block()
+                    payload = .data(data)
+                    return data
+                }
+            }
+
+            var next: Node?
+
+
+            init(with payload: Payload) {
+                self.payload = payload
+            }
+
+
+            /// - Note: It's a variable to provide lazy replacement of data blocks with the resulting data.
+            private var payload: Payload
+
+        }
+
+
+        // MARK: .Iterator
+
+        struct Iterator : IteratorProtocol {
+
+            fileprivate init(first: Node?) {
+                node = first
+            }
+
+
+            private var node: Node?
+
+
+            // MARK: : IteratorProtocol
+
+            mutating func next() -> Data? {
+                guard let node = node else { return nil }
+
+                defer { self.node = node.next }
+
+                return node.data
+            }
+
+        }
+
+
+        // MARK: Operations
+
+        func makeIterator() -> Iterator { .init(first: first) }
+
+
+        mutating func append(_ payload: Payload) {
+            let node = Node(with: payload)
+
+            switch last != nil {
+            case true:
+                last!.next = node
+            case false:
+                first = node
+            }
+            last = node
+        }
+
     }
-    
-    
-    static func joined(_ i1: consuming Self,
-                       _ i2: consuming Self,
-                       _ i3: consuming Self,
-                       _ i4: consuming Self
-    ) -> Self {
-        let i1 = i1, i2 = i2, i3 = i3, i4 = i4
-
-        let bytes: KvHtmlBytes = .joined(i1.bytes, i2.bytes, i3.bytes, i4.bytes)
-        let navigationTitle = i1.navigationTitle ?? i2.navigationTitle ?? i3.navigationTitle ?? i4.navigationTitle
-        let navigationDestinations: NavigationDestinations? = .merged(i1.navigationDestinations, i2.navigationDestinations, i3.navigationDestinations, i4.navigationDestinations)
-
-        return .init(bytes: bytes, navigationTitle: navigationTitle, navigationDestinations: navigationDestinations)
-    }
-
-
-
-    // MARK: Transformations
-
-    consuming func mapBytes(_ transform: (KvHtmlBytes) -> KvHtmlBytes) -> Self {
-        var copy = self
-        copy.bytes = transform(copy.bytes)
-        return copy
-    }
-
-
-
-    // MARK: Operators
-
-    static func +(lhs: consuming Self, rhs: consuming Self) -> Self { .joined(lhs, rhs) }
 
 }
 
@@ -317,32 +554,40 @@ class KvHtmlRepresentationContext {
         containerAttributes: ContainerAttributes? = nil,
         cssAttributes: KvHtmlKit.CssAttributes? = nil,
         options: Options = [ ],
-        _ body: (borrowing KvHtmlRepresentationContext, borrowing KvHtmlKit.CssAttributes?) -> KvHtmlRepresentation
-    ) -> KvHtmlRepresentation {
+        _ body: (KvHtmlRepresentationContext, borrowing KvHtmlKit.CssAttributes?) -> KvHtmlRepresentation.Fragment
+    ) -> KvHtmlRepresentation.Fragment {
         // Here `self.containerAttributes` is passed to apply it in the extracted CSS.
-        let context = self.descendant(containerAttributes: self.containerAttributes)
+        var context = self.descendant(containerAttributes: self.containerAttributes)
 
         // TODO: Pass frame CSS to descendant context in come cases.
         let needsContainer = !options.contains(.noContainer) && viewConfiguration?.frame != nil
-        let containerCSS = needsContainer ? context.extractCssAttributes() : nil
+        let containerCSS: KvHtmlKit.CssAttributes?// = (consume needsContainer) ? context.extractCssAttributes() : nil
 
-        var representation : KvHtmlRepresentation
+        switch consume needsContainer {
+        case true:
+            containerCSS = context.extractCssAttributes()
+
+            context = context.descendant()
+
+        case false:
+            containerCSS = nil
+        }
+
+        var fragment : KvHtmlRepresentation.Fragment
         do {
             let innerCSS = context.extractCssAttributes(mergedWith: cssAttributes)
 
             context.containerAttributes = containerAttributes
 
             // - NOTE: `self.viewConfiguration` is important.
-            representation = body(context, innerCSS)
+            fragment = body(context, innerCSS)
         }
 
         if let containerCSS {
-            representation = representation.mapBytes {
-                .tag(.div, css: containerCSS, innerHTML: $0)
-            }
+            fragment = .tag(.div, css: containerCSS, innerHTML: fragment)
         }
 
-        return representation
+        return fragment
     }
 
 

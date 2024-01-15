@@ -23,6 +23,9 @@
 //  Created by Svyatoslav Popov on 25.10.2023.
 //
 
+import Foundation
+
+import CryptoKit
 import kvHttpKit
 
 
@@ -40,7 +43,7 @@ public class KvHtmlBundle {
         do {
             self.rootBody = KvHtmlBodyImpl(content: rootView())
 
-            let rootContext = KvHtmlContext(assets, rootPath: rootPath, navigationPath: .init(), extraHeaders: iconHeaders)
+            let rootContext = KvHtmlContext(assets, rootPath: rootPath, navigationPath: .init(), extraHeaders: iconHeaders.map { [ $0 ] })
 
             // Root body is rendered to fill context.
             _ = KvHtmlBodyImpl(content: rootView()).renderHTML(in: rootContext)
@@ -53,7 +56,7 @@ public class KvHtmlBundle {
 
     private let rootPath: KvUrlPath?
 
-    private let iconHeaders: KvHtmlBytes?
+    private let iconHeaders: String?
 
     private let rootBody: KvHtmlBody
 
@@ -81,15 +84,15 @@ public class KvHtmlBundle {
 
 
 
-            init(body: KvHtmlBody, assets: KvHtmlBundleAssets, cssAssets: CssAssets?, rootPath: KvUrlPath?, iconHeaders: KvHtmlBytes?) {
-                let context = KvHtmlContext(assets, cssAsset: cssAssets?.payload, rootPath: rootPath, navigationPath: .init(), extraHeaders: iconHeaders)
+            init(body: KvHtmlBody, assets: KvHtmlBundleAssets, cssAssets: CssAssets?, rootPath: KvUrlPath?, iconHeaders: String?) {
+                let context = KvHtmlContext(assets, cssAsset: cssAssets?.payload, rootPath: rootPath, navigationPath: .init(), extraHeaders: iconHeaders.map { [ $0 ] })
                 let representation = body.renderHTML(in: context)
 
                 self.init(body: body, cssAssets: cssAssets, iconHeaders: iconHeaders, representation: representation, context: context)
             }
 
 
-            private init(body: KvHtmlBody, cssAssets: CssAssets?, iconHeaders: KvHtmlBytes?, representation: KvHtmlRepresentation, context: KvHtmlContext) {
+            private init(body: KvHtmlBody, cssAssets: CssAssets?, iconHeaders: String?, representation: KvHtmlRepresentation, context: KvHtmlContext) {
                 self.body = body
                 self.cssAssets = cssAssets
                 self.iconHeaders = iconHeaders
@@ -101,7 +104,7 @@ public class KvHtmlBundle {
             private let body: KvHtmlBody
             private let cssAssets: CssAssets?
 
-            private let iconHeaders: KvHtmlBytes?
+            private let iconHeaders: String?
 
 
             // MARK: Operations
@@ -123,7 +126,7 @@ public class KvHtmlBundle {
                     cssAsset: cssAssets?.payload ?? context.cssAsset.parent,
                     rootPath: context.rootPath,
                     navigationPath: navigationPath,
-                    extraHeaders: iconHeaders
+                    extraHeaders: iconHeaders.map { [ $0 ] }
                 )
                 let representation = body.renderHTML(in: context)
 
@@ -146,25 +149,64 @@ public class KvHtmlBundle {
 
 
     private static func htmlResponse(rootPath: KvUrlPath?, in context: KvHtmlContext, with bodyRepresentation: KvHtmlRepresentation) -> KvHttpResponseContent {
-        let title: KvHtmlBytes? = context.navigationPath.elements
-            .reversed()
-            .lazy.compactMap { $0.title?.escapedPlainBytes }
-            .reduce(bodyRepresentation.navigationTitle?.escapedPlainBytes) {
-                $0 != nil ? .joined($0!, " | ", $1) : $1
+        
+        struct Accumulator {
+
+            private var data: Data = .init()
+            private var hasher: SHA256 = .init()
+
+
+            consuming func finalize() -> (Data, SHA256.Digest) { (data, hasher.finalize()) }
+
+            mutating func append(_ data: Data) {
+                self.data.append(data)
+                hasher.update(data: data)
             }
 
-        let (data, digest) = KvHtmlBytes
-            .joined(
-                "<!DOCTYPE html><html><head>",
-                title?.wrap { .tag(.title, innerHTML: $0) },
-                "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />",
-                "<meta name=\"format-detection\" content=\"telephone=no\" /><meta name=\"format-detection\" content=\"date=no\" /><meta name=\"format-detection\" content=\"address=no\" /><meta name=\"format-detection\" content=\"email=no\" />",
-                context.headers,
-                "</head>",
-                bodyRepresentation.bytes,
-                "</html>"
-            )
-            .accumulate()
+            mutating func append<S>(_ data: S) where S : Sequence, S.Element == Data { data.forEach { append($0) } }
+
+            mutating func append(_ string: String) { append(string.data(using: .utf8)!) }
+
+            mutating func append(_ string: String?) {
+                guard let string else { return }
+                append(string)
+            }
+
+            mutating func append(_ strings: String?...) {
+                strings.forEach {
+                    guard let string = $0 else { return }
+                    append(string)
+                }
+            }
+
+        }
+
+
+        var accumulator = Accumulator()
+
+        // TODO: Accumulate entire document inside KvHtmlRepresentation and perform hashing with the data list resolvation.
+        accumulator.append("<!DOCTYPE html><html><head>")
+        do {
+            let title: String? = context.navigationPath.elements
+                .reversed()
+                .lazy.compactMap { $0.title?.escapedPlainBytes }
+                .reduce(bodyRepresentation.navigationTitle?.escapedPlainBytes) {
+                    $0 != nil ? "\($0!) | \($1)" : $1
+                }
+                .map { "<title>\($0)</title>" }
+
+            accumulator.append(title)
+        }
+        accumulator.append(
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />",
+            "<meta name=\"format-detection\" content=\"telephone=no\" /><meta name=\"format-detection\" content=\"date=no\" /><meta name=\"format-detection\" content=\"address=no\" /><meta name=\"format-detection\" content=\"email=no\" />",
+            context.headers,
+            "</head>"
+        )
+        accumulator.append(IteratorSequence(bodyRepresentation.makeDataIterator()))
+        accumulator.append("</html>")
+
+        let (data, digest) = (consume accumulator).finalize()
 
         return .binary { data }
             .contentType(.text(.html))

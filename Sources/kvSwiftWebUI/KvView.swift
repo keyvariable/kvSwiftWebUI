@@ -46,45 +46,47 @@ public protocol KvView {
 
 extension KvView {
 
-    func htmlRepresentation(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
-        typealias RepresentationProvider = KvHtmlRepresentationModifiers.RepresentationProvider
-
-        let makeInitialRepresentation: RepresentationProvider = { context in
-            // Providing source to environment bindings.
-            self.forEachEnvironmentBinding { $0.source = context.environment }
-
-            return switch self {
-            case let modifiedView as KvModifiedView:
-                modifiedView.htmlRepresentation(in: context)
-            case let htmlRenderable as KvHtmlRenderable:
-                htmlRenderable.renderHTML(in: context)
-            default:
-                self.body.htmlRepresentation(in: context)
-            }
-        }
-
-        let sourceEnvironment = context.environment
-
-        let provider: RepresentationProvider
-        do {
-            var accumulator = makeInitialRepresentation
-
-            self.forEachEnvironmentBinding { binding in
-                switch binding.keyPath {
-                case \.horizontalSizeClass:
-                    // If size class is provided then no modifications required.
-                    guard sourceEnvironment?[\.horizontalSizeClass] == nil else { break }
-
-                    accumulator = KvHtmlRepresentationModifiers.automaticSizeClass(base: accumulator)
-
-                default: break
+    func htmlRepresentation(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
+        .init {
+            typealias RepresentationProvider = KvHtmlRepresentationModifiers.RepresentationProvider
+            
+            let makeInitialRepresentation: RepresentationProvider = { context in
+                // Providing source to environment bindings.
+                self.forEachEnvironmentBinding { $0.source = context.environment }
+                
+                return switch self {
+                case let modifiedView as KvModifiedView:
+                    modifiedView.htmlRepresentation(in: context)
+                case let htmlRenderable as KvHtmlRenderable:
+                    htmlRenderable.renderHTML(in: context)
+                default:
+                    self.body.htmlRepresentation(in: context)
                 }
             }
-
-            provider = accumulator
+            
+            let sourceEnvironment = context.environment
+            
+            let provider: RepresentationProvider
+            do {
+                var accumulator = makeInitialRepresentation
+                
+                self.forEachEnvironmentBinding { binding in
+                    switch binding.keyPath {
+                    case \.horizontalSizeClass:
+                        // If size class is provided then no modifications required.
+                        guard sourceEnvironment?[\.horizontalSizeClass] == nil else { break }
+                        
+                        accumulator = KvHtmlRepresentationModifiers.automaticSizeClass(base: accumulator)
+                        
+                    default: break
+                    }
+                }
+                
+                provider = accumulator
+            }
+            
+            return provider(context)
         }
-
-        return provider(context)
     }
 
 
@@ -105,7 +107,7 @@ extension KvView {
 
 fileprivate struct KvHtmlRepresentationModifiers { private init() { }
 
-    typealias RepresentationProvider = (borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation
+    typealias RepresentationProvider = (KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment
 
 
 
@@ -113,7 +115,7 @@ fileprivate struct KvHtmlRepresentationModifiers { private init() { }
         return { context in
             assert(!KvUserInterfaceSizeClass.allCases.isEmpty)
 
-            return .joined(KvUserInterfaceSizeClass.allCases.lazy.map { horizontalSizeClass in
+            return .init(KvUserInterfaceSizeClass.allCases.lazy.map { horizontalSizeClass in
                 let context = context.descendant(
                     containerAttributes: context.containerAttributes,    // Preserving container context.
                     cssAttributes: .init(classes: horizontalSizeClass.cssHorizontalClass)

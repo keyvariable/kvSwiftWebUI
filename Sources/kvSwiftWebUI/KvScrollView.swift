@@ -59,7 +59,7 @@ public struct KvScrollView<Content : KvView> : KvView {
 
 extension KvScrollView : KvHtmlRenderable {
 
-    func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
+    func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
 
         func OverflowCSS(scroll: Bool) -> String { scroll ? "auto" : "visible" }
 
@@ -71,13 +71,12 @@ extension KvScrollView : KvHtmlRenderable {
         )
 
         return context.representation(cssAttributes: scrollCSS) { context, cssAttributes in
-            content
-                .htmlRepresentation(in: context)
-                .mapBytes {
-                    let innerContainerBytes: KvHtmlBytes = .tag(.div, css: .init(styles: "width:fit-content;height:fit-content"), innerHTML: $0)
+            var fragment = content.htmlRepresentation(in: context)
 
-                    return .tag(.div, css: cssAttributes, innerHTML: innerContainerBytes)
-                }
+            // Inner container
+            fragment = .tag(.div, css: .init(styles: "width:fit-content;height:fit-content"), innerHTML: fragment)
+
+            return .tag(.div, css: cssAttributes, innerHTML: fragment)
         }
     }
 

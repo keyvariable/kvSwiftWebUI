@@ -89,12 +89,9 @@ extension KvLink where Label == Text {
 
 extension KvLink : KvHtmlRenderable {
 
-    func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
+    func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
         context.representation { context, cssAttributes in
-            label.htmlRepresentation(in: context)
-                .mapBytes {
-                    .tag(.a, css: cssAttributes, attributes: .href(url), innerHTML: $0)
-                }
+            return .tag(.a, css: cssAttributes, attributes: .href(url), innerHTML: label.htmlRepresentation(in: context))
         }
     }
 

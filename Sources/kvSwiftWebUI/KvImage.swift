@@ -118,7 +118,7 @@ public struct KvImage : KvView {
 
 extension KvImage : KvHtmlRenderable {
 
-    func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
+    func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
         switch renderingMode {
         case .original, nil:
             return context.representation { context, cssAttributes in
@@ -132,30 +132,30 @@ extension KvImage : KvHtmlRenderable {
 
                 let resizingCssAttributes: KvHtmlKit.CssAttributes? = resizingMode != nil ? .init(classes: "resizable") : nil
 
-                return context
+                var fragment = context
                     .representation(cssAttributes: .union(.init(style: "display:block;visibility:hidden"), resizingCssAttributes)) { context, cssAttributes in
                         renderContentHTML(in: context, cssAttributes: cssAttributes, alignment: alignment)
                     }
-                    .mapBytes {
-                        let maskContainer = KvHtmlBytes.tag(
-                            .div,
-                            css: .union(
-                                .init(styles: context.environment?[\.foregroundStyle]?.cssBackgroundStyle(context.html, nil),
-                                      "-webkit-mask:\(mask.css);mask:\(mask.css)"),
-                                resizingCssAttributes
-                            ),
-                            innerHTML: $0
-                        )
 
-                        // Two containers are used to separate context's background and the mask background.
-                        return .tag(.div, css: .union(cssAttributes, resizingCssAttributes), innerHTML: maskContainer)
-                    }
+                // Two containers are used to separate context's background and the mask background.
+
+                fragment = .tag(
+                    .div,
+                    css: .union(
+                        .init(styles: context.environment?[\.foregroundStyle]?.cssBackgroundStyle(context.html, nil),
+                              "-webkit-mask:\(mask.css);mask:\(mask.css)"),
+                        resizingCssAttributes
+                    ),
+                    innerHTML: fragment
+                )
+
+                return .tag(.div, css: .union(cssAttributes, resizingCssAttributes), innerHTML: fragment)
             }
         }
     }
 
 
-    private func cssBackground(in context: borrowing KvHtmlRepresentationContext, alignment: KvAlignment?) -> KvCssBackground {
+    private func cssBackground(in context: KvHtmlRepresentationContext, alignment: KvAlignment?) -> KvCssBackground {
         .init(repeat: resizingMode == .tile ? .repeat : .noRepeat,
               source: .uri(context.html.uri(for: resource)),
               position: alignment?.cssBackgroundPosition)
@@ -163,10 +163,10 @@ extension KvImage : KvHtmlRenderable {
 
 
     private func renderContentHTML(
-        in context: borrowing KvHtmlRepresentationContext,
+        in context: KvHtmlRepresentationContext,
         cssAttributes: borrowing KvHtmlKit.CssAttributes?,
         alignment: @autoclosure () -> KvAlignment?
-    ) -> KvHtmlRepresentation {
+    ) -> KvHtmlRepresentation.Fragment {
         switch resizingMode {
         case .stretch:
             renderImgHTML(
@@ -187,27 +187,27 @@ extension KvImage : KvHtmlRenderable {
 
 
     private func renderImgHTML(
-        in context: borrowing KvHtmlRepresentationContext,
+        in context: KvHtmlRepresentationContext,
         cssAttributes: borrowing KvHtmlKit.CssAttributes?
-    ) -> KvHtmlRepresentation {
+    ) -> KvHtmlRepresentation.Fragment {
         let uri = context.html.uri(for: resource)
-        let src: KvHtmlKit.Attribute = .src(.from(consume uri))
+        let src: KvHtmlKit.Attribute = .src(consume uri)
 
-        return .init(bytes: .tag(.img, css: cssAttributes, attributes: src))
+        return .tag(.img, css: cssAttributes, attributes: src)
     }
 
 
     private func renderDivHTML(
-        in context: borrowing KvHtmlRepresentationContext,
+        in context: KvHtmlRepresentationContext,
         alignment: KvAlignment?,
         cssAttributes: borrowing KvHtmlKit.CssAttributes?
-    ) -> KvHtmlRepresentation {
+    ) -> KvHtmlRepresentation.Fragment {
         let cssAttributes: KvHtmlKit.CssAttributes? = .union(
             cssAttributes,
             .init(classes: "resizable", styles: "background:\(cssBackground(in: context, alignment: alignment).css)")
         )
 
-        return .init(bytes: .tag(.div, css: cssAttributes))
+        return .tag(.div, css: cssAttributes)
     }
 
 }
