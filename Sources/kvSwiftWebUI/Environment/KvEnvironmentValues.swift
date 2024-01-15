@@ -117,7 +117,7 @@ extension KvEnvironmentValues {
         // MARK: .RegularKey
 
         /// Keys for properties having no constaints with other properties.
-        enum RegularKey : Hashable {
+        enum RegularKey : Hashable, Comparable {
             case fixedSize
             case font
             case foregroundStyle
@@ -132,7 +132,7 @@ extension KvEnvironmentValues {
         // MARK: .ConstrainedKey
 
         /// Keys for properties having constaints with other properties. E.g. background can't be changed when padding is set.
-        enum ConstrainedKey : Hashable {
+        enum ConstrainedKey : Hashable, Comparable {
             case background
             case clipShape
             case frame
@@ -337,40 +337,48 @@ extension KvEnvironmentValues {
 
             var css = KvHtmlKit.CssAttributes()
 
-            regularValues.forEach { (key, value) in
-                switch key {
-                case .fixedSize:
-                    css.append(style: Self.cast(value, as: \.fixedSize).cssFlexShrink(in: context))
-                case .font:
-                    css.append(style: Self.cast(value, as: \.font).cssStyle(in: context.html))
-                case .foregroundStyle:
-                    css.append(style: Self.cast(value, as: \.foregroundStyle).cssForegroundStyle(context.html, nil))
-                case .gridCellColumnSpan:
-                    css.append(style: "grid-column:span \(Self.cast(value, as: \.gridCellColumnSpan))")
-                case .gridColumnAlignment:
-                    css.insert(classes: context.html.cssFlexClass(for: Self.cast(value, as: \.gridColumnAlignment), as: .mainSelf))
-                case .multilineTextAlignment:
-                    css.append(style: "text-align:\(Self.cast(value, as: \.multilineTextAlignment).cssTextAlign.css)")
-                case .textCase:
-                    css.append(style: "text-transform:\(Self.cast(value, as: \.textCase).cssTextTransform)")
+            regularValues.keys
+                .sorted()
+                .forEach { key in
+                    let value = regularValues[key]!
 
-                case .navigationTitle:
-                    break
-                }
-            }
+                    switch key {
+                    case .fixedSize:
+                        css.append(style: Self.cast(value, as: \.fixedSize).cssFlexShrink(in: context))
+                    case .font:
+                        css.append(style: Self.cast(value, as: \.font).cssStyle(in: context.html))
+                    case .foregroundStyle:
+                        css.append(style: Self.cast(value, as: \.foregroundStyle).cssForegroundStyle(context.html, nil))
+                    case .gridCellColumnSpan:
+                        css.append(style: "grid-column:span \(Self.cast(value, as: \.gridCellColumnSpan))")
+                    case .gridColumnAlignment:
+                        css.insert(classes: context.html.cssFlexClass(for: Self.cast(value, as: \.gridColumnAlignment), as: .mainSelf))
+                    case .multilineTextAlignment:
+                        css.append(style: "text-align:\(Self.cast(value, as: \.multilineTextAlignment).cssTextAlign.css)")
+                    case .textCase:
+                        css.append(style: "text-transform:\(Self.cast(value, as: \.textCase).cssTextTransform)")
 
-            constrainedValues.forEach { (key, value) in
-                switch key {
-                case .background:
-                    css.append(style: Self.cast(value, as: \.background).cssBackgroundStyle(context.html, nil))
-                case .clipShape:
-                    css.formUnion(Self.cast(value, as: \.clipShape).css)
-                case .frame:
-                    css.formUnion(Self.cast(value, as: \.frame).cssAttributes(in: context))
-                case .padding:
-                    css.append(style: "padding:\(Self.cast(value, as: \.padding).css)")
+                    case .navigationTitle:
+                        break
+                    }
                 }
-            }
+
+            constrainedValues.keys
+                .sorted()
+                .forEach { key in
+                    let value = constrainedValues[key]!
+
+                    switch key {
+                    case .background:
+                        css.append(style: Self.cast(value, as: \.background).cssBackgroundStyle(context.html, nil))
+                    case .clipShape:
+                        css.formUnion(Self.cast(value, as: \.clipShape).css)
+                    case .frame:
+                        css.formUnion(Self.cast(value, as: \.frame).cssAttributes(in: context))
+                    case .padding:
+                        css.append(style: "padding:\(Self.cast(value, as: \.padding).css)")
+                    }
+                }
 
             return !css.isEmpty ? css : nil
         }
