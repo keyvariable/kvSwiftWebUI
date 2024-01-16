@@ -60,6 +60,12 @@ extension KvView {
 
 
     // TODO: DOC
+    /// This modifier provides view on next navigation level.
+    ///
+    /// Current navigation path is available in the environment:
+    /// ```swift
+    /// @Environment(\.navigationPath) private var navigationPath
+    /// ```
     public consuming func navigationDestination<D, Content>(for data: D.Type, @KvViewBuilder destination: @escaping (D) -> Content) -> some KvView
     where D : LosslessStringConvertible, Content : KvView
     {
@@ -70,6 +76,12 @@ extension KvView {
 
 
     // TODO: DOC
+    /// This modifier provides view on next navigation level.
+    ///
+    /// Current navigation path is available in the environment:
+    /// ```swift
+    /// @Environment(\.navigationPath) private var navigationPath
+    /// ```
     public consuming func navigationDestination<D, Content>(for data: D.Type, @KvViewBuilder destination: @escaping (D) -> Content) -> some KvView
     where D : RawRepresentable, D.RawValue : LosslessStringConvertible, Content : KvView
     {

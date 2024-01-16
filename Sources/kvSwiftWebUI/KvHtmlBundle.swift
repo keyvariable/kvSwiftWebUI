@@ -82,22 +82,28 @@ public class KvHtmlBundle {
             let representation: KvHtmlRepresentation
             let context: KvHtmlContext
 
+            let navigationElement: KvNavigationPath.Element
+
 
 
             init(body: KvHtmlBody, assets: KvHtmlBundleAssets, cssAssets: CssAssets?, rootPath: KvUrlPath?, iconHeaders: String?) {
                 let context = KvHtmlContext(assets, cssAsset: cssAssets?.payload, rootPath: rootPath, navigationPath: .init(), extraHeaders: iconHeaders.map { [ $0 ] })
                 let representation = body.renderHTML(in: context)
 
-                self.init(body: body, cssAssets: cssAssets, iconHeaders: iconHeaders, representation: representation, context: context)
+                self.init(body: body, cssAssets: cssAssets, iconHeaders: iconHeaders,
+                          representation: representation, context: context, navigationElement: .init(value: .root, title: representation.navigationTitle))
             }
 
 
-            private init(body: KvHtmlBody, cssAssets: CssAssets?, iconHeaders: String?, representation: KvHtmlRepresentation, context: KvHtmlContext) {
+            private init(body: KvHtmlBody, cssAssets: CssAssets?, iconHeaders: String?,
+                         representation: KvHtmlRepresentation, context: KvHtmlContext, navigationElement: KvNavigationPath.Element
+            ) {
                 self.body = body
                 self.cssAssets = cssAssets
                 self.iconHeaders = iconHeaders
                 self.representation = representation
                 self.context = context
+                self.navigationElement = navigationElement
             }
 
 
@@ -119,7 +125,7 @@ public class KvHtmlBundle {
                 let cssAssets = cssAssets?[data]
                 var navigationPath = context.navigationPath
 
-                navigationPath.append(.init(rawValue: data, data: destination.value, title: representation.navigationTitle))
+                navigationPath.append(navigationElement)
 
                 let context = KvHtmlContext(
                     context.assets,
@@ -130,7 +136,9 @@ public class KvHtmlBundle {
                 )
                 let representation = body.renderHTML(in: context)
 
-                return .init(body: body, cssAssets: cssAssets, iconHeaders: iconHeaders, representation: representation, context: context)
+                return .init(body: body, cssAssets: cssAssets, iconHeaders: iconHeaders,
+                             representation: representation, context: context,
+                             navigationElement: .init(value: .component(rawValue: data, data: destination.value), title: representation.navigationTitle))
             }
 
         }

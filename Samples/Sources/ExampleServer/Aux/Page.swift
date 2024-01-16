@@ -51,13 +51,19 @@ struct Page<Content : View> : View {
     var body: some View {
         VStack(spacing: 0) {
             FullWidthBlock {
-                VStack(spacing: .em(1.35)) {
-                    title
-                        .font(.largeTitle)
-                    subtitle
-                        .frame(maxWidth: min(.vw(100), BlockConstants.maximumRegularWidth) - 2 * BlockConstants.rootPadding)
+                VStack(spacing: 0) {
+                    VStack(spacing: .em(1.35)) {
+                        title
+                            .font(.largeTitle)
+                        subtitle
+                            .frame(maxWidth: min(.vw(100), BlockConstants.maximumRegularWidth) - 2 * BlockConstants.rootPadding)
+                    }
+                    .padding(.vertical, .em(2))
+
+                    NavigationPathView()
+                        .font(.footnote)
+                        .frame(width: BlockConstants.regularContentWidth, alignment: .leading)
                 }
-                .padding(.vertical, .em(2))
             }
 
             RegularBlock {

@@ -34,7 +34,13 @@ public typealias NavigationPath = KvNavigationPath
 // TODO: DOC
 public struct KvNavigationPath {
 
-    private(set) var elements: [Element]
+    static let empty = KvNavigationPath()
+
+
+
+    // TODO: DOC
+    // TODO: DOC: Note that first element corresponds to the root view.
+    public private(set) var elements: [Element]
 
 
 
@@ -50,31 +56,71 @@ public struct KvNavigationPath {
     /// Type-erased element of navigation path.
     public struct Element {
 
-        let rawValue: String
-
-        /// Value  from `.rawValue`.
-        public let data: Any
+        let value: Value
         /// Title of view for the element if available.
         public let title: KvText?
 
+        /// Data the view has been generated for. It's `nil` for the root view.
+        public var data: Any? {
+            switch value {
+            case .component(_, let data): data
+            case .root: nil
+            }
+        }
+
 
         @usableFromInline
-        init(rawValue: String, data: Any, title: KvText?) {
-            self.rawValue = rawValue
-            self.data = data
+        init(value: Value, title: KvText?) {
+            self.value = value
             self.title = title
         }
 
 
         @inlinable
         public init<D>(_ data: D) where D : LosslessStringConvertible {
-            self.init(rawValue: data.description, data: data, title: nil)
+            self.init(value: .component(data), title: nil)
         }
 
 
         @inlinable
         public init<D>(_ data: D) where D : RawRepresentable, D.RawValue : LosslessStringConvertible {
-            self.init(data.rawValue)
+            self.init(value: .component(data), title: nil)
+        }
+
+
+        // MARK: .Value
+
+        @usableFromInline
+        enum Value {
+
+            case root
+            /// - Parameter data: Value  from `rawValue`.
+            case component(rawValue: String, data: Any)
+
+
+            // MARK: Fabrics
+
+            @usableFromInline
+            static func component<D>(_ data: D) -> Value where D : LosslessStringConvertible {
+                .component(rawValue: data.description, data: data)
+            }
+
+
+            @usableFromInline
+            static func component<D>(_ data: D) -> Value where D : RawRepresentable, D.RawValue : LosslessStringConvertible {
+                .component(data.rawValue)
+            }
+
+
+            // MARK: Operations
+
+            var urlPathComponent: String? {
+                switch self {
+                case .component(let rawValue, _): rawValue
+                case .root: nil
+                }
+            }
+
         }
 
     }
@@ -91,7 +137,7 @@ public struct KvNavigationPath {
 
 
     var urlPath: KvUrlPath {
-        .init(with: elements.lazy.map { $0.rawValue })
+        .init(with: elements.lazy.compactMap { $0.value.urlPathComponent })
     }
 
 

@@ -60,7 +60,11 @@ struct ColorDetailView<ID : ColorID> : View {
         let color = colorID.color
         let labelColor = color.label
 
-        VStack(spacing: 0) {
+        VStack {
+            NavigationPathView()
+                .font(.footnote)
+                .foregroundStyle(labelColor.secondary)
+
             SourceLink(to: "ColorDetailView.swift")
                 .font(.footnote)
                 .foregroundStyle(labelColor.tertiary)
