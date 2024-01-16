@@ -34,6 +34,8 @@ public typealias EnvironmentValues = KvEnvironmentValues
 // TODO: DOC
 public struct KvEnvironmentValues {
 
+    var parent: Node?
+
     var viewConfiguration: ViewConfiguration?
 
 
@@ -58,17 +60,66 @@ public struct KvEnvironmentValues {
 
     // MARK: Access
 
-    subscript<Key : KvEnvironmentKey>(key: Key.Type) -> Key.Value {
+    public subscript<Key : KvEnvironmentKey>(key: Key.Type) -> Key.Value {
         get {
-            container[ObjectIdentifier(key)].map { $0 as! Key.Value }
+            let keyID = ObjectIdentifier(key)
+            return firstResult { $0.container[keyID] }
+                .map { $0 as! Key.Value }
             ?? key.defaultValue
         }
         set { container[ObjectIdentifier(key)] = newValue }
     }
 
 
-    subscript<Value>(viewConfiguration keyPath: KeyPath<ViewConfiguration, Value?>) -> Value? {
-        viewConfiguration?[keyPath: keyPath]
+    subscript<T>(viewConfiguration keyPath: KeyPath<ViewConfiguration, T?>) -> T? {
+        firstResult {
+            $0.viewConfiguration?[keyPath: keyPath]
+        }
+    }
+
+
+    private func firstResult<T>(of block: (borrowing KvEnvironmentValues) -> T?) -> T? {
+        if let value = block(self) {
+            return value
+        }
+
+        do {
+            var container = self
+
+            while let next = container.parent?.values {
+                if let value = block(next) {
+                    return value
+                }
+
+                container = next
+            }
+        }
+
+        return nil
+    }
+
+
+
+    // MARK: .Node
+
+    /// Copy-by-reference container for ``KvEnvironmentValues``.
+    class Node {
+
+        let values: KvEnvironmentValues
+
+
+
+        init(_ values: KvEnvironmentValues) {
+            self.values = values
+        }
+
+
+        init(_ values: KvEnvironmentValues, parent: Node?) {
+            var values = values
+            values.parent = parent
+            self.values = values
+        }
+
     }
 
 }
@@ -79,13 +130,13 @@ public struct KvEnvironmentValues {
 
 extension KvEnvironmentValues {
 
-    public var font: KvFont? { viewConfiguration?.font }
+    public var font: KvFont? { self[viewConfiguration: \.font] }
 
-    public var foregroundStyle: KvAnyShapeStyle? { viewConfiguration?.foregroundStyle }
+    public var foregroundStyle: KvAnyShapeStyle? { self[viewConfiguration: \.foregroundStyle] }
 
-    public var multilineTextAlignment: KvTextAlignment? { viewConfiguration?.multilineTextAlignment }
+    public var multilineTextAlignment: KvTextAlignment? { self[viewConfiguration: \.multilineTextAlignment] }
 
-    public var textCase: KvText.Case? { viewConfiguration?.textCase }
+    public var textCase: KvText.Case? { self[viewConfiguration: \.textCase] }
 
 
 

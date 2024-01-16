@@ -52,8 +52,8 @@ extension KvView {
             
             let makeInitialRepresentation: RepresentationProvider = { context in
                 // Providing source to environment bindings.
-                self.forEachEnvironmentBinding { $0.source = context.environment }
-                
+                self.forEachEnvironmentBinding { $0.source = context.environmentNode }
+
                 return switch self {
                 case let modifiedView as KvModifiedView:
                     modifiedView.htmlRepresentation(in: context)
@@ -64,7 +64,7 @@ extension KvView {
                 }
             }
             
-            let sourceEnvironment = context.environment
+            let sourceEnvironment = context.environmentNode
             
             let provider: RepresentationProvider
             do {
@@ -74,7 +74,7 @@ extension KvView {
                     switch binding.keyPath {
                     case \.horizontalSizeClass:
                         // If size class is provided then no modifications required.
-                        guard sourceEnvironment?[\.horizontalSizeClass] == nil else { break }
+                        guard sourceEnvironment?.values.horizontalSizeClass == nil else { break }
                         
                         accumulator = KvHtmlRepresentationModifiers.automaticSizeClass(base: accumulator)
                         

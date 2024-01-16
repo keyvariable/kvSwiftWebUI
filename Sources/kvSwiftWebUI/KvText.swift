@@ -575,7 +575,7 @@ extension KvText : KvHtmlRenderable {
             case .text(let block): InnerHTML(block())
             }
 
-            let textStyle = context.environment?[\.font]?.textStyle ?? attributes.font??.textStyle
+            let textStyle = context.environmentNode?.values.font?.textStyle ?? attributes.font??.textStyle
 
             return .tag(
                 Self.tag(for: textStyle),

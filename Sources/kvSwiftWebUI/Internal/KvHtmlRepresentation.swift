@@ -379,9 +379,13 @@ struct KvHtmlRepresentation {
 // TODO: Review this class. Currently it's unintuitive and complicated, some methods produce side-effects.
 class KvHtmlRepresentationContext {
 
+    typealias EnvironmentNode = KvEnvironmentValues.Node
+
+
+
     let html: KvHtmlContext
 
-    private(set) var environment: KvEnvironmentNode?
+    private(set) var environmentNode: EnvironmentNode?
 
     /// Context of current container.
     private(set) var containerAttributes: ContainerAttributes?
@@ -389,13 +393,13 @@ class KvHtmlRepresentationContext {
 
 
     private init(html: KvHtmlContext,
-                 environment: KvEnvironmentNode?,
+                 environmentNode: EnvironmentNode?,
                  containerAttributes: ContainerAttributes?,
                  viewConfiguration: KvViewConfiguration?,
                  cssAttributes: KvHtmlKit.CssAttributes?
     ) {
         self.html = html
-        self.environment = environment
+        self.environmentNode = environmentNode
         self.containerAttributes = containerAttributes
         self.viewConfiguration = viewConfiguration
         self.cssAttributes = cssAttributes
@@ -415,7 +419,7 @@ class KvHtmlRepresentationContext {
 
     static func root(html: KvHtmlContext, environment: KvEnvironmentValues? = nil) -> KvHtmlRepresentationContext {
         .init(html: html,
-              environment: environment.map { .init(values: $0) },
+              environmentNode: environment.map(EnvironmentNode.init(_:)),
               containerAttributes: nil,
               viewConfiguration: environment?.viewConfiguration,
               cssAttributes: nil)
@@ -602,7 +606,7 @@ class KvHtmlRepresentationContext {
         let cssAttributes = KvHtmlKit.CssAttributes.union(self.cssAttributes, cssAttributes)
 
         return .init(html: html,
-                     environment: environment,
+                     environmentNode: environmentNode,
                      containerAttributes: containerAttributes,
                      viewConfiguration: self.viewConfiguration,
                      cssAttributes: cssAttributes)
@@ -619,20 +623,20 @@ class KvHtmlRepresentationContext {
     ) -> KvHtmlRepresentationContext {
         let descendant: KvHtmlRepresentationContext
 
-        let environment = KvEnvironmentNode(parent: self.environment, values: environment)
+        let environmentNode = EnvironmentNode(environment, parent: environmentNode)
 
 
         func Descendant(_ viewConfiguration: KvViewConfiguration? = nil) -> KvHtmlRepresentationContext {
             // Container is passed to descendant in this case.
             .init(html: html,
-                  environment: environment,
+                  environmentNode: environmentNode,
                   containerAttributes: self.containerAttributes,
                   viewConfiguration: viewConfiguration ?? self.viewConfiguration,
                   cssAttributes: self.cssAttributes)
         }
 
 
-        switch KvViewConfiguration.merged(environment.values.viewConfiguration, over: self.viewConfiguration) {
+        switch KvViewConfiguration.merged(environmentNode.values.viewConfiguration, over: self.viewConfiguration) {
         case .merged(let mergeResult):
             descendant = Descendant(mergeResult)
 
@@ -642,7 +646,7 @@ class KvHtmlRepresentationContext {
 
             extractedCssAttributes = descendant.extractCssAttributes()
 
-            descendant.viewConfiguration = environment.values.viewConfiguration
+            descendant.viewConfiguration = environmentNode.values.viewConfiguration
             descendant.containerAttributes = nil
         }
 
@@ -717,7 +721,7 @@ class KvHtmlRepresentationContext {
 
 
     func push(environment: KvEnvironmentValues) {
-        self.environment = .init(parent: self.environment, values: environment)
+        environmentNode = .init(environment, parent: environmentNode)
     }
 
 

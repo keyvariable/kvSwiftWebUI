@@ -35,7 +35,6 @@ fileprivate struct KvHorizontalSizeClassKey : KvEnvironmentKey {
 }
 
 
-
 extension KvEnvironmentValues {
 
     // TODO: DOC

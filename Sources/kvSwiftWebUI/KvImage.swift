@@ -122,12 +122,12 @@ extension KvImage : KvHtmlRenderable {
         switch renderingMode {
         case .original, nil:
             return context.representation { context, cssAttributes in
-                renderContentHTML(in: context, cssAttributes: cssAttributes, alignment: context.environment?[viewConfiguration: \.frame]?.alignment)
+                renderContentHTML(in: context, cssAttributes: cssAttributes, alignment: context.environmentNode?.values.viewConfiguration?.frame?.alignment)
             }
 
         case .template:
             return context.representation { context, cssAttributes in
-                let alignment = context.environment?[viewConfiguration: \.frame]?.alignment
+                let alignment = context.environmentNode?.values.viewConfiguration?.frame?.alignment
                 let mask = cssBackground(in: context, alignment: alignment)
 
                 let resizingCssAttributes: KvHtmlKit.CssAttributes? = resizingMode != nil ? .init(classes: "resizable") : nil
@@ -142,7 +142,7 @@ extension KvImage : KvHtmlRenderable {
                 fragment = .tag(
                     .div,
                     css: .union(
-                        .init(styles: context.environment?[\.foregroundStyle]?.cssBackgroundStyle(context.html, nil),
+                        .init(styles: context.environmentNode?.values.foregroundStyle?.cssBackgroundStyle(context.html, nil),
                               "-webkit-mask:\(mask.css);mask:\(mask.css)"),
                         resizingCssAttributes
                     ),

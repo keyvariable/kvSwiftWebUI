@@ -34,7 +34,7 @@ protocol KvEnvironmentProtocol : AnyObject {
 
     var keyPath: PartialKeyPath<KvEnvironmentValues> { get }
 
-    var source: KvEnvironmentNode! { get set }
+    var source: KvEnvironmentValues.Node! { get set }
 
 }
 
@@ -48,19 +48,19 @@ public class KvEnvironment<Value> : KvEnvironmentProtocol {
 
     let keyPath: PartialKeyPath<KvEnvironmentValues>
 
-    weak var source: KvEnvironmentNode!
+    weak var source: KvEnvironmentValues.Node!
 
-    let valueGetter: (borrowing KvEnvironmentNode) -> Value?
+    let valueGetter: (borrowing KvEnvironmentValues.Node) -> Value
 
 
 
-    public init(_ keyPath: KeyPath<KvEnvironmentValues, Value?>) {
+    public init(_ keyPath: KeyPath<KvEnvironmentValues, Value>) {
         self.keyPath = keyPath
-        valueGetter = { $0[keyPath] }
+        valueGetter = { $0.values[keyPath: keyPath] }
     }
 
 
 
-    public var wrappedValue: Value? { valueGetter(source) }
+    public var wrappedValue: Value { valueGetter(source) }
 
 }
