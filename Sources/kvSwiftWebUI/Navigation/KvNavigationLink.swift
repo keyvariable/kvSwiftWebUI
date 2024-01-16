@@ -25,6 +25,8 @@
 
 import Foundation
 
+import kvHttpKit
+
 
 
 public typealias NavigationLink = KvNavigationLink
@@ -40,13 +42,13 @@ where Label : KvView
     let label: Label
 
     @usableFromInline
-    let value: String
+    let path: Path
 
 
     @usableFromInline
-    init(value: String, label: Label) {
+    init(path: Path, label: Label) {
         self.label = label
-        self.value = value
+        self.path = path
     }
 
 
@@ -55,7 +57,7 @@ where Label : KvView
     public init<D>(value: D, @KvViewBuilder label: () -> Label)
     where D : LosslessStringConvertible
     {
-        self.init(value: value.description, label: label())
+        self.init(path: .component(value.description), label: label())
     }
 
 
@@ -69,11 +71,17 @@ where Label : KvView
 
 
     // TODO: DOC
+    public init(path: KvNavigationPath, @KvViewBuilder label: () -> Label) {
+        self.init(path: .absolute(path.urlPath), label: label())
+    }
+
+
+    // TODO: DOC
     @inlinable
     public init<D>(_ titleKey: KvLocalizedStringKey, value: D)
     where Label == KvText, D : LosslessStringConvertible
     {
-        self.init(value: value, label: { KvText(titleKey) })
+        self.init(path: .component(value.description), label: KvText(titleKey))
     }
 
 
@@ -82,7 +90,15 @@ where Label : KvView
     public init<D>(_ titleKey: KvLocalizedStringKey, value: D)
     where Label == KvText, D : RawRepresentable, D.RawValue : LosslessStringConvertible
     {
-        self.init(value: value, label: { KvText(titleKey) })
+        self.init(titleKey, value: value.rawValue)
+    }
+
+
+    // TODO: DOC
+    public init(_ titleKey: KvLocalizedStringKey, path: KvNavigationPath)
+    where Label == KvText
+    {
+        self.init(path: .absolute(path.urlPath), label: KvText(titleKey))
     }
 
     
@@ -91,7 +107,7 @@ where Label : KvView
     public init<S, D>(_ title: S, value: D)
     where Label == KvText, S : StringProtocol, D : LosslessStringConvertible
     {
-        self.init(value: value, label: { KvText(title) })
+        self.init(path: .component(value.description), label: KvText(title))
     }
 
 
@@ -100,13 +116,52 @@ where Label : KvView
     public init<S, D>(_ title: S, value: D)
     where Label == KvText, S : StringProtocol, D : RawRepresentable, D.RawValue : LosslessStringConvertible
     {
-        self.init(value: value, label: { KvText(title) })
+        self.init(title, value: value.rawValue)
+    }
+
+
+    // TODO: DOC
+    public init<S>(_ title: S, path: KvNavigationPath)
+    where Label == KvText, S : StringProtocol
+    {
+        self.init(path: .absolute(path.urlPath), label: KvText(title))
+    }
+
+
+    // MARK: .Path
+
+    @usableFromInline
+    enum Path {
+        case absolute(KvUrlPath)
+        case component(String)
     }
 
 
     // MARK: : KvView
 
     public var body: KvNeverView { Body() }
+
+
+    // MARK: Operations
+
+    private func url(in context: KvHtmlRepresentationContext) -> URL? {
+        var components = URLComponents()
+
+        switch path {
+        case .absolute(let urlPath):
+            components.path = "/\(urlPath.joined)"
+        case .component(let component):
+            let contextPath = context.html.absolutePath
+            let prefix = !contextPath.isEmpty ? "/\(contextPath.joined)" : ""
+            components.path = "\(prefix)/\(component)"
+        }
+
+        guard let url = components.url else {
+            assertionFailure("WARNING: unable to compose navigation URL from components: \(components)")
+            return nil
+        }
+        return url
+    }
 
 }
 
@@ -117,18 +172,7 @@ where Label : KvView
 extension KvNavigationLink : KvHtmlRenderable {
 
     func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
-        let url: URL? = {
-            let contextPath = context.html.absolutePath
-            var components = URLComponents()
-            components.path = !contextPath.isEmpty ? "/\(contextPath.joined)/\(value)" : value
-            guard let url = components.url else {
-                assertionFailure("WARNING: string representation of value «\(value)» of a NavigationLink can't be used as a component of URL path")
-                return nil
-            }
-            return url
-        }()
-
-        return switch url {
+        switch url(in: context) {
         case .some(let url):
             KvLink(destination: url, label: { label })
                 .renderHTML(in: context)
