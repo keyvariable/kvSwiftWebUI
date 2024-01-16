@@ -29,18 +29,7 @@ import Foundation
 
 struct KvHtmlRepresentation {
 
-    typealias NavigationDestinations = KvViewConfiguration.NavigationDestinations
-
-
-
-    /// First non-nil navigation title.
-    let navigationTitle: KvText?
-    /// All declared destinations.
-    let navigationDestinations: NavigationDestinations?
-
-
-
-    init<V : KvView>(_ view: V, in context: KvHtmlRepresentationContext) {
+    init<V : KvView>(of view: V, in context: KvHtmlRepresentationContext) {
         var dataList = DataList()
 
         var fragment = view.htmlRepresentation(in: context)
@@ -53,6 +42,9 @@ struct KvHtmlRepresentation {
             case .dataBlock(let dataBlock):
                 dataList.append(.dataBlock(dataBlock))
 
+            case .dataList(let list):
+                dataList.append(.dataList(list))
+
             case .fragmentBlock(let fragmentBlock):
                 var nextFragment = fragmentBlock()
 
@@ -62,10 +54,6 @@ struct KvHtmlRepresentation {
         }
 
         self.dataList = dataList
-
-        // For now fragment contains resolved `.navigationTitle` and accumulated `.navigationDestinations`.
-        self.navigationTitle = fragment.navigationTitle
-        self.navigationDestinations = fragment.navigationDestinations
     }
 
 
@@ -76,7 +64,9 @@ struct KvHtmlRepresentation {
 
     // MARK: Operations
 
-    func makeDataIterator() -> DataList.Iterator { dataList.makeIterator() }
+    func forEach(_ body: (Data) -> Void) {
+        dataList.forEach(body)
+    }
 
 
 
@@ -86,9 +76,6 @@ struct KvHtmlRepresentation {
 
         private var first: Node?
         private var last: Node?
-
-        var navigationTitle: KvText?
-        var navigationDestinations: NavigationDestinations?
 
 
         init() { }
@@ -188,11 +175,15 @@ struct KvHtmlRepresentation {
             case data(Data)
             /// This case is used when the resulting data depends on fragments generated later.
             case dataBlock(() -> Data)
+            case dataList(DataList)
             /// This case is used to avoid recursion while travesing view hierarchies.
             case fragmentBlock(() -> Fragment)
 
 
             // MARK: Fabrics
+
+            static func dataList(_ representation: KvHtmlRepresentation) -> Payload { .dataList(representation.dataList) }
+
 
             static func string(_ value: String) -> Payload { .data(value.data(using: .utf8)!) }
 
@@ -238,9 +229,6 @@ struct KvHtmlRepresentation {
                 }
                 last = fragment.last
             }
-
-            navigationTitle = navigationTitle ?? fragment.navigationTitle
-            navigationDestinations = .merged(navigationDestinations, fragment.navigationDestinations)
         }
 
 
@@ -293,6 +281,7 @@ struct KvHtmlRepresentation {
         enum Payload {
             case data(Data)
             case dataBlock(() -> Data)
+            case dataList(DataList)
         }
 
 
@@ -300,18 +289,8 @@ struct KvHtmlRepresentation {
 
         fileprivate class Node {
 
-            /// - Note: This property replaced data blocks with the resulting data.
-            var data: Data {
-                switch payload {
-                case .data(let data):
-                    return data
-                case .dataBlock(let block):
-                    let data = block()
-                    payload = .data(data)
-                    return data
-                }
-            }
-
+            /// - Note: It's a variable to provide lazy replacement of data blocks with the resulting data.
+            var payload: Payload
             var next: Node?
 
 
@@ -319,41 +298,32 @@ struct KvHtmlRepresentation {
                 self.payload = payload
             }
 
-
-            /// - Note: It's a variable to provide lazy replacement of data blocks with the resulting data.
-            private var payload: Payload
-
-        }
-
-
-        // MARK: .Iterator
-
-        struct Iterator : IteratorProtocol {
-
-            fileprivate init(first: Node?) {
-                node = first
-            }
-
-
-            private var node: Node?
-
-
-            // MARK: : IteratorProtocol
-
-            mutating func next() -> Data? {
-                guard let node = node else { return nil }
-
-                defer { self.node = node.next }
-
-                return node.data
-            }
-
         }
 
 
         // MARK: Operations
 
-        func makeIterator() -> Iterator { .init(first: first) }
+        func forEach(_ body: (Data) -> Void) {
+            var next = first
+
+            while let node = next {
+                switch node.payload {
+                case .data(let data):
+                    body(data)
+
+                case .dataBlock(let block):
+                    let data = block()
+                    // Once data block is invoked, it's replaced with the resulting data.
+                    node.payload = .data(data)
+                    body(data)
+
+                case .dataList(let dataList):
+                    dataList.forEach(body)
+                }
+
+                next = node.next
+            }
+        }
 
 
         mutating func append(_ payload: Payload) {

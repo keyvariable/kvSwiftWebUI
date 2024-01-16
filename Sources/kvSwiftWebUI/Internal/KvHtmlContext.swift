@@ -33,6 +33,10 @@ import kvKit
 
 class KvHtmlContext {
 
+    typealias NavigationDestinations = KvViewConfiguration.NavigationDestinations
+
+
+
     let assets: KvHtmlBundleAssets
 
     private(set) var cssAsset: KvCssAsset
@@ -45,6 +49,15 @@ class KvHtmlContext {
     private(set) lazy var absolutePath: KvUrlPath = { urlPath in
         rootPath.map { $0 + urlPath } ?? urlPath
     }(navigationPath.urlPath)
+
+
+    /// First non-nil navigation title.
+    private(set) var navigationTitle: KvText?
+    /// All declared destinations.
+    private(set) var navigationDestinations: NavigationDestinations?
+
+    /// First non-nil background style.
+    private(set) var backgroundStyle: KvAnyShapeStyle?
 
 
 
@@ -144,6 +157,13 @@ class KvHtmlContext {
         if let cssResource {
             insert(cssResource)
         }
+    }
+
+
+    func processViewConfiguration(_ viewConfiguration: borrowing KvViewConfiguration) {
+        navigationTitle = navigationTitle ?? viewConfiguration.navigationTitle
+        navigationDestinations = .merged(navigationDestinations, viewConfiguration.navigationDestinations)
+        backgroundStyle = backgroundStyle ?? viewConfiguration.background?.eraseToAnyShapeStyle()
     }
 
 }

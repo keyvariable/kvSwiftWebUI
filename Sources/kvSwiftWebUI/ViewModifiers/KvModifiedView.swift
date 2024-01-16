@@ -106,14 +106,8 @@ struct KvModifiedView : KvView {
             fragment = .tag(.div, css: containerCSS, innerHTML: fragment)
         }
 
-        if let title = environment.viewConfiguration?.navigationTitle,
-           !title.isEmpty
-        {
-            fragment.navigationTitle = title
-        }
-
-        if let destinations = environment.viewConfiguration?.navigationDestinations {
-            fragment.navigationDestinations = .merged(fragment.navigationDestinations, destinations)
+        if let viewConfiguration = environment.viewConfiguration {
+            context.html.processViewConfiguration(viewConfiguration)
         }
 
         return fragment

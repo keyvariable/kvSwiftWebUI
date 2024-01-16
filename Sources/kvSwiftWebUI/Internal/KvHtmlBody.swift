@@ -44,24 +44,14 @@ protocol KvHtmlBody {
 struct KvHtmlBodyImpl : KvHtmlBody {
 
     init<Content : KvView>(content: Content) {
-        let backgroundStyle = Self.firstBackgroundStyle(of: content) ?? Constants.backgroundColor.eraseToAnyShapeStyle()
-
         self.rootRepresentationProvider = { context in
-            KvHtmlRepresentation(
-                BodyView(backgroundColor: backgroundStyle.bottomBackgroundColor() ?? Constants.backgroundColor, content: content),
-                in: context
-            )
+            KvHtmlRepresentation(of: BodyView(with: content), in: context)
         }
-
-        self.backgroundStyle = backgroundStyle
     }
 
 
 
     private let rootRepresentationProvider: (KvHtmlRepresentationContext) -> KvHtmlRepresentation
-
-    /// Background style from the content if provided.
-    private let backgroundStyle: KvAnyShapeStyle?
 
 
 
@@ -93,11 +83,11 @@ struct KvHtmlBodyImpl : KvHtmlBody {
 
     private struct BodyView<Content : KvView> : KvView, KvHtmlRenderable {
 
-        let content: RootView<Content>
+        let content: Content
 
 
-        init(backgroundColor: KvColor, content: Content) {
-            self.content = .init(backgroundColor: backgroundColor, content: content)
+        init(with content: Content) {
+            self.content = content
         }
 
 
@@ -110,10 +100,54 @@ struct KvHtmlBodyImpl : KvHtmlBody {
 
         func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
             context.representation(options: .noContainer) { context, cssAttributes in
-                let fragment = content.htmlRepresentation(in: context)
+                /// Finalized HTML representation is generated here to collect some view information (e.g. first background style, natigation title, etc.) and use it below.
+                let representation = KvHtmlRepresentation(of: content, in: context)
 
-                return .tag(.body, css: cssAttributes, innerHTML: fragment)
+                let backgroundStyle = context.html.backgroundStyle ?? Constants.backgroundColor.eraseToAnyShapeStyle()
+
+                let rootView = RootView(
+                    backgroundColor: backgroundStyle.bottomBackgroundColor() ?? Constants.backgroundColor,
+                    content: RepresentationView(representation)
+                )
+
+                let fragment = rootView.htmlRepresentation(in: context)
+
+                let extraCSS = KvViewConfiguration {
+                    if $0.modify(background: backgroundStyle) != nil { assertionFailure("Warning: body background hasn't been applied") }
+                }
+                .cssAttributes(in: context)
+
+                return .tag(.body, css: .union(cssAttributes, extraCSS), innerHTML: fragment)
             }
+        }
+
+
+        // MARK: .RepresentationView
+
+        /// Dedicated view used to insert HTML representations in a view hierarchy.
+        ///
+        /// - Warning: Be careful with the contexts. It's better to render `RepresentationView` in the same context as the representation ot it's subcontext.
+        private struct RepresentationView : KvView, KvHtmlRenderable {
+
+            let representation: KvHtmlRepresentation
+
+
+            init(_ representation: KvHtmlRepresentation) {
+                self.representation = representation
+            }
+
+
+            // MARK: : KvView
+
+            var body: KvNeverView { Body() }
+
+
+            // MARK: : KvHtmlRenderable
+
+            func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
+                .init(.dataList(representation))
+            }
+
         }
 
     }
@@ -171,37 +205,6 @@ struct KvHtmlBodyImpl : KvHtmlBody {
     private var viewConfiguration: KvViewConfiguration { .init {
         $0.foregroundStyle = Color.label.eraseToAnyShapeStyle()
         $0.font = .body
-
-        if let backgroundStyle, $0.modify(background: backgroundStyle) != nil { assertionFailure("Warning: body background hasn't been applied") }
     } }
-
-
-    private static func firstBackgroundStyle<V : KvView>(of view: V) -> KvAnyShapeStyle? {
-        var view: any View = view
-
-        while true {
-            switch view {
-            case let modifiedView as KvModifiedView:
-                switch modifiedView.environment.viewConfiguration?.background {
-                case .some(let background):
-                    return background
-                case .none:
-                    view = modifiedView.sourceProvider()
-                }
-
-            case let wrapperView as any KvWrapperView:
-                view = wrapperView.contentView
-
-            case is KvHtmlRenderable:
-                return nil
-
-            default:
-                view = view.body
-            }
-        }
-
-        assertionFailure("This code must never be executed")
-        return nil
-    }
 
 }

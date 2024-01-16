@@ -91,7 +91,7 @@ public class KvHtmlBundle {
                 let representation = body.renderHTML(in: context)
 
                 self.init(body: body, cssAssets: cssAssets, iconHeaders: iconHeaders,
-                          representation: representation, context: context, navigationElement: .init(value: .root, title: representation.navigationTitle))
+                          representation: representation, context: context, navigationElement: .init(value: .root, title: context.navigationTitle))
             }
 
 
@@ -119,7 +119,7 @@ public class KvHtmlBundle {
             func next(for data: Substring) -> Self? {
                 let data = String(data)
 
-                guard let destination = representation.navigationDestinations?.destination(for: data) else { return nil }
+                guard let destination = context.navigationDestinations?.destination(for: data) else { return nil }
 
                 let body = destination.body
                 let cssAssets = cssAssets?[data]
@@ -138,7 +138,7 @@ public class KvHtmlBundle {
 
                 return .init(body: body, cssAssets: cssAssets, iconHeaders: iconHeaders,
                              representation: representation, context: context,
-                             navigationElement: .init(value: .component(rawValue: data, data: destination.value), title: representation.navigationTitle))
+                             navigationElement: .init(value: .component(rawValue: data, data: destination.value), title: context.navigationTitle))
             }
 
         }
@@ -198,7 +198,7 @@ public class KvHtmlBundle {
             let title: String? = context.navigationPath.elements
                 .reversed()
                 .lazy.compactMap { $0.title?.escapedPlainBytes }
-                .reduce(bodyRepresentation.navigationTitle?.escapedPlainBytes) {
+                .reduce(context.navigationTitle?.escapedPlainBytes) {
                     $0 != nil ? "\($0!) | \($1)" : $1
                 }
                 .map { "<title>\($0)</title>" }
@@ -211,7 +211,7 @@ public class KvHtmlBundle {
             context.headers,
             "</head>"
         )
-        accumulator.append(IteratorSequence(bodyRepresentation.makeDataIterator()))
+        bodyRepresentation.forEach { accumulator.append($0) }
         accumulator.append("</html>")
 
         let (data, digest) = (consume accumulator).finalize()
