@@ -136,7 +136,8 @@ public struct KvNavigationPath {
     public var count: Int { elements.count }
 
 
-    var urlPath: KvUrlPath {
+    // TODO: DOC
+    public var urlPath: KvUrlPath {
         .init(with: elements.lazy.compactMap { $0.value.urlPathComponent })
     }
 
