@@ -30,6 +30,9 @@ import kvSwiftWebUI
 
 struct ColorCatalogView : View {
 
+    @Environment(\.navigationPath) private var navigationPath
+
+
     private struct Constants {
 
         static let cellCornerRadius: KvCssLength = 6
@@ -43,16 +46,41 @@ struct ColorCatalogView : View {
              subtitle: Text("This page contains previews of some colors available in kvSwiftWebUI framework."),
              sourceFilePath: "ColorCatalogView.swift"
         ) {
-            Text("Colors below are available as static properties of") + .space
-            + Text(verbatim: "Color")
-                .font(.system(.body, design: .monospaced))
-            + .space + Text("type.")
+            customColorSection
 
             ColorSection<StandardColorID>(header: Text("Standard Colors"))
             ColorSection<WebColorID>(header: Text("Web Colors"))
         }
         .navigationDestination(for: StandardColorID.self, destination: ColorDetailView.init(colorID:))
         .navigationDestination(for: WebColorID.self, destination: ColorDetailView.init(colorID:))
+        .navigationDestination(for: HexColorID.self, destination: ColorDetailView.init(colorID:))
+    }
+
+
+    private var customColorSection: some View {
+        Section1(header: Text("Custom Colors")) {
+            do {
+                let introduction = Text("There are several ways to declare custom colors.")
+                let example = (Text("The simplest one is to use HEX literals:")
+                               + .space + Text(verbatim: "let color: Color = 0x2F4F4F").font(.system(.body, design: .monospaced))
+                               + Text("."))
+                introduction
+                + .space + example
+            }
+
+            Text("Try to view a custom color page having \"#RRGGBB\" HEX representation at /\(navigationPath.urlPath.joined)/\(HexColorID.prefix)RRGGBB URL.")
+            + .space + Text("For example:")
+
+            do {
+                let hexColorID = HexColorID(0x2F4F4F)
+
+                NavigationLink(value: hexColorID) {
+                    Text(verbatim: "/\(navigationPath.urlPath.joined)/\(hexColorID.rawValue)")
+                }
+            }
+
+            Text("This is an example of dynamic navigation destinations.")
+        }
     }
 
 
@@ -74,6 +102,11 @@ struct ColorCatalogView : View {
 
         var body: some View {
             Section1(header: header) {
+                Text("Colors below are available as static properties of") + .space
+                + Text(verbatim: "Color")
+                    .font(.system(.body, design: .monospaced))
+                + .space + Text("type.")
+
                 let (numberOfColumns, font): (Int, Font) = switch horizontalSizeClass {
                 case .regular: (3, .system(.body, design: .monospaced))
                 case .compact, .none: (2, .system(.caption, design: .monospaced))
@@ -92,7 +125,7 @@ struct ColorCatalogView : View {
                                 let color = colorID.color
 
                                 NavigationLink(value: colorID) {
-                                    Text(verbatim: ".\(colorID.label)")
+                                    Text(verbatim: colorID.label)
                                         .multilineTextAlignment(.center)
                                         .padding(.horizontal, .em(0.25))
                                         .frame(idealWidth: cellWidth, minHeight: .em(3))

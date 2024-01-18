@@ -33,6 +33,8 @@ protocol ColorID : RawRepresentable, Identifiable where RawValue == String {
 
     var label: String { get }
 
+    var code: (scope: String?, expression: String, cast: String?) { get }
+
 }
 
 
@@ -40,11 +42,24 @@ extension ColorID {
 
     var id: String { rawValue }
 
+}
+
+
+
+protocol StaticColorID : ColorID { }
+
+
+extension StaticColorID {
+
     var label: String {
         /// Insertion of zero-width spaces before uppercase letters to provide sugested line breaks.
         ///
         /// - Note: This implementation is not optimal but short. Don't use it in production.
-        rawValue.replacing(#/([\p{Lu}\p{Lt}])/#, with: { match in "\u{200B}\(rawValue[match.range])" })
+        "." + rawValue.replacing(#/([\p{Lu}\p{Lt}])/#, with: { match in "\u{200B}\(rawValue[match.range])" })
+    }
+
+    var code: (scope: String?, expression: String, cast: String?) {
+        (scope: "Color", expression: label, cast: nil)
     }
 
 }
@@ -69,18 +84,78 @@ struct ColorDetailView<ID : ColorID> : View {
                 .font(.footnote)
                 .foregroundStyle(labelColor.tertiary)
 
-            (Text(verbatim: "Color\n")
-                .font(.system(.title, design: .monospaced))
-                .foregroundStyle(labelColor.secondary)
-             + Text(verbatim: ".\(colorID.label)")
-                .font(.system(.largeTitle, design: .monospaced)))
+            let code = colorID.code
+
+            let scope = secondaryCode(code.scope.map { "\($0)\n" }, color: labelColor)
+            let cast = secondaryCode(code.cast.map { "\n\($0)" }, color: labelColor)
+            let expression: Text = Text(verbatim: code.expression)
+                .font(.system(.largeTitle, design: .monospaced))
+
+            (scope + expression + cast)
             .multilineTextAlignment(.leading)
             .padding(.vertical, .em(4))
         }
         .foregroundStyle(labelColor)
         .padding(.em(1))
         .background(color)
-        .navigationTitle("Color.\(colorID.rawValue)")
+        .navigationTitle(colorID.label)
+    }
+
+
+    private func secondaryCode(_ string: String?, color: Color) -> Text {
+        guard let string else { return .init() }
+        
+        return Text(verbatim: string)
+            .font(.system(.title, design: .monospaced))
+            .foregroundStyle(color.secondary)
+    }
+
+}
+
+
+
+// MARK: HexColorID
+
+/// - Note: This type doesn't conform to `CaseIterable`. Navigation destinations for such types are sythesized lazily.
+struct HexColorID : ColorID, RawRepresentable {
+
+    let hexCode: UInt
+
+
+    init(_ hexCode: UInt) {
+        self.hexCode = hexCode
+    }
+
+
+    // MARK: : RawRepresentable
+
+    var rawValue: String { String(format: "\(HexColorID.prefix)%06X", hexCode) }
+
+
+    init?(rawValue: String) {
+        guard rawValue.hasPrefix(HexColorID.prefix) else { return nil }
+
+        let rawCode = rawValue.dropFirst(HexColorID.prefix.count)
+
+        guard rawCode.count == 6,
+              let hexCode = UInt(rawCode, radix: 16)
+        else { return nil }
+
+        self.hexCode = hexCode
+    }
+
+
+    static var prefix: String { "hex-" }
+
+
+    // MARK: : ColorID
+
+    var label: String { String(format: "0x%06X", hexCode) }
+
+    var color: Color { .init(hex: hexCode) }
+
+    var code: (scope: String?, expression: String, cast: String?) {
+        (scope: nil, expression: label, cast: "as Color")
     }
 
 }
@@ -89,7 +164,9 @@ struct ColorDetailView<ID : ColorID> : View {
 
 // MARK: StandardColorID
 
-enum StandardColorID : String, ColorID, CaseIterable {
+/// - Note: Conformance to `CaseIterable` protocol makes navigation destinations for such types to be presynthesized and optimized.
+///     They are served faster and share some resources.
+enum StandardColorID : String, StaticColorID, CaseIterable {
 
     case black
     case blue
@@ -134,7 +211,7 @@ enum StandardColorID : String, ColorID, CaseIterable {
 
 // MARK: WebColorID
 
-enum WebColorID : String, ColorID, CaseIterable {
+enum WebColorID : String, StaticColorID, CaseIterable {
 
     case aliceBlue
     case antiqueWhite
