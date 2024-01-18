@@ -25,7 +25,9 @@
 
 import Foundation
 
+import Crypto
 import kvHttpKit
+import kvKit
 
 
 
@@ -76,6 +78,26 @@ class KvHtmlBundleAssets {
         mutationLock.withLock {
             responces[key] = response
         }
+    }
+
+
+    /// Inserts local resource created from given CSS asset.
+    ///
+    /// - Returns: A CSS asset prototype referencing to created resource.
+    func insert(_ cssAsset: KvCssAsset) -> KvCssAsset.Prototype {
+        let data = cssAsset.css.data(using: .utf8)!
+        let digest = SHA256.hash(data: data)
+
+        let id = digest.withUnsafeBytes {
+            KvBase64.encodeAsString($0, alphabet: .urlSafe)
+        }
+
+        let resource: KvHtmlResource = .css(.local(.data(data, digest), .init(path: "\(id).css")))
+        let prototype = cssAsset.asPrototype(resource: resource)
+
+        insert(resource)
+
+        return prototype
     }
 
 }

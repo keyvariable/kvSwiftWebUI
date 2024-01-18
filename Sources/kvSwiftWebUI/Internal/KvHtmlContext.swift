@@ -62,13 +62,13 @@ class KvHtmlContext {
 
 
     init(_ assets: KvHtmlBundleAssets,
-         cssAsset: KvCssAsset.Prototype? = nil,
+         cssAsset: KvCssAsset,
          rootPath: KvUrlPath?,
          navigationPath: KvNavigationPath,
          extraHeaders: [String]? = nil
     ) {
         self.assets = assets
-        self.cssAsset = .init(parent: cssAsset)
+        self.cssAsset = cssAsset
         self.rootPath = rootPath
         self.navigationPath = navigationPath
         self.extraHeaders = extraHeaders ?? [ ]
@@ -105,23 +105,11 @@ class KvHtmlContext {
     }
 
 
-    /// Extracts the receiver's CSS asset, inserts it as a resource asset and clears the receiver's CSS asset.
-    func makeCssResource() -> KvCssAsset.Prototype {
-        let data = cssAsset.css.data(using: .utf8)!
-        let digest = SHA256.hash(data: data)
-
-        let id = digest.withUnsafeBytes {
-            KvBase64.encodeAsString($0, alphabet: .urlSafe)
-        }
-
-        let resource: KvHtmlResource = .css(.local(.data(data, digest), .init(path: "\(id).css")))
-        let prototype = cssAsset.asPrototype(resource: resource)
-
+    /// - Warning: The replacement must contain all declarations from the receiver's `.cssAsset` and the replacement must be registered in `.assets`.
+    ///
+    /// This method is designed to cache CSS.
+    func unsafeReplaceCssAsset(with prototype: KvCssAsset.Prototype) {
         cssAsset = .init(parent: prototype)
-
-        assets.insert(resource)
-
-        return prototype
     }
 
 

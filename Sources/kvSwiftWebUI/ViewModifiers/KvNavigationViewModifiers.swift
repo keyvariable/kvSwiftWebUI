@@ -52,9 +52,11 @@ extension KvView {
 
     
     @usableFromInline
-    consuming func navigationDestination<C : KvView>(destination: @escaping (String) -> (view: C, value: Any)?) -> some KvView {
+    consuming func navigationDestination<S, C>(staticData: S = [ ], destinationProvider: @escaping (String) -> (view: C, value: Any)?) -> some KvView
+    where S : Sequence, S.Element == String, C : KvView
+    {
         mapConfiguration {
-            $0!.appendNavigationDestinations(destination)
+            $0!.appendNavigationDestinations(staticData: staticData, destinationProvider: destinationProvider)
         }
     }
 
@@ -66,6 +68,9 @@ extension KvView {
     /// ```swift
     /// @Environment(\.navigationPath) private var navigationPath
     /// ```
+    ///
+    /// - Tip: Use `D` types conforming to `CaseIterable` protocol.
+    ///     It improves performance due to navigation destinations are preprocessed and cached.
     public consuming func navigationDestination<D, Content>(for data: D.Type, @KvViewBuilder destination: @escaping (D) -> Content) -> some KvView
     where D : LosslessStringConvertible, Content : KvView
     {
@@ -82,12 +87,59 @@ extension KvView {
     /// ```swift
     /// @Environment(\.navigationPath) private var navigationPath
     /// ```
+    ///
+    /// - Tip: Use `D` types conforming to `CaseIterable` protocol.
+    ///     It improves performance due to navigation destinations are preprocessed and cached.
+    public consuming func navigationDestination<D, Content>(for data: D.Type, @KvViewBuilder destination: @escaping (D) -> Content) -> some KvView
+    where D : CaseIterable, D : LosslessStringConvertible, Content : KvView
+    {
+        navigationDestination(
+            staticData: data.allCases.lazy.map { $0.description },
+            destinationProvider: { data in D(data).map { value in
+                (destination(value), value: value)
+            } }
+        )
+    }
+
+
+    // TODO: DOC
+    /// This modifier provides view on next navigation level.
+    ///
+    /// Current navigation path is available in the environment:
+    /// ```swift
+    /// @Environment(\.navigationPath) private var navigationPath
+    /// ```
+    ///
+    /// - Tip: Use `D` types conforming to `CaseIterable` protocol.
+    ///     It improves performance due to navigation destinations are preprocessed and cached.
     public consuming func navigationDestination<D, Content>(for data: D.Type, @KvViewBuilder destination: @escaping (D) -> Content) -> some KvView
     where D : RawRepresentable, D.RawValue : LosslessStringConvertible, Content : KvView
     {
         navigationDestination { data in D.RawValue(data).flatMap(D.init(rawValue:)).map { value in
             (destination(value), value: value)
         } }
+    }
+
+
+    // TODO: DOC
+    /// This modifier provides view on next navigation level.
+    ///
+    /// Current navigation path is available in the environment:
+    /// ```swift
+    /// @Environment(\.navigationPath) private var navigationPath
+    /// ```
+    ///
+    /// - Tip: Use `D` types conforming to `CaseIterable` protocol.
+    ///     It improves performance due to navigation destinations are preprocessed and cached. 
+    public consuming func navigationDestination<D, Content>(for data: D.Type, @KvViewBuilder destination: @escaping (D) -> Content) -> some KvView
+    where D : CaseIterable, D : RawRepresentable, D.RawValue : LosslessStringConvertible, Content : KvView
+    {
+        navigationDestination(
+            staticData: data.allCases.lazy.map { $0.rawValue.description },
+            destinationProvider: { data in D.RawValue(data).flatMap(D.init(rawValue:)).map { value in
+                (destination(value), value: value)
+            } }
+        )
     }
 
 }

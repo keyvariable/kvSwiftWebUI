@@ -36,18 +36,13 @@ struct NavigationPathView : View {
         HStack(spacing: .em(0.25)) {
             let n = navigationPath.count - 1
             
-            ForEach(0 ..< navigationPath.count) { index in
+            // Last path element is ignored.
+            ForEach(0 ..< n) { index in
                 let pathPrefix: KvNavigationPath = {
                     var path = navigationPath
                     path.removeLast(n - index)
                     return path
                 }()
-
-                // Separator
-                if index > 0 {
-                    Text(verbatim: "/")
-                        .fontWeight(.thin)
-                }
 
                 // Link
                 do {
@@ -57,6 +52,10 @@ struct NavigationPathView : View {
                     case true:
                         /// Regular navigation element.
                         if let title = element.title {
+                            // Separator
+                            Text(verbatim: "/")
+                                .fontWeight(.thin)
+                            // Link
                             NavigationLink(path: pathPrefix) { title }
                         }
                     case false:

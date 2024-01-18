@@ -58,7 +58,7 @@ public struct KvNavigationPath {
 
         let value: Value
         /// Title of view for the element if available.
-        public let title: KvText?
+        fileprivate(set) public var title: KvText?
 
         /// Data the view has been generated for. It's `nil` for the root view.
         public var data: Any? {
@@ -162,6 +162,23 @@ public struct KvNavigationPath {
     // TODO: DOC
     mutating public func removeLast(_ count: Int = 1) {
         elements.removeLast(count)
+    }
+
+
+    mutating func updateLastElement(title: KvText?) {
+        guard !elements.isEmpty else { return }
+
+        elements[elements.endIndex - 1].title = title
+    }
+
+
+
+    // MARK: Operators
+
+    static func +(lhs: consuming KvNavigationPath, rhs: Element.Value) -> KvNavigationPath {
+        var result = lhs
+        result.append(.init(value: rhs, title: nil))
+        return result
     }
 
 }

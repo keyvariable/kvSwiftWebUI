@@ -370,13 +370,17 @@ extension KvEnvironmentValues {
         }
 
 
-        mutating func appendNavigationDestinations<C : KvView>(_ destinationProvider: @escaping (String) -> (view: C, value: Any)?) {
+        mutating func appendNavigationDestinations<S, C>(staticData: S, destinationProvider: @escaping (String) -> (view: C, value: Any)?)
+        where S : Sequence, S.Element == String, C : KvView
+        {
             let destinationProvider: NavigationDestinations.Provider = { data in
                 destinationProvider(data).map { (body: KvHtmlBodyImpl(content: $0.view), value: $0.value) }
             }
 
-            navigationDestinations?.append(provider: destinationProvider)
-            ?? (navigationDestinations = .init(providers: [ destinationProvider ]))
+            if navigationDestinations == nil { navigationDestinations = .init() }
+
+            navigationDestinations!.append(provider: destinationProvider)
+            navigationDestinations!.insertStaticData(staticData)
         }
 
 
@@ -569,28 +573,35 @@ extension KvEnvironmentValues {
             typealias Provider = (String) -> Destination?
 
 
-            init(providers: [Provider]) {
-                self.providers = providers
-            }
+            init() { }
 
 
             private var providers: [Provider] = .init()
+
+            /// Data values of known to be available destinations. These destinations are to be cached.
+            private var staticData: Set<String> = .init()
 
 
             // MARK: Fabrics
 
             static func merged(_ sources: Self?...) -> Self? {
-                let providers = Array(sources
-                    .lazy.compactMap { $0?.providers }
-                    .joined())
+                let result = sources
+                    .lazy.compactMap { $0 }
+                    .reduce(into: NavigationDestinations()) { destinations, source in
+                        destinations.providers.append(contentsOf: source.providers)
+                        destinations.staticData.formUnion(source.staticData)
+                    }
 
-                guard !providers.isEmpty else { return nil }
+                guard !result.isEmpty else { return nil }
 
-                return .init(providers: providers)
+                return result
             }
 
 
             // MARK: Operations
+
+            var isEmpty: Bool { providers.isEmpty }
+
 
             /// - Returns: The body and value the body has been synthesized for.
             func destination(for data: String) -> Destination? {
@@ -600,8 +611,28 @@ extension KvEnvironmentValues {
             }
 
 
+            /// - Returns: Static data values and the resulting destinations grouped by the provider.
+            func staticDestinations() -> AnySequence<[(data: String, destination: Destination)]> { .init(
+                staticData
+                    .reduce(into: [Int : [(data: String, destination: Destination)]]()) { accumulator, data in
+                        guard let (offset, destination) = providers.enumerated()
+                            .lazy.compactMap({ (offset, element) in element(data).map { (offset, $0) } })
+                            .first
+                        else { return }
+
+                        accumulator[offset, default: .init()].append((data: data, destination: destination))
+                    }
+                    .values
+            ) }
+
+
             mutating func append(provider: @escaping Provider) {
                 providers.append(provider)
+            }
+
+
+            mutating func insertStaticData<S>(_ sequence: S) where S : Sequence, S.Element == String {
+                staticData.formUnion(sequence)
             }
 
         }

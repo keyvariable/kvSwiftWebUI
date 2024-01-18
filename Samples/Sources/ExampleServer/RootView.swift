@@ -72,7 +72,7 @@ struct RootView : View {
     }
 
 
-    private enum Article : String {
+    private enum Article : String, CaseIterable {
         case basics
         case colors
     }

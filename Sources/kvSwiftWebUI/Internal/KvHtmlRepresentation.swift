@@ -29,6 +29,15 @@ import Foundation
 
 struct KvHtmlRepresentation {
 
+    static let empty = KvHtmlRepresentation()
+
+
+
+    private init() {
+        dataList = .init()
+    }
+
+
     init<V : KvView>(of view: V, in context: KvHtmlRepresentationContext) {
         var dataList = DataList()
 
@@ -272,6 +281,9 @@ struct KvHtmlRepresentation {
     // MARK: .DataList
 
     struct DataList {
+
+        init() { }
+
 
         private var first, last: Node?
 
