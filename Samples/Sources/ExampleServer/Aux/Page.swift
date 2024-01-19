@@ -50,7 +50,7 @@ struct Page<Content : View> : View {
 
     var body: some View {
         VStack(spacing: 0) {
-            FullWidthBlock {
+            HeaderBlock {
                 VStack(spacing: 0) {
                     VStack(spacing: .em(1.35)) {
                         title

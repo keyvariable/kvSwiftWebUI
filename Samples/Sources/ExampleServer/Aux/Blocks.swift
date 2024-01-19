@@ -40,7 +40,7 @@ struct BlockConstants {
 
 
 
-struct FullWidthBlock<Content : View> : View {
+struct HeaderBlock<Content : View> : View {
 
     init(foreground: Color = .white, background: Color = .accent, @ViewBuilder content: () -> Content) {
         self.content = content()
