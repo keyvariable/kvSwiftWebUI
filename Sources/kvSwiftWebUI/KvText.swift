@@ -368,7 +368,7 @@ public struct KvText : Equatable {
                         fragment = .tag(tag, innerHTML: fragment)
 
                     case .linkURL:
-                        fragment = .tag(.a, attributes: .href(Attributes.cast(value, as: \.linkURL)), innerHTML: fragment)
+                        fragment = KvLinkKit.representation(url: Attributes.cast(value, as: \.linkURL), innerHTML: fragment)
                     }
                 }
 

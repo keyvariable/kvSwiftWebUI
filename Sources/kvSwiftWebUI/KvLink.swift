@@ -91,8 +91,29 @@ extension KvLink : KvHtmlRenderable {
 
     func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
         context.representation { context, cssAttributes in
-            return .tag(.a, css: cssAttributes, attributes: .href(url), innerHTML: label.htmlRepresentation(in: context))
+            let fragment = label.htmlRepresentation(in: context)
+
+            return KvLinkKit.representation(url: url, css: cssAttributes, innerHTML: fragment)
         }
+    }
+
+}
+
+
+
+// MARK: - KvLinkKit
+
+struct KvLinkKit {
+
+    /// This code is extracted to be reused, e.g. in ``KvText`` having link attribute.
+    static func representation(url: URL,
+                               css cssAttributes: KvHtmlKit.CssAttributes? = nil,
+                               innerHTML: KvHtmlRepresentation.Fragment
+    ) -> KvHtmlRepresentation.Fragment {
+        // - NOTE: URLs having explicit host are considered external so `target="_blank"` attribute is set.
+        let targetAttribute: KvHtmlKit.Attribute? = url.host != nil ? .raw("target", "_blank") : nil
+
+        return .tag(.a, css: cssAttributes, attributes: .href(url), targetAttribute, innerHTML: innerHTML)
     }
 
 }
