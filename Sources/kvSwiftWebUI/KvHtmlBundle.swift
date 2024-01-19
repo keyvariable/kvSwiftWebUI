@@ -23,7 +23,10 @@
 //  Created by Svyatoslav Popov on 25.10.2023.
 //
 
+import Foundation
+
 import kvHttpKit
+import kvKit
 
 
 
@@ -31,15 +34,39 @@ import kvHttpKit
 public class KvHtmlBundle {
 
     // TODO: DOC
-    public init<RootView : KvView>(at rootPath: KvUrlPath? = nil, icon: KvApplicationIcon? = nil, @KvViewBuilder rootView: @escaping () -> RootView) throws {
-        icon?.htmlResources.forEach(assets.insert(_:))
-        
+    convenience public init<RootView>(
+        at rootPath: KvUrlPath? = nil,
+        icon: KvApplicationIcon? = nil,
+        @KvViewBuilder rootView: @escaping () -> RootView
+    ) throws
+    where RootView : KvView
+    {
+        try self.init(with: .init(rootPath: rootPath, icon: icon), rootView: rootView)
+    }
+
+
+    // TODO: DOC
+    public init<RootView>(with configuration: borrowing Configuration, @KvViewBuilder rootView: @escaping () -> RootView) throws
+    where RootView : KvView
+    {
+        configuration.icon?.htmlResources.forEach(assets.insert(_:))
+
+        responseCache = configuration.responseCacheSize.map {
+            .init(maximumByteSize: $0.value)
+        }
+
         navigationController = .init(
             for: rootView(),
-            with: .init(rootPath: rootPath,
-                        iconHeaders: icon?.htmlHeaders,
+            with: .init(rootPath: configuration.rootPath,
+                        iconHeaders: configuration.icon?.htmlHeaders,
                         assets: assets)
         )
+
+        do {
+            let navigationController = navigationController
+            // - NOTE: Catching referende to `self` is avoided to prevent retain cycle.
+            responseBlock = { navigationController.htmlResponse(at: $0) }
+        }
     }
 
 
@@ -48,14 +75,87 @@ public class KvHtmlBundle {
 
     private let navigationController: KvNavigationController
 
+    private let responseCache: KvHttpResponseCache<KvUrlPath.Slice>?
+    /// A block to be used to synthesize response when there is no cached value.
+    private let responseBlock: (KvUrlPath.Slice) -> KvHttpResponseContent?
+
+
+
+    // MARK: .Configuration
+
+    public struct Configuration {
+
+        /// A path on the server the root view is served at. Empty or `nil` values mean that the root view is served at "/" path.
+        public var rootPath: KvUrlPath?
+
+        /// An icon to be used in browser UI, on OS home screens, etc.
+        public var icon: KvApplicationIcon?
+
+        /// Maximum size of cached responses. If `nil` then the cahce is disabled. By default cache uses 50% of physical memory on the machine.
+        public var responseCacheSize: ResponseCacheSize?
+
+
+
+        /// - Parameters:
+        ///   - rootPath: See ``rootPath`` for details.
+        ///   - icon: See ``icon`` for details.
+        ///   - responseCacheSize: See ``responseCacheSize`` for details.
+        @inlinable
+        public init(rootPath: KvUrlPath? = nil,
+             icon: KvApplicationIcon? = nil,
+             responseCacheSize: ResponseCacheSize? = .physicalMemoryRatio(0.5)
+        ) {
+            self.rootPath = rootPath
+            self.icon = icon
+            self.responseCacheSize = responseCacheSize
+        }
+
+
+        // MARK: .ResponseCacheSize
+
+        public enum ResponseCacheSize : ExpressibleByIntegerLiteral {
+
+            /// Number bytes to be used as maximum size of the response cache.
+            case byteSize(UInt64)
+            /// Ratio of physical memory on the machine. E.g. `.physicalMemoryRatio(0.5)` means 50% of the physical memory size.
+            case physicalMemoryRatio(Double)
+
+
+            // MARK: : ExpressibleByIntegerLiteral
+
+            public init(integerLiteral value: IntegerLiteralType) {
+                self = .byteSize(numericCast(value))
+            }
+
+
+            // MARK: Operations
+
+            var value: UInt64 {
+                switch self {
+                case .byteSize(let value):
+                    return value
+
+                case .physicalMemoryRatio(let ratio):
+                    return .init(clamp(ratio, 0.0, 1.0) * Double(ProcessInfo.processInfo.physicalMemory))
+                }
+            }
+
+        }
+
+    }
+
 
 
     // MARK: Operations
 
-    /// See ``response(at:)-3g2a5`` for details.
     public func response(at path: KvUrlPath.Slice) -> KvHttpResponseContent? {
-        navigationController.htmlResponse(at: path)
-        ?? assets[path]
+        assets[path]
+        ?? navigationResponse(at: path)
+    }
+
+
+    private func navigationResponse(at path: KvUrlPath.Slice) -> KvHttpResponseContent? {
+        responseCache?[path, default: { responseBlock(path) }] ?? responseBlock(path)
     }
 
 }
