@@ -30,6 +30,9 @@ import kvSwiftWebUI
 
 
 
+/// A view containing small examples of working with views and view modifiers.
+///
+/// Note the way large and complex hierarchy of views is split to structures, methods and calculated properties.
 struct BasicsView : View {
 
     var body: some View {

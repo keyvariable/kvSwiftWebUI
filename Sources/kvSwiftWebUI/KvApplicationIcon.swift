@@ -33,7 +33,11 @@ public typealias ApplicationIcon = KvApplicationIcon
 
 
 
-// TODO: DOC
+/// This type represents as icon and the tint color associated with a web document.
+///
+/// Icons are used in various places: in UI of browsers (tabs, favourites, etc), on the home screens.
+///
+/// - SeeAlso: ``Resource``.
 public struct KvApplicationIcon {
 
     @usableFromInline

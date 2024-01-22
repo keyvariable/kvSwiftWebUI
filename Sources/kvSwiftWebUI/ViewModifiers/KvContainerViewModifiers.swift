@@ -31,7 +31,20 @@ import kvCssKit
 
 extension KvView {
 
-    // TODO: DOC
+    /// This modifier changes background of current view container.
+    ///
+    /// As order of view modifications matters, in example below the result will differ:
+    /// ```swift
+    /// Text("1").background(.blue).padding()
+    /// Text("2").padding().background(.green)
+    /// ```
+    /// Blue background is applied to exact frame of label, but green background is applied to label 2 including it's padding.
+    /// It's due to label 2 is placed into a container having default padding first, then green background is applied to the container.
+    /// Whereas blue background is applied to label 1 first, then the result is placed into a container having default padding.
+    ///
+    /// First encountered suitable background is used as background of `<body>` tag for each navigation destination.
+    /// Most browsers use this background to fill entire viewport.
+    ///
     /// - SeeAlso: ``foregroundStyle(_:)``.
     @inlinable
     public consuming func background<S : KvShapeStyle>(_ style: S) -> some KvView { mapConfiguration {
@@ -69,7 +82,7 @@ extension KvView {
     } }
 
 
-    // TODO: DOC
+    /// This modifier places the view into a container having given *width* and *height*. The container aligns the view using given *alignment*.
     @inlinable
     public consuming func frame(width: KvCssLength? = nil, height: KvCssLength? = nil, alignment: KvAlignment = .center) -> some KvView {
         mapConfiguration {
@@ -80,9 +93,9 @@ extension KvView {
     }
 
 
-    // TODO: DOC
-    /// - Parameter idealWidth: It's ignored. It's provided just for compatibility reasons.
-    /// - Parameter idealHeight: It's ignored. It's provided just for compatibility reasons.
+    /// This modifier places the view into a container having given dimensions. The container aligns the view using given *alignment*.
+    ///
+    /// - Note: *maxWidth* and *maxHeight* can be equal to `.infinity`. In this case container fills available space when possible.
     @inlinable
     public consuming func frame(minWidth: KvCssLength? = nil, idealWidth: KvCssLength? = nil, maxWidth: KvCssLength? = nil,
                                 minHeight: KvCssLength? = nil, idealHeight: KvCssLength? = nil, maxHeight: KvCssLength? = nil,

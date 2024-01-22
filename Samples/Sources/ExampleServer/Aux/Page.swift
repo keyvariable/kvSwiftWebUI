@@ -28,6 +28,9 @@ import kvSwiftWebUI
 
 
 
+/// A view providing default page structure: header with title, subtitle, optional back navigation links, optional reference to source file on GitHub.
+///
+/// - SeeAlso: ``NavigationPathView``.
 struct Page<Content : View> : View {
 
     init(title: Text, subtitle: Text, sourceFilePath: String? = nil, @ViewBuilder content: () -> Content) {
@@ -75,8 +78,12 @@ struct Page<Content : View> : View {
                 content
             }
         }
-        /// It's for browsers extensing pages to provide scroll bouncing.
-        /// The background matches the title background so the title looks infinite in upward direction.
+        /// HTML representation uses first background in `<body>` tag.
+        /// `Page` type is designated to be the first top-level view so it's background to passed to `<body>` tag.
+        ///
+        /// - Note: The background matches background of `HeaderBlock`.
+        ///         If browser extend pages to provide scroll bouncing then the header looks infinite in upward direction.
+        ///         Also Safari tints bars using the background.
         .background(.accent)
         .navigationTitle(title)
     }

@@ -2,14 +2,14 @@
 
 *kvSwiftWebUI* is a cross-platform framework providing API to declare web-interfaces in a way very close to *SwiftUI*.
 
-See [*ExampleServer/FrontendView.swift*](./Samples/Sources/ExampleServer/FrontendView.swift) target
-in [*Samples*](./Samples) package for an example.
+See [*Samples*](./Samples) package for an example.
+Also *ExampleServer* is running at [example.swiftwebui.keyvar.com](https://example.swiftwebui.keyvar.com).
 
 
 ## Licence
 
 This package is licensed under GNU General Public License v3.0.
-Contact [info@keyvar.com](mailto:info@keyvar.com) for commercial version of *kvSwiftWebUI* if needed.
+Contact [info@keyvar.com](mailto:info@keyvar.com) for version of *kvSwiftWebUI* under other license if needed.
 
 
 ## Getting Started

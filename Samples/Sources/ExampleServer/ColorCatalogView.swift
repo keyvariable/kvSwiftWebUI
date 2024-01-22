@@ -51,6 +51,11 @@ struct ColorCatalogView : View {
             ColorSection<StandardColorID>(header: Text("Standard Colors"))
             ColorSection<WebColorID>(header: Text("Web Colors"))
         }
+        /// Navigation destinations are defined with `navigationDestination` modifier.
+        /// This modifier can be called several times.
+        /// The framework selects first destination the data value is successfully initialized for.
+        ///
+        /// In this example the types are string representable and initialized by an URL path component in the same order the navigation destinations are declared.
         .navigationDestination(for: StandardColorID.self, destination: ColorDetailView.init(colorID:))
         .navigationDestination(for: WebColorID.self, destination: ColorDetailView.init(colorID:))
         .navigationDestination(for: HexColorID.self, destination: ColorDetailView.init(colorID:))

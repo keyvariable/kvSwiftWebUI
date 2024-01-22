@@ -27,10 +27,29 @@ public typealias View = KvView
 
 
 
-// TODO: DOC
+/// A protocol all views have to conform to.
+///
+/// Below is a simple example with large text and default padding:
+///
+/// ```swift
+/// struct HelloWorldView : View {
+///     var body: some View {
+///         Text("Hello World!")
+///             .font(.system(.largeTitle))
+///             .padding()
+///     }
+/// }
+/// ```
+///
+/// - Note: Usually there are typealiases without prefix. For example, ``KvView`` is available as ``View``, ``KvText`` is available as ``Text``.
+///
+/// As in SwiftUI there are basic views like ``Text``, ``Image``, ``Link``, layout views like ``HStack``, ``VStack``, ``Grid``, etc.
+/// Also there are varois view modifiers like ``KvView/font(_:)``, ``KvView/padding(_:)-5ybsj``.
+///
+/// Views just declare user interface. Use ``KvHtmlBundle`` to generate HTML responses.
 public protocol KvView {
 
-    /// It's inferred from your implementation of the required property ``KvView/body-swift.property``.
+    /// It's inferred from implementation of the required property ``KvView/body-swift.property``.
     associatedtype Body : KvView
 
 

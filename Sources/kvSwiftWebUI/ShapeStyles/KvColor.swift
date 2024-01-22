@@ -172,7 +172,7 @@ public struct KvColor : KvShapeStyle, Hashable, ExpressibleByIntegerLiteral {
 
         /// - Parameter hex: An integer in 0xRRGGBB format.
         ///
-        /// - Tip: Consider ``hex(_:alpha:))`` shorthand fabric and initialization from an integer literal..
+        /// - Tip: Consider ``hex(_:alpha:)`` shorthand fabric and initialization from an integer literal..
         @inlinable
         public init<I : BinaryInteger>(hex: I, alpha: Double? = nil) {
             let mask: I = 0xFF

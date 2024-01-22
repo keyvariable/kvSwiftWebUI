@@ -30,10 +30,16 @@ import kvKit
 
 
 
-// TODO: DOC
+/// *KvHtmlBundle* resolves the root view to collection HTTP responses including HTML, styles, resources, etc.
+///
+/// When bundle is initialized, the responses are fetched by URL paths using ``response(at:)`` method.
+///
+/// By default it's assumed that bundle is served to the domain's root path and maximum size of response cache is 50% of physical memory on the machine.
+/// Use ``Configuration`` struture and ``init(with:rootView:)`` initializer to customize bundle.
 public class KvHtmlBundle {
 
-    // TODO: DOC
+    /// A shorthand for ``init(with:rootView:)``.
+    @inlinable
     convenience public init<RootView>(
         at rootPath: KvUrlPath? = nil,
         icon: KvApplicationIcon? = nil,
@@ -45,7 +51,7 @@ public class KvHtmlBundle {
     }
 
 
-    // TODO: DOC
+    /// Resolves given *rootView* and initializes bundle with the result and given *configuration*.
     public init<RootView>(with configuration: borrowing Configuration, @KvViewBuilder rootView: @escaping () -> RootView) throws
     where RootView : KvView
     {
@@ -148,6 +154,7 @@ public class KvHtmlBundle {
 
     // MARK: Operations
 
+    /// - Returns: An HTTP response with contents of resource at given *path* in the bundle.
     public func response(at path: KvUrlPath.Slice) -> KvHttpResponseContent? {
         assets[path]
         ?? navigationResponse(at: path)

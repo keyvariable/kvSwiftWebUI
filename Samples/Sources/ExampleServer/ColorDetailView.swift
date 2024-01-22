@@ -97,6 +97,11 @@ struct ColorDetailView<ID : ColorID> : View {
         }
         .foregroundStyle(labelColor)
         .padding(.em(1))
+        /// HTML representation uses first background in `<body>` tag.
+        /// `ColorDetailView` type is designated to be the first top-level view so it's background to passed to `<body>` tag.
+        ///
+        /// - Note: Background of `<body>` tag is used to fill entire viewport.
+        ///         Also Safari tints bars using the background.
         .background(color)
         .navigationTitle(colorID.label)
     }
