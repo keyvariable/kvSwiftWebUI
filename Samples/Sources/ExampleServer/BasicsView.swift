@@ -121,14 +121,14 @@ struct BasicsView : View {
     private var layoutSection: some View {
         Section1(header: Text("Layout")) {
             Section2(header: Text("Frame and Padding")) {
-                Text(".padding().background(.systemGray4)")
+                Text(".padding(16).background(.systemGray4)")
                     .font(.system(.caption, design: .monospaced))
-                    .padding()
+                    .padding(16)
                     .background(.systemGray4)
-                Text(".background(.systemGray4).padding()")
+                Text(".background(.systemGray4).padding(16)")
                     .font(.system(.caption, design: .monospaced))
                     .background(.systemGray4)
-                    .padding()
+                    .padding(16)
                 Text("Text")
                     .font(.system(.caption, design: .monospaced))
                     .padding(.horizontal, 16).padding(.vertical, 4)
