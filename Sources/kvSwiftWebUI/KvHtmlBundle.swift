@@ -108,8 +108,8 @@ public class KvHtmlBundle {
         ///   - responseCacheSize: See ``responseCacheSize`` for details.
         @inlinable
         public init(rootPath: KvUrlPath? = nil,
-             icon: KvApplicationIcon? = nil,
-             responseCacheSize: ResponseCacheSize? = .physicalMemoryRatio(0.5)
+                    icon: KvApplicationIcon? = nil,
+                    responseCacheSize: ResponseCacheSize? = .physicalMemoryRatio(0.5)
         ) {
             self.rootPath = rootPath
             self.icon = icon
