@@ -349,7 +349,10 @@ extension KvHtmlKit {
                 css?.classAttribute?.html,
                 css?.styleAttribute?.html,
             ]
-                .compactMap { $0 }
+                .compactMap { entry -> String? in
+                    guard let entry, !entry.isEmpty else { return nil }
+                    return entry
+                }
                 .joined(separator: " ")
 
             let name = name
