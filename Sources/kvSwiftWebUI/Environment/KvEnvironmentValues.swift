@@ -151,7 +151,7 @@ extension KvEnvironmentValues {
         init() { }
 
 
-        init(_ transform: (inout Self) -> Void) {
+        init(_ transform: (inout ViewConfiguration) -> Void) {
             transform(&self)
 
             // - NOTE: It's possible to change constrained properties via private code.
@@ -206,17 +206,22 @@ extension KvEnvironmentValues {
 
         // MARK: Fabrics
 
-        static func merged(_ addition: Self?, over base: Self?) -> KvMergeResult<Self?> {
-            guard let addition else { return .merged(base) }
-            guard var result = base else { return .merged(addition) }
+        static func merged(_ addition: ViewConfiguration?, over base: ViewConfiguration?) -> KvMergeResult<ViewConfiguration?> {
+            guard var addition else { return .merged(base) }
+            guard let base else { return .merged(addition) }
 
             // Constrained values.
-            // - IMPORTANT: Order of modifications matters.
-            guard addition.padding == nil || result.modify(padding: addition.padding!) == nil,
-                  addition.frame == nil || result.modify(frame: addition.frame!) == nil,
-                  addition.background == nil || result.modify(background: addition.background!) == nil,
-                  addition.clipShape == nil || result.modify(clipShape: addition.clipShape!) == nil
+            // - IMPORTANT: Order of modifications matters. Modifications are applied as `base` is merged over `addition`.
+            guard base.padding == nil || addition.modify(padding: base.padding!) == nil,
+                  base.frame == nil || addition.modify(frame: base.frame!) == nil,
+                  base.background == nil || addition.modify(background: base.background!) == nil,
+                  base.clipShape == nil || addition.modify(clipShape: base.clipShape!) == nil
             else { return .incompatibility }
+
+            var result = base
+
+            result.constrainedValues = addition.constrainedValues
+            result.constraints = addition.constraints
 
             // Regular values.
             addition.regularValues.forEach { (key, value) in
@@ -289,12 +294,12 @@ extension KvEnvironmentValues {
         // MARK: Operations
 
         /// This method redcuces number of explicit type declarations.
-        private static func cast<T>(_ value: Any, as: KeyPath<Self, T?>) -> T { value as! T }
+        private static func cast<T>(_ value: Any, as: KeyPath<ViewConfiguration, T?>) -> T { value as! T }
 
 
         /// - Returns: `nil` if modification has been applied or an instance with rejected values.
         @usableFromInline
-        mutating func modify(background: KvAnyShapeStyle) -> Self? {
+        mutating func modify(background: KvAnyShapeStyle) -> ViewConfiguration? {
             guard !constraints.contains(.immutableBackground) else { return .init { $0.background = background } }
 
             self.background = background
@@ -305,7 +310,7 @@ extension KvEnvironmentValues {
 
         /// - Returns: `nil` if modification has been applied or an instance with rejected values.
         @usableFromInline
-        mutating func modify(clipShape: KvClipShape) -> Self? {
+        mutating func modify(clipShape: KvClipShape) -> ViewConfiguration? {
             // Clipshape can't be replaced.
             guard self.clipShape == nil else { return .init { $0.clipShape = clipShape } }
 
@@ -317,7 +322,7 @@ extension KvEnvironmentValues {
 
         /// - Returns: `nil` if modification has been applied or an instance with rejected values.
         @usableFromInline
-        mutating func modify(frame: Frame) -> Self? {
+        mutating func modify(frame: Frame) -> ViewConfiguration? {
             guard !constraints.contains(.immutableFrame),
                   self.frame == nil // Frame can't be replaced.
             else { return .init { $0.frame = frame } }
@@ -330,7 +335,7 @@ extension KvEnvironmentValues {
 
         /// - Returns: `nil` if modification has been applied or an instance with rejected values.
         @usableFromInline
-        mutating func modify(padding: KvCssEdgeInsets) -> Self? {
+        mutating func modify(padding: KvCssEdgeInsets) -> ViewConfiguration? {
             guard !constraints.contains(.immutablePadding) else { return .init { $0.padding = padding } }
 
             self.padding = self.padding + padding
@@ -340,7 +345,7 @@ extension KvEnvironmentValues {
 
         /// - Returns: `nil` if modification has been applied or an instance with rejected values.
         @usableFromInline
-        mutating func modify(paddingBlock: (KvCssEdgeInsets?) -> KvCssEdgeInsets?) -> Self? {
+        mutating func modify(paddingBlock: (KvCssEdgeInsets?) -> KvCssEdgeInsets?) -> ViewConfiguration? {
             guard !constraints.contains(.immutablePadding) else { return .init { $0.padding = paddingBlock(nil) } }
 
             self.padding = paddingBlock(self.padding)
