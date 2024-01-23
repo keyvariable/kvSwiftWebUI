@@ -209,8 +209,8 @@ public class KvHttpResponseCache<Key : Hashable> {
             let key: Key
 
             private(set) var next: Node?
-            /// This reference is weak to prevent retain cycles.
-            private(set) weak var prev: Node?
+            /// This reference is unowned to prevent retain cycles.
+            private(set) unowned var prev: Node?
 
 
             init(byteSize: UInt64, key: Key) {
