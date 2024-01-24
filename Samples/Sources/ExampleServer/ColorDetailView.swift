@@ -52,7 +52,7 @@ protocol StaticColorID : ColorID { }
 extension StaticColorID {
 
     var label: String {
-        /// Insertion of zero-width spaces before uppercase letters to provide sugested line breaks.
+        /// Insertion of zero-width spaces before uppercase letters to provide suggested line breaks.
         ///
         /// - Note: This implementation is not optimal but short. Don't use it in production.
         "." + rawValue.replacing(#/([\p{Lu}\p{Lt}])/#, with: { match in "\u{200B}\(rawValue[match.range])" })
@@ -121,7 +121,7 @@ struct ColorDetailView<ID : ColorID> : View {
 
 // MARK: HexColorID
 
-/// - Note: This type doesn't conform to `CaseIterable`. Navigation destinations for such types are sythesized lazily.
+/// - Note: This type doesn't conform to `CaseIterable`. Navigation destinations for such types are synthesized lazily.
 struct HexColorID : ColorID, RawRepresentable {
 
     let hexCode: UInt
@@ -169,7 +169,7 @@ struct HexColorID : ColorID, RawRepresentable {
 
 // MARK: StandardColorID
 
-/// - Note: Conformance to `CaseIterable` protocol makes navigation destinations for such types to be presynthesized and optimized.
+/// - Note: Conformance to `CaseIterable` protocol makes navigation destinations for such types to be pre-synthesized and optimized.
 ///     They are served faster and share some resources.
 enum StandardColorID : String, StaticColorID, CaseIterable {
 

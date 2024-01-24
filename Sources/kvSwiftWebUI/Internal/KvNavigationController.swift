@@ -286,7 +286,7 @@ struct KvNavigationController {
 
 
         /// - Parameter cssAssetPrototype: Optional asset prototype to use.
-        ///     If the prototype is available then it's appied.
+        ///     If the prototype is available then it's applied.
         ///     Otherwise CSS prototype is generated and optionally saved at `cssAssetPrototype`.
         private static func replaceGeneratedCssWithResource(
             in context: KvHtmlContext,
@@ -344,7 +344,7 @@ struct KvNavigationController {
 
         var accumulator = Accumulator()
 
-        // TODO: Accumulate entire document inside KvHtmlRepresentation and perform hashing with the data list resolvation.
+        // TODO: Accumulate entire document inside KvHtmlRepresentation and perform hashing with the data list resolution.
         accumulator.append("<!DOCTYPE html><html><head>")
         do {
             let title: String? = context.navigationPath.elements

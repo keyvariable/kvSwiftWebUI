@@ -85,7 +85,7 @@ public struct KvText : Equatable {
         case joined(() -> (KvText, KvText))
 
         case string(String)
-        /// It can be used, when attributes of a text can't be merged with the assocuated child text. E.g. superscript inside subscript.
+        /// It can be used, when attributes of a text can't be merged with the associated child text. E.g. superscript inside subscript.
         ///
         /// - Note: Block is used to reduce size of `Content` instances.
         case text(() -> KvText)
@@ -323,7 +323,7 @@ public struct KvText : Equatable {
         var isEmpty: Bool { self == .empty }
 
 
-        /// This method redcuces number of explicit type declarations.
+        /// This method reduces number of explicit type declarations.
         private static func cast<T>(_ value: Any, as: KeyPath<Self, T?>) -> T { value as! T }
 
 
@@ -486,7 +486,7 @@ public struct KvText : Equatable {
 
 
     // TODO: DOC
-    /// - Important: Consequent ``subscript`` and ``superscript`` modifiers ane nested.
+    /// - Important: Consequent ``subscript`` and ``superscript`` modifiers are nested.
     ///
     /// - SeeAlso: ``subscript``.
     @inlinable
@@ -611,7 +611,7 @@ extension KvText : KvHtmlRenderable {
 
 extension KvText {
 
-    /// A space character. Is a shorthad for `Text(verbatim: " ")`.
+    /// A space character. Is a shorthand for `Text(verbatim: " ")`.
     @inlinable
     public static var space: Self { .init(" ") }
 

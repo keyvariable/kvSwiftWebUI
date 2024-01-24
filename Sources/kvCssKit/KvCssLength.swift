@@ -51,7 +51,7 @@ public indirect enum KvCssLength : Hashable, ExpressibleByFloatLiteral, Expressi
 
     // MARK: Constants
 
-    /// An infimity length.
+    /// An infinity length.
     public static let infinity: Self = .value(.infinity, .pixels)
 
 
@@ -445,7 +445,7 @@ public indirect enum KvCssLength : Hashable, ExpressibleByFloatLiteral, Expressi
         @usableFromInline
         init(value: Double, unit: Unit) {
             self.init(
-                // TODO: Omit unit for zero values conditionaly whether value is inside a `calc` expression.
+                // TODO: Omit unit for zero values conditionally whether value is inside a `calc` expression.
                 { abs(value) >= 1e-4 ? "\(String(format: "%g", value))\(unit.css)" : "0\(unit.css)" }(),
                 value: (value, unit),
                 flags: {

@@ -37,7 +37,7 @@ struct BasicsView : View {
 
     var body: some View {
         Page(title: Text("The Basics"),
-             subtitle: Text("Variuos examples of the basic functionality."),
+             subtitle: Text("Various examples of the basic functionality."),
              sourceFilePath: "BasicsView.swift"
         ) {
             appearanceSection

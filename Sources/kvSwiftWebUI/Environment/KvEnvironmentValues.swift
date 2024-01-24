@@ -167,7 +167,7 @@ extension KvEnvironmentValues {
 
         // MARK: .RegularKey
 
-        /// Keys for properties having no constaints with other properties.
+        /// Keys for properties having no constraints with other properties.
         enum RegularKey : Hashable, Comparable {
             case fixedSize
             case font
@@ -182,7 +182,7 @@ extension KvEnvironmentValues {
 
         // MARK: .ConstrainedKey
 
-        /// Keys for properties having constaints with other properties. E.g. background can't be changed when padding is set.
+        /// Keys for properties having constraints with other properties. E.g. background can't be changed when padding is set.
         enum ConstrainedKey : Hashable, Comparable {
             case background
             case clipShape
@@ -293,7 +293,7 @@ extension KvEnvironmentValues {
 
         // MARK: Operations
 
-        /// This method redcuces number of explicit type declarations.
+        /// This method reduces number of explicit type declarations.
         private static func cast<T>(_ value: Any, as: KeyPath<ViewConfiguration, T?>) -> T { value as! T }
 
 
@@ -311,7 +311,7 @@ extension KvEnvironmentValues {
         /// - Returns: `nil` if modification has been applied or an instance with rejected values.
         @usableFromInline
         mutating func modify(clipShape: KvClipShape) -> ViewConfiguration? {
-            // Clipshape can't be replaced.
+            // Clip shape can't be replaced.
             guard self.clipShape == nil else { return .init { $0.clipShape = clipShape } }
 
             self.clipShape = clipShape

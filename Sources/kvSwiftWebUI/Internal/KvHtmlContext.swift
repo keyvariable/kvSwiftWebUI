@@ -141,7 +141,7 @@ class KvHtmlContext {
     private func insert(_ cssEntry: KvCssAsset.Entry) {
         let cssResource = cssAsset.insert(cssEntry)?.resource
 
-        // If the resource is returned then `cssEntry` has already been insrted.
+        // If the resource is returned then `cssEntry` has already been inserted.
         if let cssResource {
             insert(cssResource)
         }

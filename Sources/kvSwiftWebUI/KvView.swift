@@ -44,7 +44,7 @@ public typealias View = KvView
 /// - Note: Usually there are typealiases without prefix. For example, ``KvView`` is available as ``View``, ``KvText`` is available as ``Text``.
 ///
 /// As in SwiftUI there are basic views like ``Text``, ``Image``, ``Link``, layout views like ``HStack``, ``VStack``, ``Grid``, etc.
-/// Also there are varois view modifiers like ``KvView/font(_:)``, ``KvView/padding(_:)-5ybsj``.
+/// Also there are various view modifiers like ``KvView/font(_:)``, ``KvView/padding(_:)-5ybsj``.
 ///
 /// Views just declare user interface. Use ``KvHtmlBundle`` to generate HTML responses.
 public protocol KvView {

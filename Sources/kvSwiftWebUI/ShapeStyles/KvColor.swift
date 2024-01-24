@@ -358,10 +358,10 @@ public struct KvColor : KvShapeStyle, Hashable, ExpressibleByIntegerLiteral {
 
 
 
-    // MARK: Auxliaries
+    // MARK: Auxiliaries
 
     // TODO: DOC
-    /// It's designated to calculate dark shades when only light shades of origin color are avaiable.
+    /// It's designated to calculate dark shades when only light shades of origin color are available.
     ///
     /// - Returns: A copy of the receiver where `nil` dark variant is replaced with calculated value. Otherwise exact copy of the receiver is returned.
     public consuming func inferDark(origin: sRGB, lightBackground: sRGB = 0xFFFFFF, darkBackground: sRGB = 0x000000) -> Self {

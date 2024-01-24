@@ -31,7 +31,7 @@ import kvKit
 
 
 
-/// - Note: It's a class to provide copy-by-reference semanic.
+/// - Note: It's a class to provide copy-by-reference semantic.
 class KvHtmlBundleAssets {
 
     private let mutationLock = NSLock()

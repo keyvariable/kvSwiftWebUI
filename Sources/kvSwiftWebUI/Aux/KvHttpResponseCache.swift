@@ -283,7 +283,7 @@ public class KvHttpResponseCache<Key : Hashable> {
         mutating func touch(_ node: Node) {
             guard node !== first else { return }
 
-            /// Assuming list contains atleast 2 nodes due to it contains `node` and `first` is not equal to `node`.
+            /// Assuming list contains at least 2 nodes due to it contains `node` and `first` is not equal to `node`.
 
             if node === last {
                 last = last?.prev

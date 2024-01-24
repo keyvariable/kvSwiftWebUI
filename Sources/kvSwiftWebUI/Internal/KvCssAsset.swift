@@ -45,7 +45,7 @@ class KvCssAsset {
     /// - Note: Entry IDs are used to prevent duplicated declarations and sort declarations in the resulting CSS code.
     ///
     /// - Note: `nil` scope means that the declaration don't require selector (e.g. it already has a selector).
-    ///         If seletor is provided then declarations are grouped by this selector.
+    ///         If selector is provided then declarations are grouped by this selector.
     private typealias Declarations = [MediaQuery? : [String? : [EntryID : String]]]
 
 

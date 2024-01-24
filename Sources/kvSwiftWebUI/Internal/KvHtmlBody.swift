@@ -100,7 +100,7 @@ struct KvHtmlBodyImpl : KvHtmlBody {
 
         func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
             context.representation(options: .noContainer) { context, cssAttributes in
-                /// Finalized HTML representation is generated here to collect some view information (e.g. first background style, natigation title, etc.) and use it below.
+                /// Finalized HTML representation is generated here to collect some view information (e.g. first background style, navigation title, etc.) and use it below.
                 let representation = KvHtmlRepresentation(of: content, in: context)
 
                 let backgroundStyle = context.html.backgroundStyle ?? Constants.backgroundColor.eraseToAnyShapeStyle()
@@ -126,7 +126,7 @@ struct KvHtmlBodyImpl : KvHtmlBody {
 
         /// Dedicated view used to insert HTML representations in a view hierarchy.
         ///
-        /// - Warning: Be careful with the contexts. It's better to render `RepresentationView` in the same context as the representation ot it's subcontext.
+        /// - Warning: Be careful with the contexts. It's better to render `RepresentationView` in the same context as the representation or it's sub-context.
         private struct RepresentationView : KvView, KvHtmlRenderable {
 
             let representation: KvHtmlRepresentation

@@ -13,7 +13,7 @@ served with backend on [*kvServerKit*](https://github.com/keyvariable/kvServerKi
 Note: `swift run ExampleServer` command builds and runs *ExampleServer* sample.
 
 #### Some references:
-- [RootView.swift](Sources/ExampleServer/RootView.swift) — root of frontent view hierarchy;
+- [RootView.swift](Sources/ExampleServer/RootView.swift) — root of frontend view hierarchy;
 - [BasicsView.swift](Sources/ExampleServer/BasicsView.swift) — a view containing small examples of working with views and view modifiers;
 - [ColorCatalogView.swift](Sources/ExampleServer/ColorCatalogView.swift) — color library view using grids to present color previews
   and `\.horizontalSizeClass` environment value to adapt UI to width of viewport;

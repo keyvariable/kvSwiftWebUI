@@ -35,7 +35,7 @@ public typealias ApplicationIcon = KvApplicationIcon
 
 /// This type represents as icon and the tint color associated with a web document.
 ///
-/// Icons are used in various places: in UI of browsers (tabs, favourites, etc), on the home screens.
+/// Icons are used in various places: in UI of browsers (tabs, favorites, etc), on the home screens.
 ///
 /// - SeeAlso: ``Resource``.
 public struct KvApplicationIcon {
@@ -151,7 +151,7 @@ public struct KvApplicationIcon {
     }
 
 
-    /// - Parameter body: A block invoked with value of tint color for provided color scmenes. If there is no tint color value then *body* is invoked once with `nil` argument.
+    /// - Parameter body: A block invoked with value of tint color for provided color schemes. If there is no tint color value then *body* is invoked once with `nil` argument.
     private func enumerateTintColorValues(body: ((value: String, darkTheme: Bool)?) -> Void) {
         guard let tintColor else { return body(nil) }
 

@@ -27,7 +27,7 @@ public typealias SourceCode = KvSourceCode
 
 
 
-// TODO: Integrate with a systax highlighter.
+// TODO: Integrate with a syntax highlighter.
 // TODO: DOC
 public struct KvSourceCode {
 

@@ -156,7 +156,7 @@ public struct KvViewBuilder {
     where V0 : KvView, V1 : KvView
     {
 
-        /// Subvies are stored in a closure of an escaping block to reduce consumption of stack memory.
+        /// Subviews are stored in a closure of an escaping block to reduce consumption of stack memory.
         let content: () -> (V0, V1)
 
 
@@ -192,7 +192,7 @@ public struct KvViewBuilder {
     where V0 : KvView, V1 : KvView, V2 : KvView
     {
 
-        /// Subvies are stored in a closure of an escaping block to reduce consumption of stack memory.
+        /// Subviews are stored in a closure of an escaping block to reduce consumption of stack memory.
         let content: () -> (V0, V1, V2)
 
 
@@ -229,7 +229,7 @@ public struct KvViewBuilder {
     where V0 : KvView, V1 : KvView, V2 : KvView, V3 : KvView
     {
 
-        /// Subvies are stored in a closure of an escaping block to reduce consumption of stack memory.
+        /// Subviews are stored in a closure of an escaping block to reduce consumption of stack memory.
         let content: () -> (V0, V1, V2, V3)
 
 

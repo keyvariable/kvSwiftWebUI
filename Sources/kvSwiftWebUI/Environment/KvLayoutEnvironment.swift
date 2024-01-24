@@ -38,7 +38,7 @@ fileprivate struct KvHorizontalSizeClassKey : KvEnvironmentKey {
 extension KvEnvironmentValues {
 
     // TODO: DOC
-    // TODO: DOC: View is presynthesized for all size classes.
+    // TODO: DOC: View is pre-synthesized for all size classes.
     public var horizontalSizeClass: KvUserInterfaceSizeClass? {
         get { self[KvHorizontalSizeClassKey.self] }
         set { self[KvHorizontalSizeClassKey.self] = newValue }

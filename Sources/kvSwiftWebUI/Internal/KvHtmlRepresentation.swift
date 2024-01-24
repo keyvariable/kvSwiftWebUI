@@ -185,7 +185,7 @@ struct KvHtmlRepresentation {
             /// This case is used when the resulting data depends on fragments generated later.
             case dataBlock(() -> Data)
             case dataList(DataList)
-            /// This case is used to avoid recursion while travesing view hierarchies.
+            /// This case is used to avoid recursion while traversing view hierarchies.
             case fragmentBlock(() -> Fragment)
 
 
@@ -419,7 +419,7 @@ class KvHtmlRepresentationContext {
         /// It's used to add grid span style instruction to custom views.
         fileprivate var gridNeedsSpanNextRow: Bool = true
 
-        /// It's counted in child contexts retured by ``nextGridRow``. Then maximum of the resuling values is used by the grid's context.
+        /// It's counted in child contexts returned by ``nextGridRow``. Then maximum of the resulting values is used by the grid's context.
         private(set) var gridColumnCount: Int?
 
         fileprivate let gridColumnCounder: RaiiCounter<Int>?
@@ -495,7 +495,7 @@ class KvHtmlRepresentationContext {
 
         // MARK: .RaiiCounter
 
-        /// Increases internal value when ``increase`` method is called and invokes the block with the result when deinitialized.
+        /// Increases internal value when ``increase`` method is called and invokes the block with the result when deinitiated.
         class RaiiCounter<T : Numeric> {
 
             init(_ initialValue: T, completion: @escaping (T) -> Void) {
@@ -596,7 +596,7 @@ class KvHtmlRepresentationContext {
 
 
     /// If *environment* contains view configuration then
-    /// method prodcuces descendant context where view configuration is merged or replaced with given value.
+    /// method produces descendant context where view configuration is merged or replaced with given value.
     /// If it's impossible to merge then replaced view configuration is converted to CSS and the result is written into *extractedCssAttributes*.
     ///
     /// - Returns: The resulting context.
@@ -653,7 +653,7 @@ class KvHtmlRepresentationContext {
 
 
 
-    /// - Returns: Extracted the receiver's CSS attributes optionaly merged with given *attributes*.
+    /// - Returns: Extracted the receiver's CSS attributes optionally merged with given *attributes*.
     ///
     /// - Note: The receiver's contents related to CSS attributes are reset.
     /// - Important: Extraction of CSS has some side effects.

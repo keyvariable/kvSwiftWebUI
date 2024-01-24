@@ -27,7 +27,7 @@ import kvSwiftWebUI
 
 
 
-/// The root view of frontent.
+/// The root view of frontend.
 ///
 /// It contains an introduction and links to articles.
 ///
@@ -52,8 +52,8 @@ struct RootView : View {
             BodySection {
                 Text("kvSwiftWebUI").link(Constants.kvSwiftWebUI_GitHubURL)
                 + .space + Text("is a cross-platform framework providing API to declare web-interfaces in a way very close to SwiftUI framework.")
-                + .space + Text("kvSwiftWebUI allows to implement web interfaces in a declarative paradigm.")
-                + .space + Text("kvSwiftWebUI minimizes efforts to create and maintain boilerplate code, it allows developer to focus on the design of the interface and the source code.")
+                + .space + Text("It allows to implement web interfaces in a declarative paradigm.")
+                + .space + Text("kvSwiftWebUI minimizes efforts to create and maintain boilerplate code allowing developer to focus on the design of the interface and the source code.")
 
                 Text("The declared interfaces have to be served. In this example the backend is served with")
                 + .space + Text(verbatim: "kvServerKit").link(Constants.kvServerKit_GitHubURL)

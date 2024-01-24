@@ -35,7 +35,7 @@ import kvKit
 /// When bundle is initialized, the responses are fetched by URL paths using ``response(at:)`` method.
 ///
 /// By default it's assumed that bundle is served to the domain's root path and maximum size of response cache is 50% of physical memory on the machine.
-/// Use ``Configuration`` struture and ``init(with:rootView:)`` initializer to customize bundle.
+/// Use ``Configuration`` structure and ``init(with:rootView:)`` initializer to customize bundle.
 public class KvHtmlBundle {
 
     /// A shorthand for ``init(with:rootView:)``.
@@ -70,7 +70,7 @@ public class KvHtmlBundle {
 
         do {
             let navigationController = navigationController
-            // - NOTE: Catching referende to `self` is avoided to prevent retain cycle.
+            // - NOTE: Catching reference to `self` is avoided to prevent retain cycle.
             responseBlock = { navigationController.htmlResponse(at: $0) }
         }
     }
@@ -97,7 +97,7 @@ public class KvHtmlBundle {
         /// An icon to be used in browser UI, on OS home screens, etc.
         public var icon: KvApplicationIcon?
 
-        /// Maximum size of cached responses. If `nil` then the cahce is disabled. By default cache uses 50% of physical memory on the machine.
+        /// Maximum size of cached responses. If `nil` then the cache is disabled. By default cache uses 50% of physical memory on the machine.
         public var responseCacheSize: ResponseCacheSize?
 
 

@@ -165,7 +165,7 @@ extension KvHtmlKit {
         /// Escapes unescaped double quotes and filters unexpected control characters.
         struct AttributeValueIterator : IteratorProtocol {
 
-            /// - Parameter state: State is external to handle sequences those are split between byte regions. Initialy it must be `.normal`.
+            /// - Parameter state: State is external to handle sequences those are split between byte regions. Initially it must be `.normal`.
             init(_ string: String) {
                 self.substring = Substring(string)
             }
@@ -192,7 +192,7 @@ extension KvHtmlKit {
                     switch state {
                     case .normal:
                         var nextState: State?
-                        /// Numer of characters to remove up to `endIndex`.
+                        /// Number of characters to remove up to `endIndex`.
                         var endInset: Int = 0
                         /// It's used in the cycle below to handle escaped characters.
                         var backslashFlag = false
