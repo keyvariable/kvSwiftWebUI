@@ -37,14 +37,14 @@ class KvHtmlBundleAssets {
     private let mutationLock = NSLock()
 
     /// - Note: Slices are used as keys for compatibility with `kvServerKit/KvHttpResponse`.
-    private var responces: [KvUrlPath.Slice : KvHttpResponseContent] = .init()
+    private var responses: [KvUrlPath.Slice : KvHttpResponseContent] = .init()
 
 
 
     // MARK: Subscripts
 
     subscript(path: KvUrlPath.Slice) -> KvHttpResponseContent? {
-        mutationLock.withLock { responces[path] }
+        mutationLock.withLock { responses[path] }
     }
 
 
@@ -57,7 +57,7 @@ class KvHtmlBundleAssets {
 
         let key = KvUrlPath.Slice(consume path)
 
-        guard mutationLock.withLock({ responces[key] == nil }) else { return }
+        guard mutationLock.withLock({ responses[key] == nil }) else { return }
 
         var response: KvHttpResponseContent
 
@@ -76,7 +76,7 @@ class KvHtmlBundleAssets {
         }
 
         mutationLock.withLock {
-            responces[key] = response
+            responses[key] = response
         }
     }
 

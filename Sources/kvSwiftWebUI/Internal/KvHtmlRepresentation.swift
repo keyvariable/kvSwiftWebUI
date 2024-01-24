@@ -447,7 +447,7 @@ class KvHtmlRepresentationContext {
 
         // MARK: Fabrics
 
-        static func grid(_ alignmnet: KvAlignment?) -> Self { .init(layoutDirection: .horizontal, layoutAlignment: alignmnet, nextGridRow: 1) }
+        static func grid(_ alignment: KvAlignment?) -> Self { .init(layoutDirection: .horizontal, layoutAlignment: alignment, nextGridRow: 1) }
 
 
         static func stack(_ direction: KvLayoutDirection) -> Self { .init(layoutDirection: direction) }

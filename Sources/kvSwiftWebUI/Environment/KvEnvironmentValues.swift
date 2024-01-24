@@ -199,7 +199,7 @@ extension KvEnvironmentValues {
             static let immutableFrame = Self(rawValue: 1 << 1)
             static let immutableBackground = Self(rawValue: 1 << 2)
 
-            let rawValue: UInt
+            let rawValue: UInt8
 
         }
 
@@ -467,9 +467,9 @@ extension KvEnvironmentValues {
 
             // MARK: : OptionSet
 
-            @usableFromInline let rawValue: UInt
+            @usableFromInline let rawValue: UInt8
 
-            @usableFromInline init(rawValue: UInt) { self.rawValue = rawValue }
+            @usableFromInline init(rawValue: UInt8) { self.rawValue = rawValue }
 
 
             // MARK: Operations
