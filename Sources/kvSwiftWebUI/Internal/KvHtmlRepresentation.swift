@@ -23,101 +23,334 @@
 //  Created by Svyatoslav Popov on 26.10.2023.
 //
 
+import Foundation
+
+
+
 struct KvHtmlRepresentation {
 
-    private(set) var bytes: KvHtmlBytes
-
-    /// First declared title.
-    var title: KvHtmlBytes?
+    static let empty = KvHtmlRepresentation()
 
 
-    init(bytes: KvHtmlBytes, title: KvHtmlBytes? = nil) {
-        self.bytes = bytes
-        self.title = title
+
+    private init() {
+        dataList = .init()
     }
 
 
+    init<V : KvView>(of view: V, in context: KvHtmlRepresentationContext) {
+        var dataList = DataList()
 
-    // MARK: Fabrics
+        var fragment = view.htmlRepresentation(in: context)
 
-    static let empty = Self(bytes: .empty)
+        while let payload = fragment.dropFirst() {
+            switch payload {
+            case .data(let data):
+                dataList.append(.data(data))
 
+            case .dataBlock(let dataBlock):
+                dataList.append(.dataBlock(dataBlock))
 
+            case .dataList(let list):
+                dataList.append(.dataList(list))
 
-    // MARK: Merging
+            case .fragmentBlock(let fragmentBlock):
+                var nextFragment = fragmentBlock()
 
-    static func joined<S>(_ elements: S) -> Self
-    where S : Sequence, S.Element == Self {
-        var representation = KvHtmlRepresentation.empty
-
-        var iterator = elements.makeIterator()
-
-        while let r0 = iterator.next() {
-            guard let r1 = iterator.next() else {
-                representation = .joined(representation, r0)
-                break
+                nextFragment.append(fragment)
+                fragment = nextFragment
             }
-            guard let r2 = iterator.next() else {
-                representation = .joined(representation, r0, r1)
-                break
-            }
-            representation = .joined(representation, r0, r1, r2)
         }
 
-        return representation
+        self.dataList = dataList
     }
 
 
 
-    static func joined(_ i1: consuming Self,
-                       _ i2: consuming Self
-    ) -> Self {
-        let i1 = i1, i2 = i2
-        return .init(bytes: .joined(i1.bytes, i2.bytes), title: i1.title ?? i2.title)
-    }
-    
+    private let dataList: DataList
 
-    static func joined(_ i1: consuming Self,
-                       _ i2: consuming Self,
-                       _ i3: consuming Self
-    ) -> Self {
-        let i1 = i1, i2 = i2, i3 = i3
 
-        let bytes: KvHtmlBytes = .joined(i1.bytes, i2.bytes, i3.bytes)
-        let title: KvHtmlBytes? = i1.title ?? i2.title ?? i3.title
 
-        return .init(bytes: bytes, title: title)
-    }
-    
-    
-    static func joined(_ i1: consuming Self,
-                       _ i2: consuming Self,
-                       _ i3: consuming Self,
-                       _ i4: consuming Self
-    ) -> Self {
-        let i1 = i1, i2 = i2, i3 = i3, i4 = i4
+    // MARK: Operations
 
-        let bytes: KvHtmlBytes = .joined(i1.bytes, i2.bytes, i3.bytes, i4.bytes)
-        let title: KvHtmlBytes? = i1.title ?? i2.title ?? i3.title ?? i4.title
-
-        return .init(bytes: bytes, title: title)
+    func forEach(_ body: (Data) -> Void) {
+        dataList.forEach(body)
     }
 
 
 
-    // MARK: Transformations
+    // MARK: .Fragment
 
-    consuming func mapBytes(_ transform: (KvHtmlBytes) -> KvHtmlBytes) -> Self {
-        var copy = self
-        copy.bytes = transform(copy.bytes)
-        return copy
+    struct Fragment {
+
+        private var first: Node?
+        private var last: Node?
+
+
+        init() { }
+
+
+        init(_ payload: Payload) {
+            first = .init(with: payload)
+            last = first
+        }
+
+
+        init(_ string: String) { self.init(.string(string)) }
+
+
+        init(fragmentBlock: @escaping () -> Fragment) { self.init(.fragmentBlock(fragmentBlock)) }
+
+
+        init<S>(_ payload: S) where S : Sequence, S.Element == Payload {
+            payload.forEach { append($0) }
+        }
+
+
+        init(_ payload: Payload...) { self.init(payload) }
+
+
+        init<S>(_ payload: S) where S : Sequence, S.Element == Fragment {
+            payload.forEach { append($0) }
+        }
+
+
+        init(_ payload: Fragment...) {
+            payload.forEach { append($0) }
+        }
+
+
+        // MARK: Fabrics
+
+        static let empty = Fragment()
+
+
+        /// - Note: Assuming one of arguments are non-empty.
+        private static func tag(opening: consuming Payload, innerHTML: consuming Fragment?, closing: consuming Payload?) -> Fragment {
+            var fragment = Fragment(opening)
+            if let innerHTML {
+                fragment.append(innerHTML)
+            }
+            if let closing {
+                fragment.append(closing)
+            }
+            return fragment
+        }
+
+
+        static func tag<Attributes>(_ tag: KvHtmlKit.Tag,
+                                    css: KvHtmlKit.CssAttributes? = nil,
+                                    attributes: Attributes,
+                                    innerHTML: consuming Fragment? = nil
+        ) -> Fragment
+        where Attributes : Sequence, Attributes.Element == KvHtmlKit.Attribute
+        {
+            let hasContent = innerHTML != nil
+            let opening = tag.opening(css: css, attributes: attributes, hasContent: hasContent)
+            let closing = tag.closing(hasContent: hasContent)
+
+            return self.tag(opening: .string(opening), innerHTML: innerHTML, closing: closing.map(Payload.string(_:)))
+        }
+
+
+        static func tag<Attributes>(_ tag: KvHtmlKit.Tag,
+                                    css: @escaping () -> KvHtmlKit.CssAttributes? = { nil },
+                                    attributes: @escaping () -> Attributes = { [ ] },
+                                    innerHTML: consuming Fragment? = nil
+        ) -> Fragment
+        where Attributes : Sequence, Attributes.Element == KvHtmlKit.Attribute
+        {
+            let hasContent = innerHTML != nil
+            let opening = Payload.stringBlock { tag.opening(css: css(), attributes: attributes(), hasContent: hasContent) }
+            let closing = tag.closing(hasContent: hasContent)
+
+            return self.tag(opening: opening, innerHTML: innerHTML, closing: closing.map(Payload.string(_:)))
+        }
+
+
+        static func tag(_ tag: KvHtmlKit.Tag,
+                        css: KvHtmlKit.CssAttributes? = nil,
+                        attributes: KvHtmlKit.Attribute?...,
+                        innerHTML: consuming Fragment? = nil
+        ) -> Self {
+            self.tag(tag, css: css, attributes: attributes.lazy.compactMap { $0 }, innerHTML: innerHTML)
+        }
+
+
+        // MARK: .Payload
+
+        enum Payload : ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
+
+            case data(Data)
+            /// This case is used when the resulting data depends on fragments generated later.
+            case dataBlock(() -> Data)
+            case dataList(DataList)
+            /// This case is used to avoid recursion while traversing view hierarchies.
+            case fragmentBlock(() -> Fragment)
+
+
+            // MARK: Fabrics
+
+            static func dataList(_ representation: KvHtmlRepresentation) -> Payload { .dataList(representation.dataList) }
+
+
+            static func string(_ value: String) -> Payload { .data(value.data(using: .utf8)!) }
+
+
+            static func stringBlock(_ block: @escaping () -> String) -> Payload { .dataBlock { block().data(using: .utf8)! } }
+
+
+            // MARK: : ExpressibleByStringLiteral
+
+            init(stringLiteral value: StringLiteralType) { self = .data(value.data(using: .utf8)!) }
+
+        }
+
+
+        // MARK: .Node
+
+        private class Node {
+
+            let payload: Payload
+
+            var next: Node?
+
+
+            init(with payload: Payload) {
+                self.payload = payload
+            }
+
+        }
+
+
+        // MARK: Operations
+
+        var hasPayload: Bool { last != nil }
+
+
+        mutating func append(_ fragment: consuming Fragment) {
+            if fragment.last != nil {
+                switch last != nil {
+                case true:
+                    last!.next = fragment.first
+                case false:
+                    first = fragment.first
+                }
+                last = fragment.last
+            }
+        }
+
+
+        mutating private func append(_ payload: Payload) {
+            let node = Node(with: payload)
+
+            switch last != nil {
+            case true:
+                last!.next = node
+            case false:
+                first = node
+            }
+            last = node
+        }
+
+
+        mutating func append(_ data: Data) { append(.data(data)) }
+
+
+        mutating func dropFirst() -> Payload? {
+            guard last != nil else { return nil }
+
+            let payload = first!.payload
+
+            switch first === last {
+            case false:
+                first = first?.next
+                assert(first != nil)
+            case true:
+                first = nil
+                last = nil
+            }
+
+            return payload
+        }
+
     }
 
 
 
-    // MARK: Operators
+    // MARK: .DataList
 
-    static func +(lhs: consuming Self, rhs: consuming Self) -> Self { .joined(lhs, rhs) }
+    struct DataList {
+
+        init() { }
+
+
+        private var first, last: Node?
+
+
+        // MARK: .Payload
+
+        enum Payload {
+            case data(Data)
+            case dataBlock(() -> Data)
+            case dataList(DataList)
+        }
+
+
+        // MARK: .Node
+
+        fileprivate class Node {
+
+            /// - Note: It's a variable to provide lazy replacement of data blocks with the resulting data.
+            var payload: Payload
+            var next: Node?
+
+
+            init(with payload: Payload) {
+                self.payload = payload
+            }
+
+        }
+
+
+        // MARK: Operations
+
+        func forEach(_ body: (Data) -> Void) {
+            var next = first
+
+            while let node = next {
+                switch node.payload {
+                case .data(let data):
+                    body(data)
+
+                case .dataBlock(let block):
+                    let data = block()
+                    // Once data block is invoked, it's replaced with the resulting data.
+                    node.payload = .data(data)
+                    body(data)
+
+                case .dataList(let dataList):
+                    dataList.forEach(body)
+                }
+
+                next = node.next
+            }
+        }
+
+
+        mutating func append(_ payload: Payload) {
+            let node = Node(with: payload)
+
+            switch last != nil {
+            case true:
+                last!.next = node
+            case false:
+                first = node
+            }
+            last = node
+        }
+
+    }
 
 }
 
@@ -126,45 +359,53 @@ struct KvHtmlRepresentation {
 // MARK: - KvHtmlRepresentationContext
 
 // TODO: Review this class. Currently it's unintuitive and complicated, some methods produce side-effects.
-struct KvHtmlRepresentationContext {
+class KvHtmlRepresentationContext {
+
+    typealias EnvironmentNode = KvEnvironmentValues.Node
+
+
 
     let html: KvHtmlContext
 
-    private(set) var environment: KvEnvironmentValues
+    private(set) var environmentNode: EnvironmentNode?
 
     /// Context of current container.
     private(set) var containerAttributes: ContainerAttributes?
 
-    private(set) var viewConfiguration: KvViewConfiguration?
-
 
 
     private init(html: KvHtmlContext,
-                 environment: KvEnvironmentValues,
+                 environmentNode: EnvironmentNode?,
                  containerAttributes: ContainerAttributes?,
                  viewConfiguration: KvViewConfiguration?,
                  cssAttributes: KvHtmlKit.CssAttributes?
     ) {
         self.html = html
-        self.environment = environment
+        self.environmentNode = environmentNode
         self.containerAttributes = containerAttributes
         self.viewConfiguration = viewConfiguration
         self.cssAttributes = cssAttributes
     }
 
 
-    init(html: KvHtmlContext, viewConfiguration: KvViewConfiguration? = nil) {
-        self.init(html: html,
-                  environment: viewConfiguration?.environment ?? .init(),
-                  containerAttributes: nil,
-                  viewConfiguration: viewConfiguration,
-                  cssAttributes: nil)
-    }
 
-
+    /// Merged view configuration environments.
+    private var viewConfiguration: KvViewConfiguration?
 
     /// Attributes to apply to the synthesized representation.
     private var cssAttributes: KvHtmlKit.CssAttributes?
+
+
+
+    // MARK: Fabrics
+
+    static func root(html: KvHtmlContext, environment: KvEnvironmentValues? = nil) -> KvHtmlRepresentationContext {
+        .init(html: html,
+              environmentNode: environment.map(EnvironmentNode.init(_:)),
+              containerAttributes: nil,
+              viewConfiguration: environment?.viewConfiguration,
+              cssAttributes: nil)
+    }
 
 
 
@@ -178,7 +419,7 @@ struct KvHtmlRepresentationContext {
         /// It's used to add grid span style instruction to custom views.
         fileprivate var gridNeedsSpanNextRow: Bool = true
 
-        /// It's counted in child contexts retured by ``nextGridRow``. Then maximum of the resuling values is used by the grid's context.
+        /// It's counted in child contexts returned by ``nextGridRow``. Then maximum of the resulting values is used by the grid's context.
         private(set) var gridColumnCount: Int?
 
         fileprivate let gridColumnCounder: RaiiCounter<Int>?
@@ -206,7 +447,7 @@ struct KvHtmlRepresentationContext {
 
         // MARK: Fabrics
 
-        static func grid(_ alignmnet: KvAlignment?) -> Self { .init(layoutDirection: .horizontal, layoutAlignment: alignmnet, nextGridRow: 1) }
+        static func grid(_ alignment: KvAlignment?) -> Self { .init(layoutDirection: .horizontal, layoutAlignment: alignment, nextGridRow: 1) }
 
 
         static func stack(_ direction: KvLayoutDirection) -> Self { .init(layoutDirection: direction) }
@@ -254,7 +495,7 @@ struct KvHtmlRepresentationContext {
 
         // MARK: .RaiiCounter
 
-        /// Increases internal value when ``increase`` method is called and invokes the block with the result when deinitialized.
+        /// Increases internal value when ``increase`` method is called and invokes the block with the result when deinitiated.
         class RaiiCounter<T : Numeric> {
 
             init(_ initialValue: T, completion: @escaping (T) -> Void) {
@@ -296,105 +537,98 @@ struct KvHtmlRepresentationContext {
     // MARK: Operations
 
     func representation(
-        environment: KvEnvironmentValues? = nil,
         containerAttributes: ContainerAttributes? = nil,
         cssAttributes: KvHtmlKit.CssAttributes? = nil,
         options: Options = [ ],
-        _ body: (borrowing KvHtmlRepresentationContext, borrowing KvHtmlKit.CssAttributes?, borrowing KvViewConfiguration?) -> KvHtmlRepresentation
-    ) -> KvHtmlRepresentation {
-        // Here self.container is passed to apply it in the droped CSS.
+        _ body: (KvHtmlRepresentationContext, borrowing KvHtmlKit.CssAttributes?) -> KvHtmlRepresentation.Fragment
+    ) -> KvHtmlRepresentation.Fragment {
+        // Here `self.containerAttributes` is passed to apply it in the extracted CSS.
         var context = self.descendant(containerAttributes: self.containerAttributes)
 
         // TODO: Pass frame CSS to descendant context in come cases.
-        let needsContainer = !options.contains(.noContainer) && viewConfiguration?.container?.frame != nil
-        let containerCSS: KvHtmlKit.CssAttributes?
+        let needsContainer = !options.contains(.noContainer) && viewConfiguration?.frame != nil
+        let containerCSS: KvHtmlKit.CssAttributes?// = (consume needsContainer) ? context.extractCssAttributes() : nil
 
         switch consume needsContainer {
         case true:
-            containerCSS = context.dropCssAttributes()
+            containerCSS = context.extractCssAttributes()
 
-            context = context.descendant(environment: environment)
+            context = context.descendant()
 
         case false:
             containerCSS = nil
-
-            if let environment {
-                context.formUnion(environment: environment)
-            }
         }
 
-        var representation : KvHtmlRepresentation
+        var fragment : KvHtmlRepresentation.Fragment
         do {
-            let innerCSS = context.dropCssAttributes(mergedWith: cssAttributes)
+            let innerCSS = context.extractCssAttributes(mergedWith: cssAttributes)
 
             context.containerAttributes = containerAttributes
 
             // - NOTE: `self.viewConfiguration` is important.
-            representation = body(context, innerCSS, self.viewConfiguration)
+            fragment = body(context, innerCSS)
         }
 
         if let containerCSS {
-            representation = representation.mapBytes {
-                .tag(.div, css: containerCSS, innerHTML: $0)
-            }
+            fragment = .tag(.div, css: containerCSS, innerHTML: fragment)
         }
 
-        return representation
+        return fragment
     }
 
 
 
-    /// - Parameter environment: If provided then it's parent is set to the receiver's environment.
     /// - Parameter container: Context of container the resulting context is inside.
     /// - Parameter cssAttributes: Attributes to merge with the receiver's attributes.
     ///
     /// - Returns: New context with given values and optionally inherited values.
-    func descendant(environment: KvEnvironmentValues? = nil,
-                    containerAttributes: ContainerAttributes? = nil,
+    func descendant(containerAttributes: ContainerAttributes? = nil,
                     cssAttributes: KvHtmlKit.CssAttributes? = nil
-    ) -> Self {
-        var descendant = KvHtmlRepresentationContext(html: html,
-                                                     environment: self.environment,
-                                                     containerAttributes: containerAttributes,
-                                                     viewConfiguration: self.viewConfiguration,
-                                                     cssAttributes: self.cssAttributes)
+    ) -> KvHtmlRepresentationContext {
+        let cssAttributes = KvHtmlKit.CssAttributes.union(self.cssAttributes, cssAttributes)
 
-        if let environment = environment {
-            descendant.formUnion(environment: environment)
-        }
-        if let cssAttributes = cssAttributes {
-            descendant.formUnion(cssAttributes: cssAttributes)
-        }
-
-        return descendant
+        return .init(html: html,
+                     environmentNode: environmentNode,
+                     containerAttributes: containerAttributes,
+                     viewConfiguration: self.viewConfiguration,
+                     cssAttributes: cssAttributes)
     }
 
 
-    /// Prodcuces descendant context where CSS attribute contets are merged or replaced with with given *viewConfiguration* whether possible.
-    /// If it impossible to merge then replaced CSS atributes are writted into *droppedCssAttributes*.
+    /// If *environment* contains view configuration then
+    /// method produces descendant context where view configuration is merged or replaced with given value.
+    /// If it's impossible to merge then replaced view configuration is converted to CSS and the result is written into *extractedCssAttributes*.
     ///
     /// - Returns: The resulting context.
-    func descendant(viewConfiguration: KvViewConfiguration,
-                    droppedCssAttributes: inout KvHtmlKit.CssAttributes?
+    func descendant(environment: KvEnvironmentValues,
+                    extractedCssAttributes: inout KvHtmlKit.CssAttributes?
     ) -> KvHtmlRepresentationContext {
-        var descendant: KvHtmlRepresentationContext
+        let descendant: KvHtmlRepresentationContext
 
-        switch KvViewConfiguration.merged(viewConfiguration, over: self.viewConfiguration) {
-        case .merged(let mergeResult):
+        let environmentNode = EnvironmentNode(environment, parent: environmentNode)
+
+
+        func Descendant(_ viewConfiguration: KvViewConfiguration? = nil) -> KvHtmlRepresentationContext {
             // Container is passed to descendant in this case.
-            descendant = self.descendant(environment: viewConfiguration.environment,
-                                         containerAttributes: self.containerAttributes)
-            descendant.viewConfiguration = mergeResult
+            .init(html: html,
+                  environmentNode: environmentNode,
+                  containerAttributes: self.containerAttributes,
+                  viewConfiguration: viewConfiguration ?? self.viewConfiguration,
+                  cssAttributes: self.cssAttributes)
+        }
+
+
+        switch KvViewConfiguration.merged(environmentNode.values.viewConfiguration, over: self.viewConfiguration) {
+        case .merged(let mergeResult):
+            descendant = Descendant(mergeResult)
 
         case .incompatibility:
-            descendant = self
-            droppedCssAttributes = descendant.dropCssAttributes()
+            // The receiver is cloned to extract CSS then.
+            descendant = Descendant()
 
-            if let environment = viewConfiguration.environment {
-                descendant.formUnion(environment: environment)
-            }
+            extractedCssAttributes = descendant.extractCssAttributes()
 
-            descendant.viewConfiguration = viewConfiguration
+            descendant.viewConfiguration = environmentNode.values.viewConfiguration
             descendant.containerAttributes = nil
         }
 
@@ -407,11 +641,11 @@ struct KvHtmlRepresentationContext {
         containerAttributes?.gridNeedsSpanNextRow = false
 
         // Container context is passed to reset it later.
-        var context = self.descendant(containerAttributes: containerAttributes)
+        let context = self.descendant(containerAttributes: containerAttributes)
 
         // Container context is changed here.
         if let gridAttributes = context.gridCssAttributes(verticalAlignment) {
-            context.formUnion(cssAttributes: gridAttributes)
+            context.push(cssAttributes: gridAttributes)
         }
 
         return context
@@ -419,10 +653,11 @@ struct KvHtmlRepresentationContext {
 
 
 
-    /// - Returns: Extracted the receiver's CSS attributes optionaly merged with given *attributes*.
+    /// - Returns: Extracted the receiver's CSS attributes optionally merged with given *attributes*.
     ///
-    /// - Note: The receiver's contents related to CSS attributes are reset. So the method's name starts with "drop" as similar methods in stadard collections.
-    mutating func dropCssAttributes(mergedWith attributes: consuming KvHtmlKit.CssAttributes? = nil) -> KvHtmlKit.CssAttributes? {
+    /// - Note: The receiver's contents related to CSS attributes are reset.
+    /// - Important: Extraction of CSS has some side effects.
+    private func extractCssAttributes(mergedWith attributes: consuming KvHtmlKit.CssAttributes? = nil) -> KvHtmlKit.CssAttributes? {
         var cssAttributes = KvHtmlKit.CssAttributes.union(viewConfiguration?.cssAttributes(in: self), self.cssAttributes)
 
 
@@ -445,10 +680,10 @@ struct KvHtmlRepresentationContext {
     }
 
 
-    private mutating func gridCssAttributes(_ verticalAlignment: KvVerticalAlignment? = nil) -> KvHtmlKit.CssAttributes? {
+    private func gridCssAttributes(_ verticalAlignment: KvVerticalAlignment? = nil) -> KvHtmlKit.CssAttributes? {
         guard let container = containerAttributes else { return nil }
 
-        container.gridColumnCounder?.increase(viewConfiguration?.gridCell?.gridCellColumnSpan ?? 1)
+        container.gridColumnCounder?.increase(viewConfiguration?.gridCellColumnSpan ?? 1)
 
         guard let (rowContainerAttributes, rowIndex, spanFlag) = container.nextGridRow(verticalAlignment) else { return nil }
 
@@ -467,16 +702,13 @@ struct KvHtmlRepresentationContext {
     }
 
 
-    mutating func formUnion(environment: KvEnvironmentValues) {
-        guard environment !== self.environment else { return }
-
-        environment.parent = self.environment
-        self.environment = environment
+    func push(environment: KvEnvironmentValues) {
+        environmentNode = .init(environment, parent: environmentNode)
     }
 
 
     /// Merges given *cssAttributes* into the receiver's CSS attributes.
-    mutating func formUnion(cssAttributes: consuming KvHtmlKit.CssAttributes) {
+    private func push(cssAttributes: consuming KvHtmlKit.CssAttributes) {
         self.cssAttributes?.formUnion(cssAttributes)
         ?? (self.cssAttributes = cssAttributes)
     }

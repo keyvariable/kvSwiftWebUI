@@ -23,41 +23,20 @@
 //  Created by Svyatoslav Popov on 27.11.2023.
 //
 
-// MARK: Auxiliaries
-
-extension KvView {
-
-    /// - Parameter transform: Argument is always non-nil.
-    @inline(__always)
-    @usableFromInline
-    consuming func withModifiedGridCell(_ transform: (inout KvViewConfiguration.GridCell?) -> Void) -> some KvView {
-        modified { configuration in
-            if configuration.gridCell == nil {
-                configuration.gridCell = .init()
-            }
-            transform(&configuration.gridCell)
-            return nil
-        }
-    }
-
-}
-
-
-
 // MARK: Grid Layout Modifiers
 
 extension KvView {
 
     // TODO: DOC
     @inlinable
-    public consuming func gridColumnAlignment(_ alignment: KvHorizontalAlignment) -> some KvView { withModifiedGridCell {
+    public consuming func gridColumnAlignment(_ alignment: KvHorizontalAlignment) -> some KvView { mapConfiguration {
         $0!.gridColumnAlignment = alignment
     } }
 
 
     // TODO: DOC
     @inlinable
-    public consuming func gridCellColumns(_ count: Int) -> some KvView { withModifiedGridCell {
+    public consuming func gridCellColumns(_ count: Int) -> some KvView { mapConfiguration {
         $0!.gridCellColumnSpan = count
     } }
 

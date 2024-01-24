@@ -27,7 +27,7 @@ public typealias SourceCode = KvSourceCode
 
 
 
-// TODO: Integrate with a systax highlighter.
+// TODO: Integrate with a syntax highlighter.
 // TODO: DOC
 public struct KvSourceCode {
 
@@ -83,17 +83,13 @@ extension KvSourceCode : KvView {
 
 extension KvSourceCode : KvHtmlRenderable {
 
-    func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
-        context.representation(cssAttributes: .init(style: "overflow-x:scroll")) { context, cssAttributes, viewConfiguration in
-            KvText(verbatim: content)
+    func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
+        context.representation(cssAttributes: .init(style: "overflow-x:scroll")) { context, cssAttributes in
+            let fragment = KvText(verbatim: content)
                 .font(font ?? Defaults.font)
                 .htmlRepresentation(in: context)
-                .mapBytes {
-                    .tag(.div,
-                         css: cssAttributes,
-                         innerHTML: .tag(.pre, innerHTML: $0)
-                    )
-                }
+
+            return .tag(.div, css: cssAttributes, innerHTML: .tag(.pre, innerHTML: fragment))
         }
     }
 

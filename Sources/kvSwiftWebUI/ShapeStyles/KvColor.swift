@@ -119,10 +119,10 @@ public struct KvColor : KvShapeStyle, Hashable, ExpressibleByIntegerLiteral {
     public func eraseToAnyShapeStyle() -> KvAnyShapeStyle {
         .init(
             cssBackgroundStyle: { context, property in
-                return .joined(property ?? "background-color", cssBackgroundExpression(in: context), separator: ":")
+                "\(property ?? "background-color"):\(cssBackgroundExpression(in: context))"
             },
             cssForegroundStyle: { context, property in
-                return .joined(property ?? "color", cssExpression(in: context), separator: ":")
+                "\(property ?? "color"):\(cssExpression(in: context))"
             },
             backgroundColor: { self },
             bottomBackgroundColor: { self }
@@ -131,8 +131,8 @@ public struct KvColor : KvShapeStyle, Hashable, ExpressibleByIntegerLiteral {
 
 
     /// - Returns: Expression to be used as rvalue in CSS styles like `background: expr`.
-    func cssBackgroundExpression(in context: borrowing KvHtmlContext) -> KvHtmlBytes {
-        .from(context.cssExpression(for: self))
+    func cssBackgroundExpression(in context: borrowing KvHtmlContext) -> String {
+        context.cssExpression(for: self)
     }
 
 
@@ -140,8 +140,8 @@ public struct KvColor : KvShapeStyle, Hashable, ExpressibleByIntegerLiteral {
     // MARK: CSS
 
     /// - Returns: Expression to be used as rvalue in CSS styles like `color: expr`.
-    func cssExpression(in context: KvHtmlContext) -> KvHtmlBytes {
-        .from(context.cssExpression(for: self))
+    func cssExpression(in context: KvHtmlContext) -> String {
+        context.cssExpression(for: self)
     }
 
 
@@ -172,13 +172,16 @@ public struct KvColor : KvShapeStyle, Hashable, ExpressibleByIntegerLiteral {
 
         /// - Parameter hex: An integer in 0xRRGGBB format.
         ///
-        /// - Tip: Consider ``hex(_:alpha:))`` shorthand fabric and initialization from an integer literal..
+        /// - Tip: Consider ``hex(_:alpha:)`` shorthand fabric and initialization from an integer literal..
         @inlinable
         public init<I : BinaryInteger>(hex: I, alpha: Double? = nil) {
-            self.init(red: Double((hex >> 16) & 0xFF) * (1.0 / 255.0) as Double,
-                      green: Double((hex >> 8) & 0xFF) * (1.0 / 255.0) as Double,
-                      blue: Double(hex & 0xFF) * (1.0 / 255.0) as Double,
-                      alpha: alpha)
+            let mask: I = 0xFF
+            let scale: Double = 1.0 / 255.0
+
+            @inline(__always)
+            func Normalized(shift: Int) -> Double { Double((hex >> shift) & mask) * scale }
+
+            self.init(red: Normalized(shift: 16), green: Normalized(shift: 8), blue: Normalized(shift: 0), alpha: alpha)
         }
 
 
@@ -219,7 +222,8 @@ public struct KvColor : KvShapeStyle, Hashable, ExpressibleByIntegerLiteral {
 
             func UInt8Component(_ component: Double) -> UInt8 {
                 let clamped: Double = max(0.0 as Double, min(1.0 as Double, component))
-                return UInt8((clamped * 255.0).rounded())
+                let scaled: Double = (clamped * 255.0).rounded()
+                return UInt8(scaled)
             }
 
             return (red: UInt8Component(red), green: UInt8Component(green), blue: UInt8Component(blue), alpha.map(UInt8Component(_:)))
@@ -354,10 +358,10 @@ public struct KvColor : KvShapeStyle, Hashable, ExpressibleByIntegerLiteral {
 
 
 
-    // MARK: Auxliaries
+    // MARK: Auxiliaries
 
     // TODO: DOC
-    /// It's designated to calculate dark shades when only light shades of origin color are avaiable.
+    /// It's designated to calculate dark shades when only light shades of origin color are available.
     ///
     /// - Returns: A copy of the receiver where `nil` dark variant is replaced with calculated value. Otherwise exact copy of the receiver is returned.
     public consuming func inferDark(origin: sRGB, lightBackground: sRGB = 0xFFFFFF, darkBackground: sRGB = 0x000000) -> Self {
@@ -430,6 +434,8 @@ extension KvShapeStyle where Self == KvColor {
     @inlinable public static var clear: Self { .light(.hex(0xFFFFFF, alpha: 0), dark: .hex(0x000000, alpha: 0)) }
 
 
+    @inlinable public static var black: Self { 0x000000 }
+
     // TODO: DOC: context-dependent color.
     @inlinable public static var blue: Self { .light(0x007AFF, dark: 0x0A84FF) }
 
@@ -465,6 +471,8 @@ extension KvShapeStyle where Self == KvColor {
 
     // TODO: DOC: context-dependent color.
     @inlinable public static var teal: Self { .light(0x59ADC4, dark: 0x6AC4DC) }
+    
+    @inlinable public static var white: Self { 0xFFFFFF }
 
     // TODO: DOC: context-dependent color.
     @inlinable public static var yellow: Self { .light(0xFFCC00, dark: 0xFFD60A) }
@@ -479,7 +487,6 @@ extension KvShapeStyle where Self == KvColor {
     @inlinable public static var azure: Self { 0xF0FFFF }
     @inlinable public static var beige: Self { 0xF5F5DC }
     @inlinable public static var bisque: Self { 0xFFE4C4 }
-    @inlinable public static var black: Self { 0x000000 }
     @inlinable public static var blanchedAlmond: Self { 0xFFEBCD }
     @inlinable public static var blueViolet: Self { 0x8A2BE2 }
     @inlinable public static var burlyWood: Self { 0xDEB887 }
@@ -487,13 +494,12 @@ extension KvShapeStyle where Self == KvColor {
     @inlinable public static var chartreuse: Self { 0x7FFF00 }
     @inlinable public static var chocolate: Self { 0xD2691E }
     @inlinable public static var coral: Self { 0xFF7F50 }
-    @inlinable public static var cornflowerBlue: Self { 0xFF7F50 }
+    @inlinable public static var cornflowerBlue: Self { 0x6495ED }
     @inlinable public static var cornsilk: Self { 0xFFF8DC }
     @inlinable public static var crimson: Self { 0xDC143C }
     @inlinable public static var darkBlue: Self { 0x00008B }
     @inlinable public static var darkCyan: Self { 0x008B8B }
     @inlinable public static var darkGoldenrod: Self { 0xB8860B }
-    @inlinable public static var darkGray: Self { 0x555555 }
     @inlinable public static var darkGreen: Self { 0x006400 }
     @inlinable public static var darkKhaki: Self { 0xBDB76B }
     @inlinable public static var darkMagenta: Self { 0x8B008B }
@@ -533,7 +539,7 @@ extension KvShapeStyle where Self == KvColor {
     @inlinable public static var lightCoral: Self { 0xF08080 }
     @inlinable public static var lightCyan: Self { 0xE0FFFF }
     @inlinable public static var lightGoldenrodYellow: Self { 0xFAFAD2 }
-    @inlinable public static var lightGray: Self { 0xAAAAAA }
+    @inlinable public static var lightGray: Self { 0xD3D3D3 }
     @inlinable public static var lightGreen: Self { 0x90EE90 }
     @inlinable public static var lightPink: Self { 0xFFB6C1 }
     @inlinable public static var lightSalmon: Self { 0xFFA07A }
@@ -544,7 +550,7 @@ extension KvShapeStyle where Self == KvColor {
     @inlinable public static var lightYellow: Self { 0xFFFFE0 }
     @inlinable public static var lime: Self { 0x00FF00 }
     @inlinable public static var limeGreen: Self { 0x32CD32 }
-    @inlinable public static var linen: Self { 0x32CD32 }
+    @inlinable public static var linen: Self { 0xFAF0E6 }
     @inlinable public static var magenta: Self { 0xFF00FF }
     @inlinable public static var maroon: Self { 0x800000 }
     @inlinable public static var mediumAquamarine: Self { 0x66CDAA }
@@ -566,7 +572,7 @@ extension KvShapeStyle where Self == KvColor {
     @inlinable public static var olive: Self { 0x808000 }
     @inlinable public static var oliveDrab: Self { 0x6B8E23 }
     @inlinable public static var orangeRed: Self { 0xFF4500 }
-    @inlinable public static var orchid: Self { 0xFF4500 }
+    @inlinable public static var orchid: Self { 0xDA70D6 }
     @inlinable public static var paleGoldenrod: Self { 0xEEE8AA }
     @inlinable public static var paleGreen: Self { 0x98FB98 }
     @inlinable public static var paleTurquoise: Self { 0xAFEEEE }
@@ -598,12 +604,13 @@ extension KvShapeStyle where Self == KvColor {
     @inlinable public static var turquoise: Self { 0x40E0D0 }
     @inlinable public static var violet: Self { 0xEE82EE }
     @inlinable public static var wheat: Self { 0xF5DEB3 }
-    @inlinable public static var white: Self { 0xFFFFFF }
     @inlinable public static var whiteSmoke: Self { 0xF5F5F5 }
     @inlinable public static var yellowGreen: Self { 0x9ACD32 }
 
 
     // MARK: Non-standard Colors
+
+    @inlinable public static var darkGray: Self { 0x555555 }
 
     @inlinable public static var systemGray2: Self { .light(0xAEAEB2, dark: 0x636366) }
     @inlinable public static var systemGray3: Self { .light(0xC7C7CC, dark: 0x48484A) }

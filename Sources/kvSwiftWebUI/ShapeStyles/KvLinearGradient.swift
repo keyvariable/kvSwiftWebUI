@@ -158,10 +158,10 @@ public struct KvLinearGradient : KvShapeStyle, KvView {
 
         return .init(
             cssBackgroundStyle: { context, property in
-                return .joined(property ?? "background-image", cssBackgroundExpression(in: context), separator: ":")
+                "\(property ?? "background-image"):\(cssBackgroundExpression(in: context))"
             },
             cssForegroundStyle: { context, property in
-                return .joined(property ?? "color", .from(context.cssExpression(for: firstColor ?? .label)), separator: ":")
+                "\(property ?? "color"):\(context.cssExpression(for: firstColor ?? .label))"
             },
             backgroundColor: { firstColor },
             bottomBackgroundColor: { bottomColor }
@@ -178,7 +178,7 @@ public struct KvLinearGradient : KvShapeStyle, KvView {
 
     // MARK: CSS
 
-    func cssBackgroundExpression(in context: borrowing KvHtmlContext) -> KvHtmlBytes {
+    func cssBackgroundExpression(in context: KvHtmlContext) -> String {
         let cssStops = gradient.cssStops(in: context).map { ",\($0)" } ?? ""
 
         return "linear-gradient(\(axis.cssExpression)\(cssStops))"

@@ -37,17 +37,12 @@ final class KvHtmlKitTests : XCTestCase {
 
     func testAttributeValueEscaping() {
 
-        func Assert(_ input: KvHtmlBytes, expected: KvHtmlBytes) {
-            let result = KvHtmlKit.Escaping.attributeValue(input)
-
-            let resultString = String(data: result.accumulate().data, encoding: .utf8)!
-            let expectedString = String(data: expected.accumulate().data, encoding: .utf8)!
-
-            XCTAssertEqual(resultString, expectedString, "input: «\(String(data: input.accumulate().data, encoding: .utf8)!)»")
+        func Assert(_ input: String, expected: String) {
+            XCTAssertEqual(KvHtmlKit.Escaping.attributeValue(input), expected, "input: «\(input)»")
         }
 
         Assert("width: 100%", expected: "width: 100%")
-        Assert(.from(KvCssLength.percents(50).css), expected: "50%")
+        Assert(KvCssLength.percents(50).css, expected: "50%")
         Assert("font: \"Times New Roman\"", expected: "font: \\\"Times New Roman\\\"")
         Assert("\"a=\\\"a\\\"\"", expected: "\\\"a=\\\"a\\\"\\\"")
         Assert("new line\n\ttab", expected: "new line\n\ttab")

@@ -46,14 +46,9 @@ extension KvHtmlKit {
         // MARK: Operations
 
         /// - Returns: Escaped string to be used as inner content of an HTML tag.
-        static func innerText(_ string: String) -> KvHtmlBytes { .init { auxBuffers in
-            let stringIterator = KvHtmlBytes.stringIterator(string, auxBuffers)
-
-            return .init(stringIterator
-                .lazy.flatMap { (pointer, count) in IteratorSequence(InnerTextIterator(pointer, count)) }
-                .makeIterator()
-            )
-        } }
+        static func innerText(_ string: String) -> String {
+            IteratorSequence(InnerTextIterator(string)).joined()
+        }
 
 
         /// - Returns: A valid prefix of given *string* to be used as name of an HTML tag attribute. If entire *string* is valid then it is returned.
@@ -70,27 +65,24 @@ extension KvHtmlKit {
 
 
         /// - Returns: Escaped string to be used as value of an HTML tag attribute.
-        static func attributeValue(_ bytes: KvHtmlBytes) -> KvHtmlBytes { .init { auxBuffers in
-            var state: AttributeValueIterator.State = .normal()
-
-            return .init(bytes.makeIterator(auxBuffers)
-                .lazy.flatMap { element in IteratorSequence(AttributeValueIterator(element.pointer, element.count, state: &state)) }
-                .makeIterator())
-        } }
+        static func attributeValue(_ string: String) -> String {
+            IteratorSequence(AttributeValueIterator(string)).joined()
+        }
 
 
 
         // MARK: .InnerTextIterator
 
         // TODO: Unit-test.
+        /// Transforms UTF-8 bytes: replaces some characters with HTML equivalents, removes special characters.
         struct InnerTextIterator : IteratorProtocol {
 
-            init(_ baseAddress: UnsafeRawPointer, _ count: Int) {
-                buffer = .init(start: baseAddress, count: count)
+            init(_ string: String) {
+                self.substring = Substring(string)
             }
 
 
-            private var buffer: UnsafeRawBufferPointer
+            private var substring: Substring
 
             private var state: State = .normal
 
@@ -99,77 +91,68 @@ extension KvHtmlKit {
 
             private enum State {
                 case normal
-                case replacement(Replacement.Bytes)
+                case replacement(Element)
                 case end
             }
 
 
             // MARK: : IteratorProtocol
 
-            mutating func next() -> KvHtmlBytes.Element? {
+            mutating func next() -> Substring? {
                 while true {
                     switch state {
                     case .normal:
-                        guard let (count, newState) = buffer.enumerated()
-                            .lazy.compactMap({ (offset, c) -> (Int, State?)? in
-                                switch c {
-                                case 0x0A: (offset, .replacement(Replacement.x0A))
-                                case 0x22: (offset, .replacement(Replacement.x22))
-                                case 0x26: (offset, .replacement(Replacement.x26))
-                                case 0x27: (offset, .replacement(Replacement.x27))
-                                case 0x3C: (offset, .replacement(Replacement.x3C))
-                                case 0x3E: (offset, .replacement(Replacement.x3E))
-                                default: c >= 0x20 ? nil : (offset, nil)
-                                }
-                            }).first
-                        else {
-                            let count = buffer.count
-                            switch count > 0 {
-                            case true:
-                                state = .end
-                                return (buffer.baseAddress!, count)
+                        var nextState: State?
 
-                            case false:
-                                return nil
+                        let stopIndex = substring.firstIndex { c in
+                            switch c {
+                            case "\n":
+                                nextState = .replacement("<br>")
+                            case "\"":
+                                nextState = .replacement("&quot;")
+                            case "&":
+                                nextState = .replacement("&amp;")
+                            case "'":
+                                nextState = .replacement("&apos;")
+                            case "<":
+                                nextState = .replacement("&lt;")
+                            case ">":
+                                nextState = .replacement("&gt;")
+                            default:
+                                // Unexpected control characters are removed.
+                                guard c.asciiValue.map({ $0 < 0x20 }) == true else { return false }
+                                nextState = nil
                             }
+                            return true
+                        }
+
+                        guard let stopIndex else {
+                            state = .end
+                            guard !substring.isEmpty else { return nil }
+                            return substring
                         }
 
                         defer {
-                            state = newState ?? .normal
+                            state = nextState ?? .normal
 
-                            let offset = count + 1  // Step over normal characters and replaced character.
-                            buffer = .init(start: buffer.baseAddress!.advanced(by: offset), count: buffer.count - offset)
+                            // Step over normal characters and a replaced character.
+                            substring = substring[substring.index(after: stopIndex)...]
                         }
 
-                        if count > 0 {
-                            return (buffer.baseAddress!, count)
+                        if stopIndex != substring.startIndex {
+                            return substring[..<stopIndex]
                         }
 
-                    case .replacement(let replacementBytes):
+                        // Assuming state is .replacement at this point and it will be handled in next iteration.
+
+                    case .replacement(let replacement):
                         state = .normal
-                        return replacementBytes.withUnsafeBytes { ($0.baseAddress!, replacementBytes.count) }
+                        return replacement
 
                     case .end:
                         return nil
                     }
                 }
-            }
-
-
-            // MARK: .Replacement
-
-            private struct Replacement {
-
-                typealias Bytes = ContiguousArray<UInt8>
-
-                // - NOTE: Assuming Data literals are precompiled.
-
-                static let x0A: Bytes = [ 0x3C, 0x62, 0x72, 0x20, 0x2F, 0x3E ]  // "\n": "<br />"
-                static let x22: Bytes = [ 0x26, 0x71, 0x75, 0x6F, 0x74, 0x3B ]  // "\"": "&quot;"
-                static let x26: Bytes = [ 0x26, 0x61, 0x6D, 0x70, 0x3B ]        // "&" : "&amp;"
-                static let x27: Bytes = [ 0x26, 0x61, 0x70, 0x6F, 0x73, 0x3B ]  // "'" : "&apos;"
-                static let x3C: Bytes = [ 0x26, 0x6C, 0x74, 0x3B ]              // "<" : "&lt;"
-                static let x3E: Bytes = [ 0x26, 0x67, 0x74, 0x3B ]              // ">" : "&gt;"
             }
 
         }
@@ -179,117 +162,96 @@ extension KvHtmlKit {
         // MARK: .AttributeValueIterator
 
         // TODO: Unit-test.
+        /// Escapes unescaped double quotes and filters unexpected control characters.
         struct AttributeValueIterator : IteratorProtocol {
 
-            /// - Parameter state: State is external to handle sequences those are split between byte regions. Initialy it must be `.normal`.
-            init(_ baseAddress: UnsafeRawPointer, _ count: Int, state: UnsafeMutablePointer<State>) {
-                self.buffer = .init(start: baseAddress, count: count)
-                self.state = state
+            /// - Parameter state: State is external to handle sequences those are split between byte regions. Initially it must be `.normal`.
+            init(_ string: String) {
+                self.substring = Substring(string)
             }
 
 
-            private var buffer: UnsafeRawBufferPointer
+            private var substring: Substring
 
-            private var state: UnsafeMutablePointer<State>
+            private var state: State = .normal
 
 
             // MARK: .State
 
-            enum State {
-                case normal(acceptedCount: Int = 0)
-                case replacement(Replacement.Bytes)
-                /// - Parameter backslashFlag: A boolean value indicating wheter byte region is ended with backslash.
-                case end(backslashFlag: Bool)
+            private enum State {
+                case normal
+                case replacement(Element)
+                case end
             }
 
 
             // MARK: : IteratorProtocol
 
-            mutating func next() -> KvHtmlBytes.Element? {
+            mutating func next() -> Substring? {
                 while true {
-                    switch state.pointee {
-                    case .normal(acceptedCount: let acceptedCount):
+                    switch state {
+                    case .normal:
+                        var nextState: State?
+                        /// Number of characters to remove up to `endIndex`.
+                        var endInset: Int = 0
                         /// It's used in the cycle below to handle escaped characters.
                         var backslashFlag = false
 
-                        guard let (count, offset, newState) = buffer[acceptedCount...].enumerated()
-                            .lazy.compactMap({ (offset, c) -> (Int, Int, State?)? in
-                                switch backslashFlag {
-                                case false:
-                                    switch c {
-                                    case 0x09, 0x0A: return nil
-                                    case 0x22: return (offset, offset + 1, .replacement(Replacement.x22))
-                                    case 0x5C: backslashFlag = true
-                                    default: return c >= 0x20 ? nil : (offset, offset + 1, nil)
-                                    }
-
-                                case true:
-                                    backslashFlag = false
-                                    // Removing backslash and a control character.
-                                    guard c >= 0x20 else { return (offset - 1, offset + 1, nil) }
+                        let stopIndex = substring.firstIndex { c in
+                            switch backslashFlag {
+                            case false:
+                                switch c {
+                                case "\t", "\n":
+                                    return false
+                                case "\"":
+                                    nextState = .replacement("\\\"")
+                                case "\\":
+                                    backslashFlag = true
+                                    return false
+                                default:
+                                    // Unexpected control characters are removed.
+                                    guard c.asciiValue.map({ $0 < 0x20 }) == true else { return false }
+                                    nextState = nil
                                 }
-                                return nil
-                            }).first
-                        else {
-                            let count = { backslashFlag ? $0 - 1 : $0 }(buffer.count)
-                            state.pointee = .end(backslashFlag: backslashFlag)
 
-                            guard count > 0 else { return nil }
+                            case true:
+                                backslashFlag = false
+                                // Removing backslash and a control character.
+                                guard c.asciiValue.map({ $0 < 0x20 }) == true else { return false }
+                                (nextState, endInset) = (nil, 1)
+                            }
+                            return true
+                        }
 
-                            defer { buffer = .init(start: buffer.baseAddress!.advanced(by: buffer.count), count: 0) }
-                            return (buffer.baseAddress!, count)
+                        guard let stopIndex else {
+                            state = .end
+                            guard !substring.isEmpty else { return nil }
+                            return !backslashFlag ? substring : substring.dropLast()
                         }
 
                         defer {
-                            let offset = acceptedCount + offset
-                            state.pointee = newState ?? .normal()
+                            state = nextState ?? .normal
 
-                            buffer = .init(start: buffer.baseAddress!.advanced(by: offset), count: buffer.count - offset)
+                            // Step over normal characters and a replaced character.
+                            substring = substring[substring.index(after: stopIndex)...]
                         }
 
-                        if count > 0 {
-                            return (buffer.baseAddress!, count)
+                        let endIndex = endInset <= 0 ? stopIndex : substring.index(stopIndex, offsetBy: -endInset)
+
+                        if endIndex != substring.startIndex {
+                            return substring[..<endIndex]
                         }
 
-                    case .replacement(let replacementBytes):
-                        state.pointee = .normal()
-                        return replacementBytes.withUnsafeBytes { ($0.baseAddress!, replacementBytes.count) }
+                        // Assuming state is .replacement at this point and it will be handled in next iteration.
 
-                    case .end(backslashFlag: let backslashFlag):
-                        guard !buffer.isEmpty else { return nil }
+                    case .replacement(let replacement):
+                        state = .normal
+                        return replacement
 
-                        guard backslashFlag else {
-                            state.pointee = .normal()
-                            break
-                        }
-
-                        let c = buffer[0]
-                        buffer = .init(start: buffer.baseAddress!.successor(), count: buffer.count - 1)
-
-                        switch c >= 0x20 {
-                        case true:
-                            state.pointee = .normal(acceptedCount: 1)
-                            let backslash = Replacement.x5C
-                            return backslash.withUnsafeBytes { ($0.baseAddress!, backslash.count) }
-
-                        case false:
-                            state.pointee = .normal()
-                        }
+                    case .end:
+                        return nil
                     }
                 }
-            }
-
-
-            // MARK: .Replacement
-
-            struct Replacement {
-
-                typealias Bytes = ContiguousArray<UInt8>
-
-                // - NOTE: Assuming Data literals are precompiled.
-
-                fileprivate static let x22: Bytes = [ 0x5C, 0x22 ]  // "\"" -> "\\\""
-                fileprivate static let x5C: Bytes = [ 0x5C ]        // Pseudoreplacement is used at the junction of two segments.
             }
 
         }
@@ -317,8 +279,10 @@ extension KvHtmlKit {
         case p
         case pre
         case span
+        case style
         case sub
         case sup
+        case title
 
         case raw(_ name: String, _ properties: Properties)
 
@@ -355,8 +319,10 @@ extension KvHtmlKit {
             case .p: "p"
             case .pre: "pre"
             case .span: "span"
+            case .style: "style"
             case .sub: "sub"
             case .sup: "sup"
+            case .title: "title"
 
             case .raw(let name, _): name
             }
@@ -364,10 +330,71 @@ extension KvHtmlKit {
 
         var properties: Properties {
             switch self {
-            case .a, .body, .div, .h1, .h2, .h3, .h4, .h5, .h6, .p, .pre, .span, .sub, .sup: .requiresEndingTag
+            case .a, .body, .div, .h1, .h2, .h3, .h4, .h5, .h6, .p, .pre, .span, .style, .sub, .sup, .title: .requiresEndingTag
             case .br, .img, .link, .meta: [ ]
             case .raw(_, let properties): properties
             }
+        }
+
+
+        /// - Important: The result can contain trailing slash.
+        ///
+        /// - SeeAlso: ``closing()``.
+        func opening<Attributes>(css: CssAttributes? = nil, attributes: Attributes, hasContent: Bool) -> String
+        where Attributes : Sequence, Attributes.Element == Attribute
+        {
+            // TODO: Review performance and memory consumption.
+            let attributes: String = [
+                attributes.lazy.map({ $0.html }).joined(separator: " "),
+                css?.classAttribute?.html,
+                css?.styleAttribute?.html,
+            ]
+                .compactMap { entry -> String? in
+                    guard let entry, !entry.isEmpty else { return nil }
+                    return entry
+                }
+                .joined(separator: " ")
+
+            let name = name
+            var openingTag = name
+            if !attributes.isEmpty {
+                openingTag += " \(attributes)"
+            }
+
+            return hasContent || properties.contains(.requiresEndingTag) ? "<\(openingTag)>" : "<\(openingTag)/>"
+        }
+
+
+        /// - Important: The result can contain trailing slash.
+        ///
+        /// - SeeAlso: ``closing()``.
+        func opening(css: CssAttributes? = nil, attributes: Attribute?..., hasContent: Bool) -> String {
+            opening(css: css, attributes: attributes.lazy.compactMap { $0 }, hasContent: hasContent)
+        }
+
+
+        func closing(hasContent: Bool) -> String? {
+            hasContent || properties.contains(.requiresEndingTag) ? "</\(name)>" : nil
+        }
+
+
+        func html<Attributes>(css: CssAttributes? = nil, attributes: Attributes, innerHTML: String? = nil) -> String
+        where Attributes : Sequence, Attributes.Element == Attribute
+        {
+            let hasContent = innerHTML != nil
+            let opening = self.opening(css: css, attributes: attributes, hasContent: hasContent)
+
+            return switch closing(hasContent: hasContent) {
+            case .some(let closing):
+                "\(opening)\(innerHTML!)\(closing)"
+            case .none:
+                opening
+            }
+        }
+
+
+        func html(css: CssAttributes? = nil, attributes: Attribute?..., innerHTML: String? = nil) -> String {
+            html(css: css, attributes: attributes.lazy.compactMap { $0 }, innerHTML: innerHTML)
         }
 
     }
@@ -384,16 +411,16 @@ extension KvHtmlKit {
     enum Attribute : Hashable {
 
         case `class`(AnySequence<String>)
-        case content(KvHtmlBytes)
-        case href(KvHtmlBytes)
-        case linkRel(KvHtmlBytes)
-        case media(KvHtmlBytes)
-        case name(KvHtmlBytes)
-        case src(KvHtmlBytes)
-        case style(KvHtmlBytes)
+        case content(String)
+        case href(String)
+        case linkRel(String)
+        case media(String)
+        case name(String)
+        case src(String)
+        case style(String)
         case type(KvHttpContentType)
 
-        case raw(name: String, value: KvHtmlBytes?)
+        case raw(name: String, value: String?)
 
 
         // MARK: Fabrics
@@ -402,22 +429,22 @@ extension KvHtmlKit {
 
 
         static func href(_ uri: String, relativeTo basePath: KvUrlPath?) -> Self {
-            .href(KvHtmlBytes.from(Attribute.uri(uri, relativeTo: basePath)))
+            .href(Attribute.uri(uri, relativeTo: basePath))
         }
 
         static func href(_ url: URL) -> Self {
-            .href(KvHtmlBytes.from(url.absoluteString))
+            .href(url.absoluteString)
         }
 
 
         static func media(colorScheme: String) -> Self { .media("(prefers-color-scheme:\(colorScheme))") }
 
 
-        static func raw(_ name: String, _ value: KvHtmlBytes?) -> Self { .raw(name: name, value: value) }
+        static func raw(_ name: String, _ value: String?) -> Self { .raw(name: name, value: value) }
 
 
         static func src(_ uri: String, relativeTo basePath: KvUrlPath?) -> Self {
-            .src(KvHtmlBytes.from(Attribute.uri(uri, relativeTo: basePath)))
+            .src(Attribute.uri(uri, relativeTo: basePath))
         }
 
 
@@ -435,26 +462,23 @@ extension KvHtmlKit {
 
         // MARK: HTML
 
-        var htmlBytes: KvHtmlBytes {
-            let name = htmlName
-
-            let value: KvHtmlBytes? = switch self {
+        var html: String {
+            let value: String? = switch self {
             case .class(let names):
-                .joined(names.lazy.map { .from($0) }, separator: " ")
+                names.joined(separator: " ")
             case .content(let value), .href(let value), .linkRel(let value), .media(let value), .name(let value), .src(let value), .style(let value):
                 value
             case .raw(_, let value):
                 value
-            case .type(let contentType): .from(contentType.value)
+            case .type(let contentType):
+                contentType.value
             }
 
-            let nameBytes: KvHtmlBytes = .from(KvHtmlKit.Escaping.attributeName(name))
-
-            switch value {
+            return switch value {
             case .some(let valueBytes):
-                return .joined(nameBytes, "=\"", KvHtmlKit.Escaping.attributeValue(valueBytes), "\"")
+                "\(htmlName)=\"\(KvHtmlKit.Escaping.attributeValue(valueBytes))\""
             case .none:
-                return nameBytes
+                htmlName
             }
         }
 
@@ -467,7 +491,7 @@ extension KvHtmlKit {
             case .linkRel(_): "rel"
             case .media(_): "media"
             case .name(_): "name"
-            case .raw(let name, _): name
+            case .raw(let name, _): String(KvHtmlKit.Escaping.attributeName(name))
             case .src(_): "src"
             case .style(_): "style"
             case .type(_): "type"
@@ -504,34 +528,33 @@ extension KvHtmlKit {
     struct CssAttributes {
 
         private(set) var classes: Set<String>
-        private(set) var style: KvHtmlBytes?
+        private(set) var styles: [String]?
 
 
-        init(classes: Set<String>, style: KvHtmlBytes? = nil) {
+        init(classes: Set<String> = [ ], styles: [String]? = nil) {
             self.classes = classes
-            self.style = style
+            self.styles = styles
         }
 
 
-        init(classes: String?..., style: KvHtmlBytes? = nil) {
+        init(classes: Set<String> = [ ], style: String) {
+            self.init(classes: classes, styles: [ style ])
+        }
+
+
+        init(classes: Set<String>, style: String?) {
+            self.init(classes: classes, styles: style.map { [ $0 ] })
+        }
+
+
+        init(classes: String?..., style: String? = nil) {
             self.init(classes: .init(classes.lazy.compactMap { $0 }), style: style)
         }
 
 
-        init(classes: String?..., styles: KvHtmlBytes?...) { self.init(
-            classes: .init(classes.lazy.compactMap { $0 }),
-            style: (styles.contains(where: { $0 != nil })
-                    ? .joined(styles.lazy.compactMap { $0 }, separator: ";")
-                    : nil)
-        ) }
-
-
-        // TODO: Single pass verification and concatenation of styles.
         init(classes: String?..., styles: String?...) { self.init(
             classes: .init(classes.lazy.compactMap { $0 }),
-            style: (styles.contains(where: { $0?.isEmpty == false })
-                    ? .joined(styles.lazy.compactMap { $0.map(KvHtmlBytes.from) }, separator: ";")
-                    : nil)
+            styles: styles.lazy.compactMap({ $0 })
         ) }
 
 
@@ -551,7 +574,7 @@ extension KvHtmlKit {
 
         // MARK: Operations
 
-        var isEmpty: Bool { classes.isEmpty && style == nil }
+        var isEmpty: Bool { classes.isEmpty && styles?.isEmpty != false }
 
 
         var classAttribute: Attribute? {
@@ -559,7 +582,11 @@ extension KvHtmlKit {
         }
 
         var styleAttribute: Attribute? {
-            style.map(Attribute.style(_:))
+            guard let style = styles?.joined(separator: ";"),
+                  !style.isEmpty
+            else { return nil }
+
+            return .style(style)
         }
 
 
@@ -570,41 +597,35 @@ extension KvHtmlKit {
 
         mutating func formUnion(_ rhs: Self) {
             classes.formUnion(rhs.classes)
-            style = switch (style, rhs.style) {
+
+            styles = switch (styles, rhs.styles) {
             case (.none, .none):
                 nil
             case (.some(let lhs), .some(let rhs)):
-                .joined(lhs, rhs, separator: ";")
+                lhs + rhs
             case (.some(let style), .none), (.none, .some(let style)):
                 style
             }
         }
 
 
-        mutating func append(style: KvHtmlBytes) {
-            switch self.style {
-            case .some(let oldStyle):
-                self.style = .joined(oldStyle, style, separator: ";")
-            case .none:
-                self.style = style
-            }
+        mutating func append(style: String) {
+            styles?.append(style) ?? (styles = [ style ])
         }
 
 
-        mutating func append<S>(styles: S) where S : Sequence, S.Element == KvHtmlBytes {
-            switch self.style {
-            case .some(let oldStyle):
-                self.style = .joined(oldStyle, .joined(styles, separator: ";"), separator: ";")
-            case .none:
-                self.style = .joined(styles, separator: ";")
-            }
+        mutating func append(style: String?) {
+            guard let style else { return }
+            append(style: style)
         }
 
 
-        mutating func append(styles: KvHtmlBytes?...) { append(styles: styles.lazy.compactMap { $0 }) }
+        mutating func append<S>(styles: S) where S : Sequence, S.Element == String {
+            self.styles?.append(contentsOf: styles) ?? (self.styles = Array(styles))
+        }
 
 
-        mutating func append(styles: String?...) { append(styles: styles.lazy.compactMap { $0.map(KvHtmlBytes.from(_:)) }) }
+        mutating func append(styles: String?...) { append(styles: styles.lazy.compactMap { $0 }) }
 
     }
 

@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 //
-//  Copyright (c) 2023 Svyatoslav Popov (info@keyvar.com).
+//  Copyright (c) 2024 Svyatoslav Popov (info@keyvar.com).
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 //  License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
@@ -17,33 +17,32 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  RegularSection.swift
-//  Samples-kvSwiftWebUI
+//  KvContainerViewModifierTests.swift
+//  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 23.11.2023.
+//  Created by Svyatoslav Popov on 23.01.2024.
 //
 
-import kvCssKit
-import kvSwiftWebUI
+import XCTest
+
+@testable import kvSwiftWebUI
 
 
 
-struct RegularSection<Content : View> : View {
+final class KvContainerViewModifierTests : XCTestCase {
 
-    let content: Content
+    // MARK: .testBackgroundAndPaddingOrder()
 
+    func testBackgroundAndPaddingOrder() {
+        XCTAssertEqual(
+            KvTextKit.renderHTML(for: Text("1").padding(.em(2)).background(0xAABBCC as KvColor)),
+            "<p style=\"background-color:#AABBCC;padding:2em\">1</p>"
+        )
 
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
-
-
-    var body: some View {
-        content
-            .padding(FrontendView.Constants.rootPadding)
-            .frame(width: min(.vw(100), FrontendView.Constants.maximumRegularWidth), alignment: .leading)
-            .background(.systemBackground)
-            .frame(width: .vw(100))
+        XCTAssertEqual(
+            KvTextKit.renderHTML(for: Text("1").background(0xAABBCC as KvColor).padding(.em(2))),
+            "<div style=\"padding:2em\"><p style=\"background-color:#AABBCC\">1</p></div>"
+        )
     }
 
 }

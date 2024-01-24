@@ -66,7 +66,7 @@ where Content : KvView
 
 extension KvHStack : KvHtmlRenderable {
 
-    func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
+    func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
         context.representation(
             containerAttributes: .stack(.horizontal),
             cssAttributes: .init(
@@ -75,10 +75,10 @@ extension KvHStack : KvHtmlRenderable {
                 context.html.cssFlexClass(for: alignment, as: .crossItems),
                 style: "column-gap:\((spacing ?? KvDefaults.hStackSpacing).css)"
             )
-        ) { context, cssAttributes, viewConfiguration in
-            content
-                .htmlRepresentation(in: context)
-                .mapBytes { .tag(.div, css: cssAttributes, innerHTML: $0) }
+        ) { context, cssAttributes in
+            let fragment = content.htmlRepresentation(in: context)
+
+            return .tag(.div, css: cssAttributes, innerHTML: fragment)
         }
     }
 

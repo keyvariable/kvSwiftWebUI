@@ -33,12 +33,53 @@ import kvKit
 
 class KvHtmlContext {
 
-    private(set) var headers: [KvHtmlBytes] = .init()
+    typealias NavigationDestinations = KvViewConfiguration.NavigationDestinations
 
 
-    private var _resources: Set<KvHtmlResource> = .init()
 
-    private var generatedCSS: GeneratedCSS = .init()
+    let assets: KvHtmlBundleAssets
+
+    private(set) var cssAsset: KvCssAsset
+
+
+    let rootPath: KvUrlPath?
+    let navigationPath: KvNavigationPath
+
+    /// Joined `.rootPath` and `.navigationPath.urlPath`.
+    private(set) lazy var absolutePath: KvUrlPath = { urlPath in
+        rootPath.map { $0 + urlPath } ?? urlPath
+    }(navigationPath.urlPath)
+
+
+    /// First non-nil navigation title.
+    private(set) var navigationTitle: KvText?
+    /// All declared destinations.
+    private(set) var navigationDestinations: NavigationDestinations?
+
+    /// First non-nil background style.
+    private(set) var backgroundStyle: KvAnyShapeStyle?
+
+
+
+    init(_ assets: KvHtmlBundleAssets,
+         cssAsset: KvCssAsset,
+         rootPath: KvUrlPath?,
+         navigationPath: KvNavigationPath,
+         extraHeaders: [String]? = nil
+    ) {
+        self.assets = assets
+        self.cssAsset = cssAsset
+        self.rootPath = rootPath
+        self.navigationPath = navigationPath
+        self.extraHeaders = extraHeaders ?? [ ]
+    }
+
+
+
+    private var extraHeaders: [String]
+
+    // TODO: Use ordered set
+    private var resourceLinks: Set<KvHtmlResource.HtmlLink> = .init()
 
     private var gFonts: GFonts = .init()
 
@@ -46,220 +87,71 @@ class KvHtmlContext {
 
     // MARK: Operations
 
-    func insert(headers: KvHtmlBytes) {
-        self.headers.append(headers)
+    /// All HTML headers registered in the receiver.
+    var headers: String {
+        var headers: String = resourceLinks
+            .sorted(by: { $0.uri < $1.uri })
+            .lazy.map { $0.html(basePath: self.rootPath) }
+            .joined()
+
+        if !cssAsset.isEmpty {
+            headers.append(KvHtmlKit.Tag.style.html(innerHTML: cssAsset.css))
+        }
+
+        headers.append(gFonts.resourceLinks)
+        headers.append(extraHeaders.joined())
+
+        return headers
     }
 
 
-    func resources() -> AnySequence<KvHtmlResource> {
-        .init([
-            AnySequence(_resources.sorted(by: { $0.uri < $1.uri })),
-            gFonts.resources
-        ].joined())
+    /// - Warning: The replacement must contain all declarations from the receiver's `.cssAsset` and the replacement must be registered in `.assets`.
+    ///
+    /// This method is designed to cache CSS.
+    func unsafeReplaceCssAsset(with prototype: KvCssAsset.Prototype) {
+        cssAsset = .init(parent: prototype)
+    }
+
+
+    func insert(headers: [String]) {
+        self.extraHeaders.append(contentsOf: headers)
     }
 
 
     func insert(_ resource: KvHtmlResource) {
-        _resources.insert(resource)
+        assets.insert(resource)
+
+        if let htmlLink = resource.htmlLink {
+            resourceLinks.insert(htmlLink)
+        }
     }
 
 
     func insert<S>(_ resources: S) where S : Sequence, S.Element == KvHtmlResource {
-        _resources.formUnion(resources)
+        resources.forEach(self.insert(_:))
     }
 
 
-    /// - Note: It's used to insert resources expricitely.
-    func insert(_ cssAsset: KvCssAsset) {
+    /// - Note: It's used to insert resources explicitly.
+    func insert(_ cssAsset: KvCssAsset.Prototype) {
         insert(cssAsset.resource)
     }
 
 
-    private func insert(_ cssDeclaration: CssDeclaration) {
-        switch cssDeclaration {
-        case .asset(let cssAsset):
-            insert(cssAsset)
+    private func insert(_ cssEntry: KvCssAsset.Entry) {
+        let cssResource = cssAsset.insert(cssEntry)?.resource
 
-        case .generated(let entry):
-            _resources.insert(KvCssAsset.Resource.generated({ self.generatedCSS.bytes }))
-            generatedCSS.insert(entry)
+        // If the resource is returned then `cssEntry` has already been inserted.
+        if let cssResource {
+            insert(cssResource)
         }
     }
 
 
-
-    // MARK: .CssDeclaration
-
-    enum CssDeclaration {
-
-        /// Value is declared in an asset.
-        case asset(KvCssAsset)
-
-        case generated(GeneratedCssEntry)
-
-    }
-
-
-
-    // MARK: .GeneratedCssEntry
-
-    struct GeneratedCssEntry {
-
-        /// `Nil` means global scope.
-        let selector: String?
-        /// Identifier used to filter duplicates and provide the same CSS for the same declarations.
-        let id: ID
-        let `default`: () -> String
-        /// - Parameter dark: Optional CSS code producing value in dark environment.
-        let dark: (() -> String)?
-
-
-        init(selector: String?, id: ID, default: @escaping () -> String, dark: (() -> String)? = nil) {
-            self.selector = selector
-            self.id = id
-            self.default = `default`
-            self.dark = dark
-        }
-
-
-        // MARK: .ID
-
-        enum ID : Hashable, Comparable {
-
-            case color(id: String)
-            case flexClasses
-            case fontResource(name: String, key: KvFontResource.Face.Key)
-
-
-            // MARK: : Comparable
-
-            private var groupOrderKey: GroupOrderKey {
-                switch self {
-                case .color(_): .color
-                case .flexClasses: .flexClasses
-                case .fontResource(_, _): .font
-                }
-            }
-
-
-            static func <(lhs: Self, rhs: Self) -> Bool {
-                switch lhs {
-                case .color(let lhs):
-                    guard case .color(let rhs) = rhs else { return GroupOrderKey.color < rhs.groupOrderKey }
-                    return lhs < rhs
-
-                case .flexClasses:
-                    return lhs.groupOrderKey < rhs.groupOrderKey
-
-                case .fontResource(name: let lName, key: let lKey):
-                    guard case .fontResource(name: let rName, key: let rKey) = rhs else { return GroupOrderKey.color < rhs.groupOrderKey }
-
-                    switch lName.compare(rName) {
-                    case .orderedAscending: return true
-                    case .orderedDescending: return false
-                    case .orderedSame: break
-                    }
-
-                    if lKey.weight < rKey.weight { return true }
-                    else if rKey.weight < lKey.weight { return false }
-
-                    return !lKey.isItalic && rKey.isItalic // false is 0, true is 1
-                }
-            }
-
-
-            // MARK: .GroupOrderKey
-
-            private enum GroupOrderKey: UInt, Comparable {
-
-                case color
-                case flexClasses
-                case font
-
-                // MARK: : Comparable
-
-                static func <(lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
-
-            }
-
-        }
-
-    }
-
-
-
-    // MARK: .GeneratedCSS
-
-    private struct GeneratedCSS {
-
-        /// [Selector : [ID : CSS]].
-        /// - Note: Empty key means global scope.
-        private typealias Container = [String : [GeneratedCssEntry.ID : String]]
-
-
-        private var `default`: Container = .init()
-        private var dark: Container = .init()
-
-
-        // MARK: Operations
-
-        var isEmpty: Bool { `default`.isEmpty && dark.isEmpty }
-
-
-        var bytes: KvHtmlBytes { .joined(
-            GeneratedCSS.bytes(of: `default`),
-            GeneratedCSS.bytes(of: dark, mediaQuery: "@media(prefers-color-scheme: dark)")
-        ) }
-
-
-        /// - Parameter environment: E.g. "@media (prefers-color-scheme: dark) {" including "{".
-        private static func bytes(of container: Container, mediaQuery: String? = nil) -> KvHtmlBytes {
-            guard !container.isEmpty else { return .empty }
-
-            return .joined(container.lazy.map { selector, declarations in
-                return .joined(declarations.values.lazy.map(KvHtmlBytes.from(_:)))
-                    .wrap {
-                        switch !selector.isEmpty {
-                        case true: .joined(.from(selector), "{", $0, "}")
-                        case false: $0
-                        }
-                    }
-            })
-            .wrap {
-                switch mediaQuery {
-                case .none: $0
-                case .some(let mediaQuery): .joined(.from(mediaQuery), "{", $0, "}")
-                }
-            }
-        }
-
-
-        mutating func insert(_ entry: GeneratedCssEntry) {
-            GeneratedCSS.insert(entry.default, into: &`default`, selector: entry.selector, id: entry.id)
-
-            if let declaration = entry.dark {
-                GeneratedCSS.insert(declaration, into: &dark, selector: entry.selector, id: entry.id)
-            }
-        }
-
-
-        private static func insert(_ cssProvider: () -> String, into container: inout Container, selector: String?, id: GeneratedCssEntry.ID) {
-            _ = { scope -> Void in
-                let declaration = scope[id]
-
-                guard declaration == nil else {
-                    assert(declaration! == cssProvider(), "Attempt to replace CSS `\(declaration!)` with `\(cssProvider())` with «\(id)» ID for «\(selector ?? "`nil`")» selector")
-                    return
-                }
-
-                let css = cssProvider()
-
-                guard !css.isEmpty else { return }
-
-                scope[id] = css
-            }(&container[selector ?? "", default: .init()])
-        }
-
+    func processViewConfiguration(_ viewConfiguration: borrowing KvViewConfiguration) {
+        navigationTitle = navigationTitle ?? viewConfiguration.navigationTitle
+        navigationDestinations = .merged(navigationDestinations, viewConfiguration.navigationDestinations)
+        backgroundStyle = backgroundStyle ?? viewConfiguration.background?.eraseToAnyShapeStyle()
     }
 
 }
@@ -297,14 +189,10 @@ extension KvHtmlContext {
 
 
     private func cssFlexClass(_ base: FlexClassBase, _ flexAlignment: FlexAlignment) -> String {
-        let declaration: CssDeclaration = .generated(.init(
-            selector: nil,
+        insert(KvCssAsset.Entry(
             id: .flexClasses,
-            default: KvHtmlContext.cssFlexClasses,
-            dark: nil
+            default: KvHtmlContext.cssFlexClasses
         ))
-
-        insert(declaration)
 
         return "\(flexAlignment.cssClassPrefix)\(base.rawValue)"
     }
@@ -380,12 +268,10 @@ extension KvHtmlContext {
 extension KvHtmlContext {
 
     func cssExpression(for color: KvColor) -> String {
-        let declaration: CssDeclaration?
         let expression: String
 
         switch color.dark {
         case .none:
-            declaration = nil
             expression = ColorKit.cssExpression(color.light, opacity: color.opacity)
 
         case .some(let dark):
@@ -393,7 +279,7 @@ extension KvHtmlContext {
 
             let needsAlpha = color.light.alpha != nil || dark.alpha != nil
 
-            declaration = .generated(.init(
+            insert(KvCssAsset.Entry(
                 selector: ":root",
                 id: .color(id: id),
                 default: { ColorKit.cssDeclaration(of: color.light, forceAlpha: needsAlpha, id: id) },
@@ -403,10 +289,6 @@ extension KvHtmlContext {
             expression = ColorKit.cssExpression(id: id,
                                                 opacity: color.opacity,
                                                 options: needsAlpha ? .useAplhaVariable : [ ])
-        }
-
-        if let declaration {
-            insert(declaration)
         }
 
         return expression
@@ -522,23 +404,33 @@ extension KvHtmlContext {
                         let (cssFontFaceSource, htmlResource) = FontResourceKit.processSource(source)
                         // - NOTE: SIDE EFFECT: font resource is inserted here.
                         if let htmlResource {
-                            self._resources.insert(htmlResource)
+                            self.insert(htmlResource)
                         }
                         return cssFontFaceSource
                     }
                     .joined(separator: ",")
 
-                insert(.generated(.init(
-                    selector: nil,
+                insert(KvCssAsset.Entry(
                     id: .fontResource(name: resource.name, key: faceKey),
                     default: { "@font-face{font-family:\"\(resource.name)\";src:\(cssSources);font-weight:\(faceKey.weight.cssValue);font-style:\(faceKey.isItalic ? "italic" : "normal");}" }
-                )))
+                ))
             }
 
             familyID = "'\(resource.name)'"
 
         case .system(let design):
-            familyID = design.cssFamilyID
+            let cssAsset: KvCssAsset.Prototype?
+
+            (familyID, cssAsset) = switch design {
+            case .default: ("system-ui", nil)
+            case .monospaced: ("var(--ui-monospace)", .foundation)
+            case .rounded: ("var(--ui-rounded)", .foundation)
+            case .serif: ("var(--ui-serif)", .foundation)
+            }
+
+            if let cssAsset {
+                insert(cssAsset)
+            }
         }
 
         let lineHeight: String = font.leading.map { "/\($0.cssLineHeight)" } ?? ""
@@ -582,20 +474,24 @@ extension KvHtmlContext {
 
         // MARK: Operations
 
-        /// Sequence of URIs of the required fonts.
-        var resources: AnySequence<KvHtmlResource> {
+        /// Sequence of HTML link tags to the required fonts.
+        var resourceLinks: String {
             var urlComponents = URLComponents(string: "https://fonts.googleapis.com/css2")!
 
-            return .init(elements.lazy.map { family, query in
-                let tuples = query
-                    .sorted()
-                    .lazy.map { "\($0.italic ? "1" : "0"),\($0.weight)" }
-                    .joined(separator: ";")
+            return elements
+                .lazy.compactMap { family, query in
+                    let tuples = query
+                        .sorted()
+                        .lazy.map { "\($0.italic ? "1" : "0"),\($0.weight)" }
+                        .joined(separator: ";")
 
-                urlComponents.queryItems = [ .init(name: "family", value: "\(family):ital,wght@\(tuples)") ]
+                    urlComponents.queryItems = [ .init(name: "family", value: "\(family):ital,wght@\(tuples)") ]
 
-                return .css(uri: urlComponents.url!.absoluteString)
-            })
+                    return KvHtmlResource.css(.external(urlComponents.url!))
+                        .htmlLink?
+                        .html(basePath: nil) // URLs to external resources are not resolved against base URL.
+                }
+                .joined()
         }
 
 
@@ -626,7 +522,7 @@ extension KvHtmlContext {
 
                 // - NOTE: Assuming path .. leads to the bundle's root.
                 return (cssFontFaceSource: "url(\"../\(uri)\")\(format?.css ?? "")",
-                        htmlResource: .init(content: .url(url), contentType: contentType, uri: uri))
+                        htmlResource: .init(content: .local(.url(url), .init(path: uri)), contentType: contentType))
             }
         }
 
@@ -660,7 +556,7 @@ extension KvHtmlContext {
             guard let uri = FileKit.uri(forFileAt: url, relativeTo: "img/", preserveExtension: true)
             else { return KvDebug.pause(code: "error://", "Failed to access image at «\(url)» URL") }
 
-            _resources.insert(.init(content: .url(url), contentType: .from(url), uri: uri))
+            insert(.init(content: .local(.url(url), .init(path: uri)), contentType: .from(url)))
 
             return uri
         }

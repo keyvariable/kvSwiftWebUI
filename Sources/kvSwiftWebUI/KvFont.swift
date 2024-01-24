@@ -161,22 +161,10 @@ public struct KvFont : Equatable {
     // MARK: .Design
 
     public enum Design : Hashable {
-
         case `default`
         case monospaced
         case rounded
         case serif
-
-
-        var cssFamilyID: String {
-            switch self {
-            case .default: "system-ui"
-            case .monospaced: "ui-monospace"
-            case .rounded: "ui-rounded"
-            case .serif: "ui-serif"
-            }
-        }
-
     }
 
 
@@ -389,7 +377,7 @@ public struct KvFont : Equatable {
 
 
     /// - Returns: "font: ..."
-    func cssStyle(in context: KvHtmlContext) -> KvHtmlBytes {
+    func cssStyle(in context: KvHtmlContext) -> String {
         "font:\(context.cssExpression(for: self))"
     }
 

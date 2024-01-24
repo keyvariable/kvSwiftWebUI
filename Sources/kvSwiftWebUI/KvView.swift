@@ -27,10 +27,29 @@ public typealias View = KvView
 
 
 
-// TODO: DOC
+/// A protocol all views have to conform to.
+///
+/// Below is a simple example with large text and default padding:
+///
+/// ```swift
+/// struct HelloWorldView : View {
+///     var body: some View {
+///         Text("Hello World!")
+///             .font(.system(.largeTitle))
+///             .padding()
+///     }
+/// }
+/// ```
+///
+/// - Note: Usually there are typealiases without prefix. For example, ``KvView`` is available as ``View``, ``KvText`` is available as ``Text``.
+///
+/// As in SwiftUI there are basic views like ``Text``, ``Image``, ``Link``, layout views like ``HStack``, ``VStack``, ``Grid``, etc.
+/// Also there are various view modifiers like ``KvView/font(_:)``, ``KvView/padding(_:)-5ybsj``.
+///
+/// Views just declare user interface. Use ``KvHtmlBundle`` to generate HTML responses.
 public protocol KvView {
 
-    /// It's inferred from your implementation of the required property ``KvView/body-swift.property``.
+    /// It's inferred from implementation of the required property ``KvView/body-swift.property``.
     associatedtype Body : KvView
 
 
@@ -46,45 +65,47 @@ public protocol KvView {
 
 extension KvView {
 
-    func htmlRepresentation(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
-        typealias RepresentationProvider = KvHtmlRepresentationModifiers.RepresentationProvider
+    func htmlRepresentation(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
+        .init {
+            typealias RepresentationProvider = KvHtmlRepresentationModifiers.RepresentationProvider
+            
+            let makeInitialRepresentation: RepresentationProvider = { context in
+                // Providing source to environment bindings.
+                self.forEachEnvironmentBinding { $0.source = context.environmentNode }
 
-        let makeInitialRepresentation: RepresentationProvider = { context in
-            // Providing source to environment bindings.
-            self.forEachEnvironmentBinding { $0.source = context.environment }
-
-            return switch self {
-            case let modifiedView as KvModifiedView:
-                modifiedView.htmlRepresentation(in: context)
-            case let htmlRenderable as KvHtmlRenderable:
-                htmlRenderable.renderHTML(in: context)
-            default:
-                self.body.htmlRepresentation(in: context)
-            }
-        }
-
-        let sourceEnvironment = context.environment
-
-        let provider: RepresentationProvider
-        do {
-            var accumulator = makeInitialRepresentation
-
-            self.forEachEnvironmentBinding { binding in
-                switch binding.keyPath {
-                case \.horizontalSizeClass:
-                    // If size class is provided then no modifications required.
-                    guard sourceEnvironment.horizontalSizeClass == nil else { break }
-
-                    accumulator = KvHtmlRepresentationModifiers.automaticSizeClass(base: accumulator)
-
-                default: break
+                return switch self {
+                case let modifiedView as KvModifiedView:
+                    modifiedView.htmlRepresentation(in: context)
+                case let htmlRenderable as KvHtmlRenderable:
+                    htmlRenderable.renderHTML(in: context)
+                default:
+                    self.body.htmlRepresentation(in: context)
                 }
             }
-
-            provider = accumulator
+            
+            let sourceEnvironment = context.environmentNode
+            
+            let provider: RepresentationProvider
+            do {
+                var accumulator = makeInitialRepresentation
+                
+                self.forEachEnvironmentBinding { binding in
+                    switch binding.keyPath {
+                    case \.horizontalSizeClass:
+                        // If size class is provided then no modifications required.
+                        guard sourceEnvironment?.values.horizontalSizeClass == nil else { break }
+                        
+                        accumulator = KvHtmlRepresentationModifiers.automaticSizeClass(base: accumulator)
+                        
+                    default: break
+                    }
+                }
+                
+                provider = accumulator
+            }
+            
+            return provider(context)
         }
-
-        return provider(context)
     }
 
 
@@ -105,23 +126,22 @@ extension KvView {
 
 fileprivate struct KvHtmlRepresentationModifiers { private init() { }
 
-    typealias RepresentationProvider = (borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation
+    typealias RepresentationProvider = (KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment
 
 
 
     static func automaticSizeClass(base baseProvider: @escaping RepresentationProvider) -> RepresentationProvider {
         return { context in
-            // Separate container for injected values preventing change of the source containers.
-            let envValues = KvEnvironmentValues()
-
             assert(!KvUserInterfaceSizeClass.allCases.isEmpty)
 
-            return .joined(KvUserInterfaceSizeClass.allCases.lazy.map {
-                envValues.horizontalSizeClass = $0
+            return .init(KvUserInterfaceSizeClass.allCases.lazy.map { horizontalSizeClass in
+                let context = context.descendant(
+                    containerAttributes: context.containerAttributes,    // Preserving container context.
+                    cssAttributes: .init(classes: horizontalSizeClass.cssHorizontalClass)
+                )
+                context.push(environment: .init { $0.horizontalSizeClass = horizontalSizeClass })
 
-                return baseProvider(context.descendant(environment: envValues,
-                                                       containerAttributes: context.containerAttributes,    // Preserving container context.
-                                                       cssAttributes: .init(classes: $0.cssHorizontalClass)))
+                return baseProvider(context)
             })
         }
     }

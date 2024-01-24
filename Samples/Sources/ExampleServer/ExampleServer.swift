@@ -31,10 +31,18 @@ import kvServerKit
 
 
 
+/// HTTP server based on [kvServerKit](https://github.com/keyvariable/kvServerKit.swift.git) framework.
+/// Also it's used as the application entry point.
+///
+/// - Note: Generally any server can be used.
 @main
 struct ExampleServer : KvServer {
 
-    private let frontendBundle = try! KvHtmlBundle(rootView: { FrontendView() })
+    /// An HTML bundle generated from ``RootView``.
+    ///
+    /// HTML bundle manages HTML representations of view hierarchy and the assets and provides HTML responses via `KvHtmlBundle.response(at:)` method.
+    /// For example, HTML response of the root view is returned for empty path, response of purple color view is returned for `colors/purple` path.
+    private let frontendBundle = try! KvHtmlBundle(rootView: { RootView() })
 
 
     // MARK: : KvServer
@@ -42,8 +50,13 @@ struct ExampleServer : KvServer {
     var body: some KvResponseRootGroup {
         let ssl = try! ssl
 
+        /// This declaration means that server uses HTTP/2.0 with self-signed certificate
+        /// and listens for connections on all available IP-addresses on 8080 port.
         KvGroup(http: .v2(ssl: ssl), at: Host.current().addresses, on: [ 8080 ]) {
+            /// Contents of this group are responded on GET and HEAD requests.
             KvGroup(httpMethods: .get) {
+                /// This declaration is an HTTP response at the root path with contents of *frontendBundle*.
+                /// The subpath is equal to whole URL path due to response is declared at the root.
                 KvHttpResponse.with
                     .subpathFlatMap { .unwrapping(frontendBundle.response(at: $0)) }
                     .content { input in input.subpath }

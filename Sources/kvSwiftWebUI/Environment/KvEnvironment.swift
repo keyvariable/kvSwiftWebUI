@@ -29,11 +29,12 @@ public typealias Environment = KvEnvironment
 
 // MARK: - KvEnvironmentProtocol
 
+/// This protocol is used to enumerate properties with ``KvEnvironment`` wrapper.
 protocol KvEnvironmentProtocol : AnyObject {
 
     var keyPath: PartialKeyPath<KvEnvironmentValues> { get }
 
-    var source: KvEnvironmentValues! { get set }
+    var source: KvEnvironmentValues.Node! { get set }
 
 }
 
@@ -47,22 +48,19 @@ public class KvEnvironment<Value> : KvEnvironmentProtocol {
 
     let keyPath: PartialKeyPath<KvEnvironmentValues>
 
-    @usableFromInline
-    weak var source: KvEnvironmentValues!
+    weak var source: KvEnvironmentValues.Node!
 
-    @usableFromInline
-    let valueGetter: (borrowing KvEnvironmentValues) -> Value?
+    let valueGetter: (borrowing KvEnvironmentValues.Node) -> Value
 
 
 
     public init(_ keyPath: KeyPath<KvEnvironmentValues, Value>) {
         self.keyPath = keyPath
-        valueGetter = { $0[keyPath: keyPath] }
+        valueGetter = { $0.values[keyPath: keyPath] }
     }
 
 
 
-    @inlinable
-    public var wrappedValue: Value { valueGetter(source)! }
+    public var wrappedValue: Value { valueGetter(source) }
 
 }

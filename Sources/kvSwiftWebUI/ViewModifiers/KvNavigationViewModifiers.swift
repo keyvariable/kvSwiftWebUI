@@ -23,51 +23,226 @@
 //  Created by Svyatoslav Popov on 21.11.2023.
 //
 
-// MARK: Auxiliaries
-
-extension KvView {
-
-    /// - Parameter transform: Argument is always non-nil.
-    @inline(__always)
-    @usableFromInline
-    consuming func withModifiedNavigation(_ transform: (inout KvViewConfiguration.Navigation?) -> Void) -> some KvView {
-        modified { configuration in
-            if configuration.navigation == nil {
-                configuration.navigation = .init()
-            }
-            transform(&configuration.navigation)
-            return nil
-        }
-    }
-
-}
-
-
-
 // MARK: Navigation Modifiers
 
 extension KvView {
 
     // TODO: stringgen function
-    // TODO: DOC
+    /// This modifier provides title for navigation bars and the window title.
+    /// If several views declare navigation title in a navigation destination then the first title is used and others are ignored.
     @inlinable
-    public consuming func navigationTitle(_ titleKey: KvLocalizedStringKey) -> some KvView { withModifiedNavigation {
+    public consuming func navigationTitle(_ titleKey: KvLocalizedStringKey) -> some KvView { mapConfiguration {
         // TODO: I18n
-        $0!.title = KvText(titleKey)
+        $0!.navigationTitle = KvText(titleKey)
     } }
 
 
-    // TODO: DOC
+    /// This modifier provides title for navigation bars and the window title.
+    /// If several views declare navigation title in a navigation destination then the first title is used and others are ignored.
     @inlinable
-    public consuming func navigationTitle(_ title: String) -> some KvView { withModifiedNavigation {
-        $0!.title = KvText(verbatim: title)
+    public consuming func navigationTitle(_ title: String) -> some KvView { mapConfiguration {
+        $0!.navigationTitle = KvText(verbatim: title)
     } }
 
 
-    // TODO: DOC
+    /// This modifier provides title for navigation bars and the window title.
+    /// If several views declare navigation title in a navigation destination then the first title is used and others are ignored.
     @inlinable
-    public consuming func navigationTitle(_ title: KvText) -> some KvView { withModifiedNavigation {
-        $0!.title = title
+    public consuming func navigationTitle(_ title: KvText) -> some KvView { mapConfiguration {
+        $0!.navigationTitle = title
     } }
+
+
+    
+    @usableFromInline
+    consuming func navigationDestination<S, C>(staticData: S = [ ], destinationProvider: @escaping (String) -> (view: C, value: Any)?) -> some KvView
+    where S : Sequence, S.Element == String, C : KvView
+    {
+        mapConfiguration {
+            $0!.appendNavigationDestinations(staticData: staticData, destinationProvider: destinationProvider)
+        }
+    }
+
+
+    /// This modifier provides a view on next navigation level.
+    ///
+    /// Simple example:
+    /// ```swift
+    /// enum Pet : String, CaseIterable { case cat, dog }
+    ///
+    /// VStack {
+    ///     ForEach(Pet.allCases, id: \.self) { pet in
+    ///         NavigationLink(pet.rawValue, value: pet)
+    ///     }
+    /// }
+    /// .navigationDestination(for: Pet.self) { pet in
+    ///     switch pet {
+    ///     case .cat: CatView()
+    ///     case .dog: DogView()
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Any type conforming to `LosslessStringConvertible` or `RawRepresentable` having `LosslessStringConvertible` raw value can be used. For example:
+    /// ```swift
+    /// SomeView()
+    ///     .navigationDestination(for: Int.self) { value in
+    ///         Text("\(value) as Int")
+    ///     }
+    /// ```
+    ///
+    /// Current navigation path is available in the environment:
+    /// ```swift
+    /// @Environment(\.navigationPath) private var navigationPath
+    /// ```
+    ///
+    /// - Tip: If `D` type conforms to `CaseIterable` protocol then navigation destinations are preprocessed and requests are handled faster.
+    ///
+    /// - SeeAlso: ``NavigationLink``, ``NavigationPath``.
+    public consuming func navigationDestination<D, Content>(for data: D.Type, @KvViewBuilder destination: @escaping (D) -> Content) -> some KvView
+    where D : LosslessStringConvertible, Content : KvView
+    {
+        navigationDestination { data in D(data).map { value in
+            (destination(value), value: value)
+        } }
+    }
+
+
+    /// This modifier provides a view on next navigation level.
+    ///
+    /// Simple example:
+    /// ```swift
+    /// enum Pet : String, CaseIterable { case cat, dog }
+    ///
+    /// VStack {
+    ///     ForEach(Pet.allCases, id: \.self) { pet in
+    ///         NavigationLink(pet.rawValue, value: pet)
+    ///     }
+    /// }
+    /// .navigationDestination(for: Pet.self) { pet in
+    ///     switch pet {
+    ///     case .cat: CatView()
+    ///     case .dog: DogView()
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Any type conforming to `LosslessStringConvertible` or `RawRepresentable` having `LosslessStringConvertible` raw value can be used. For example:
+    /// ```swift
+    /// SomeView()
+    ///     .navigationDestination(for: Int.self) { value in
+    ///         Text("\(value) as Int")
+    ///     }
+    /// ```
+    ///
+    /// Current navigation path is available in the environment:
+    /// ```swift
+    /// @Environment(\.navigationPath) private var navigationPath
+    /// ```
+    ///
+    /// - Tip: If `D` type conforms to `CaseIterable` protocol then navigation destinations are preprocessed and requests are handled faster.
+    ///
+    /// - SeeAlso: ``NavigationLink``, ``NavigationPath``.
+    public consuming func navigationDestination<D, Content>(for data: D.Type, @KvViewBuilder destination: @escaping (D) -> Content) -> some KvView
+    where D : CaseIterable, D : LosslessStringConvertible, Content : KvView
+    {
+        navigationDestination(
+            staticData: data.allCases.lazy.map { $0.description },
+            destinationProvider: { data in D(data).map { value in
+                (destination(value), value: value)
+            } }
+        )
+    }
+
+
+    /// This modifier provides a view on next navigation level.
+    ///
+    /// Simple example:
+    /// ```swift
+    /// enum Pet : String, CaseIterable { case cat, dog }
+    ///
+    /// VStack {
+    ///     ForEach(Pet.allCases, id: \.self) { pet in
+    ///         NavigationLink(pet.rawValue, value: pet)
+    ///     }
+    /// }
+    /// .navigationDestination(for: Pet.self) { pet in
+    ///     switch pet {
+    ///     case .cat: CatView()
+    ///     case .dog: DogView()
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Any type conforming to `LosslessStringConvertible` or `RawRepresentable` having `LosslessStringConvertible` raw value can be used. For example:
+    /// ```swift
+    /// SomeView()
+    ///     .navigationDestination(for: Int.self) { value in
+    ///         Text("\(value) as Int")
+    ///     }
+    /// ```
+    ///
+    /// Current navigation path is available in the environment:
+    /// ```swift
+    /// @Environment(\.navigationPath) private var navigationPath
+    /// ```
+    ///
+    /// - Tip: If `D` type conforms to `CaseIterable` protocol then navigation destinations are preprocessed and requests are handled faster.
+    ///
+    /// - SeeAlso: ``NavigationLink``, ``NavigationPath``.
+    public consuming func navigationDestination<D, Content>(for data: D.Type, @KvViewBuilder destination: @escaping (D) -> Content) -> some KvView
+    where D : RawRepresentable, D.RawValue : LosslessStringConvertible, Content : KvView
+    {
+        navigationDestination { data in D.RawValue(data).flatMap(D.init(rawValue:)).map { value in
+            (destination(value), value: value)
+        } }
+    }
+
+
+    /// This modifier provides a view on next navigation level.
+    ///
+    /// Simple example:
+    /// ```swift
+    /// enum Pet : String, CaseIterable { case cat, dog }
+    ///
+    /// VStack {
+    ///     ForEach(Pet.allCases, id: \.self) { pet in
+    ///         NavigationLink(pet.rawValue, value: pet)
+    ///     }
+    /// }
+    /// .navigationDestination(for: Pet.self) { pet in
+    ///     switch pet {
+    ///     case .cat: CatView()
+    ///     case .dog: DogView()
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Any type conforming to `LosslessStringConvertible` or `RawRepresentable` having `LosslessStringConvertible` raw value can be used. For example:
+    /// ```swift
+    /// SomeView()
+    ///     .navigationDestination(for: Int.self) { value in
+    ///         Text("\(value) as Int")
+    ///     }
+    /// ```
+    ///
+    /// Current navigation path is available in the environment:
+    /// ```swift
+    /// @Environment(\.navigationPath) private var navigationPath
+    /// ```
+    ///
+    /// - Tip: If `D` type conforms to `CaseIterable` protocol then navigation destinations are preprocessed and requests are handled faster.
+    ///
+    /// - SeeAlso: ``NavigationLink``, ``NavigationPath``.
+    public consuming func navigationDestination<D, Content>(for data: D.Type, @KvViewBuilder destination: @escaping (D) -> Content) -> some KvView
+    where D : CaseIterable, D : RawRepresentable, D.RawValue : LosslessStringConvertible, Content : KvView
+    {
+        navigationDestination(
+            staticData: data.allCases.lazy.map { $0.rawValue.description },
+            destinationProvider: { data in D.RawValue(data).flatMap(D.init(rawValue:)).map { value in
+                (destination(value), value: value)
+            } }
+        )
+    }
 
 }

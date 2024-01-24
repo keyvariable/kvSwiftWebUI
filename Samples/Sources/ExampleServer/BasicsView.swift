@@ -17,7 +17,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  FrontendView.swift
+//  BasicsView.swift
 //  Samples-kvSwiftWebUI
 //
 //  Created by Svyatoslav Popov on 30.10.2023.
@@ -30,56 +30,28 @@ import kvSwiftWebUI
 
 
 
-struct FrontendView : View {
-
-    struct Constants {
-
-        static let rootPadding: KvCssLength = .vw(1) + .vh(1)
-        static let maximumRegularWidth: KvCssLength = 1024
-
-        static let rootBackground = Color.light(0x483D8B, dark: 0x211C40)
-
-    }
-
-
-
-    // MARK: : View
+/// A view containing small examples of working with views and view modifiers.
+///
+/// Note the way large and complex hierarchy of views is split to structures, methods and calculated properties.
+struct BasicsView : View {
 
     var body: some View {
-        VStack(spacing: 0) {
-            FullWidthSection {
-                VStack(spacing: .em(1.35)) {
-                    Text("\"ExampleServer\" Sample")
-                        .font(.largeTitle)
-
-                    Text("ExampleServer is a sample server application with simple HTML frontend on kvSwiftWebUI framework served with backend on kvServerKit framework.")
-                        .frame(maxWidth: min(.vw(100), Constants.maximumRegularWidth) - 2 * Constants.rootPadding)
-                }
-                .padding(.vertical, .em(2))
-            }
-            .foregroundStyle(.white)
-            .background(Constants.rootBackground)
-
-            RegularSection {
-                VStack(alignment: .leading, spacing: .em(2)) {
-                    appearanceSection
-                    layoutSection
-                    imageSection
-                    textSection
-                    environmentSection
-                }
-            }
-            .background(.secondarySystemBackground)
+        Page(title: Text("The Basics"),
+             subtitle: Text("Various examples of the basic functionality."),
+             sourceFilePath: "BasicsView.swift"
+        ) {
+            appearanceSection
+            layoutSection
+            imageSection
+            textSection
+            environmentSection
         }
-        /// It's for browsers extensing pages to provide scroll bouncing.
-        /// The background matches the title background so the title looks infinite in upward direction.
-        .background(Constants.rootBackground)
     }
 
 
     private var appearanceSection: some View {
-        Self.section1(header: Text("Appearance")) {
-            Self.section2(header: Text("Colors")) {
+        Section1(header: Text("Appearance")) {
+            Section2(header: Text("Colors")) {
                 Text("Coral on indigo")
                     .foregroundStyle(.coral)
                     .background(.indigo)
@@ -90,40 +62,38 @@ struct FrontendView : View {
                     .background(Color(0xBE38F3))
             }
 
-            Self.section2(header: Text("Gradients")) {
-                VStack {
-                    let width: KvCssLength = 120
-                    let height: KvCssLength = 48
+            Section2(header: Text("Gradients")) {
+                let width: KvCssLength = 120
+                let height: KvCssLength = 48
 
-                    ForEach([ LinearGradient.Anchor.trailing, .bottom, .bottomLeading ], id: \.self) {
-                        LinearGradient(colors: [ .violet, .indigo ], endPoint: $0)
-                            .frame(width: width, height: height)
-                    }
-
-                    LinearGradient(gradient: .init(colors: [ .indigo, .violet ]), axis: .angle(0.1 * .pi))
+                ForEach([ LinearGradient.Anchor.trailing, .bottom, .bottomLeading ], id: \.self) {
+                    LinearGradient(colors: [ .violet, .cyan, .indigo ], endPoint: $0)
                         .frame(width: width, height: height)
-
-                    LinearGradient(stops: [ .init(color: .violet, location: 0.50),
-                                            .init(color: .blue, location: 0.65),
-                                            .init(color: .cyan, location: 0.65),
-                                            .init(color: .indigo, location: 0.80) ],
-                                   endPoint: .trailing)
-                    .frame(width: width, height: height)
                 }
+
+                LinearGradient(gradient: .init(colors: [ .indigo, .cyan, .violet ]), axis: .angle(0.1 * .pi))
+                    .frame(width: width, height: height)
+
+                LinearGradient(stops: [ .init(color: .violet, location: 0.50),
+                                        .init(color: .blue, location: 0.65),
+                                        .init(color: .cyan, location: 0.65),
+                                        .init(color: .indigo, location: 0.80) ],
+                               endPoint: .trailing)
+                .frame(width: width, height: height)
             }
 
-            Self.section2(header: Text("Fonts")) {
+            Section2(header: Text("Fonts")) {
                 Text(".headline")
                     .font(.headline)
                 Text(".system(size: 20, weight: .ultraLight)")
                     .font(.system(size: 20, weight: .ultraLight))
                 Text(".system(.body, design: .monospaced)")
                     .font(.system(.body, design: .monospaced))
-                Text(".custom(\"Montserrat Alternates\", fixedSize: 15)")
-                    .font(.custom("Montserrat Alternates", fixedSize: 15))
+                Text(".custom(\"Jura\", fixedSize: 15)")
+                    .font(.custom("Jura", fixedSize: 15))
             }
 
-            Self.section2(header: Text("Clip Shapes")) {
+            Section2(header: Text("Clip Shapes")) {
                 clipShapeTemplateView { Text("RoundedRectangle") }
                     .clipShape(.rect(cornerRadius: .em(0.6)))
 
@@ -149,16 +119,16 @@ struct FrontendView : View {
 
 
     private var layoutSection: some View {
-        Self.section1(header: Text("Layout")) {
-            Self.section2(header: Text("Frame and Padding")) {
-                Text(".padding().background(.systemGray4)")
+        Section1(header: Text("Layout")) {
+            Section2(header: Text("Frame and Padding")) {
+                Text(".padding(16).background(.systemGray4)")
                     .font(.system(.caption, design: .monospaced))
-                    .padding()
+                    .padding(16)
                     .background(.systemGray4)
-                Text(".background(.systemGray4).padding()")
+                Text(".background(.systemGray4).padding(16)")
                     .font(.system(.caption, design: .monospaced))
                     .background(.systemGray4)
-                    .padding()
+                    .padding(16)
                 Text("Text")
                     .font(.system(.caption, design: .monospaced))
                     .padding(.horizontal, 16).padding(.vertical, 4)
@@ -171,13 +141,13 @@ struct FrontendView : View {
                     .background(.systemGray4)
             }
 
-            Self.section2(header: Text("HStack")) {
+            Section2(header: Text("HStack")) {
                 ForEach([ VerticalAlignment.center, .top, .bottom, .firstTextBaseline, .lastTextBaseline ], id: \.self) {
                     HStackDemoView(alignment: $0)
                 }
             }
 
-            Self.section2(header: Text("ZStack")) {
+            Section2(header: Text("ZStack")) {
                 ZStack {
                     HStack {
                         Color.green
@@ -202,7 +172,7 @@ struct FrontendView : View {
                 }
             }
 
-            Self.section2(header: Text("Grid")) {
+            Section2(header: Text("Grid")) {
                 Grid {
                     GridRow {
                         ForEach(0..<3) { column in Text(verbatim: "(1, \(column))") }
@@ -240,14 +210,14 @@ struct FrontendView : View {
 
 
     private var imageSection: some View {
-        Self.section1(header: Text("Images")) {
+        Section1(header: Text("Images")) {
             let tileSize: (width: KvCssLength, height: KvCssLength) = (256, 72)
 
-            Self.section2(header: Text("Simple SVG Image")) {
+            Section2(header: Text("Simple SVG Image")) {
                 Image("img/circles.svg", bundle: .module)
             }
 
-            Self.section2(header: Text("Resizing")) {
+            Section2(header: Text("Resizing")) {
                 Preview(caption: Text(".resizable()")) {
                     Image("img/circles.svg", bundle: .module)
                         .resizable()
@@ -260,7 +230,7 @@ struct FrontendView : View {
                 }
             }
 
-            Self.section2(header: Text("Template Redering Mode")) {
+            Section2(header: Text("Template Redering Mode")) {
                 Preview(caption: Text("current foreground style")) {
                     Image("img/circles.svg", bundle: .module)
                         .renderingMode(.template)
@@ -289,14 +259,14 @@ struct FrontendView : View {
 
 
     private var textSection: some View {
-        Self.section1(header: Text("Texts")) {
-            Self.section2(header: Text("Concatenation and Styling")) {
+        Section1(header: Text("Texts")) {
+            Section2(header: Text("Concatenation and Styling")) {
                 Text("Example of ")
                 + (Text("green ") + Text("semibold text").fontWeight(.semibold))
                     .foregroundStyle(.green)
                 + Text(verbatim: " ")
                 + (Text("of custom font ") + Text("with italics").italic())
-                    .font(.custom("Montserrat Alternates", fixedSize: 18))
+                    .font(.custom("Jura", fixedSize: 18))
                 + Text(verbatim: ".")
 
                 Text("Caffeine")
@@ -307,7 +277,7 @@ struct FrontendView : View {
                 Text("2") + (Text("3") + Text("2").superscript + Text("+1")).superscript + Text(" = 2") + Text("10").superscript + Text(" = 1024")
             }
 
-            Self.section2(header: Text("Text Case")) {
+            Section2(header: Text("Text Case")) {
                 let example = Text("Lorem ipsum dolor sit amet").padding(.em(0.35))
 
                 Preview(caption: Text("no modification")) { example }
@@ -319,25 +289,8 @@ struct FrontendView : View {
 
 
     private var environmentSection: some View {
-        Self.section1(header: Text("Environment")) {
+        Section1(header: Text("Environment")) {
             HorizontalSizeClassSection()
-        }
-    }
-
-
-
-    private static func section1<Content : View>(header: Text, @ViewBuilder content: @escaping () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: .em(1.35)) {
-            header.font(.title)
-            content()
-        }
-    }
-
-
-    private static func section2<Content : View>(header: Text, @ViewBuilder content: @escaping () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: .em(0.7)) {
-            header.font(.title2)
-            VStack(alignment: .leading, spacing: .em(0.5), content: content)
         }
     }
 
@@ -407,7 +360,7 @@ struct FrontendView : View {
     private struct HorizontalSizeClassSection : View {
 
         var body: some View {
-            FrontendView.section2(header: Text(verbatim: "\\.horizontalSizeClass")) {
+            Section2(header: Text(verbatim: "\\.horizontalSizeClass")) {
                 Text("An adaptive view below is presented with adaptive and forced horizontal size classes. Note how stack direction, order of views, separator and font size are adapted for screen width.")
 
                 examplePreview()

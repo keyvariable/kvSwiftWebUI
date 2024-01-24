@@ -27,12 +27,30 @@
 
 extension KvView {
 
-    /// - Parameter transform: A block returning an optional configuration for a wrapper container to create. If `nil` then container is not created.
+    var modifiable: KvModifiedView { consuming get {
+        let view = consume self
+        return ((view as? KvModifiedView) ?? KvModifiedView(source: { view }))
+    } }
+
+
+    @usableFromInline
+    consuming func mapEnvironment(_ transform: (inout KvEnvironmentValues) -> Void) -> some KvView {
+        modifiable.mapEnvironment(transform)
+    }
+
+
+    /// - Parameter transform: Argument is always non-nil.
+    @usableFromInline
+    consuming func mapConfiguration(_ transform: (inout KvViewConfiguration?) -> Void) -> some KvView {
+        modifiable.mapConfiguration(transform)
+    }
+
+
+    /// - Parameter transform: A block returning an optional configuration for a wrapper container to create. If `nil` then container is not created. Argument is always non-nil.
     @inline(__always)
     @usableFromInline
-    consuming func modified(_ transform: (inout KvViewConfiguration) -> KvViewConfiguration?) -> some KvView {
-        let view = consume self
-        return ((view as? KvModifiedView) ?? KvModifiedView(source: { view })).modified(transform)
+    consuming func mapConfiguration(_ transform: (inout KvViewConfiguration?) -> KvViewConfiguration?) -> some KvView {
+        modifiable.mapConfiguration(transform)
     }
 
 }

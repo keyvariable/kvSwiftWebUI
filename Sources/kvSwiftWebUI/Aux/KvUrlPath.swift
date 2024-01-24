@@ -17,34 +17,36 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvAnyShapeStyle.swift
+//  KvUrlPath.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 30.11.2023.
+//  Created by Svyatoslav Popov on 29.12.2023.
 //
 
-public typealias AnyShapeStyle = KvAnyShapeStyle
+import kvHttpKit
 
 
 
-public struct KvAnyShapeStyle : KvShapeStyle {
+extension KvUrlPath : Comparable {
 
-    /// - Parameter property: Optional name of CSS property. Pass `nil` to use default value.
-    typealias CssStyleProvider = (borrowing KvHtmlContext, _ property: String?) -> String
+    public static func <(lhs: Self, rhs: Self) -> Bool {
+        var lhs = lhs.components.makeIterator()
+        var rhs = rhs.components.makeIterator()
 
+        while let lhs = lhs.next(),
+              let rhs = rhs.next()
+        {
+            switch lhs.compare(rhs) {
+            case .orderedAscending:
+                return true
+            case .orderedDescending:
+                return false
+            case .orderedSame:
+                break
+            }
+        }
 
-    let cssBackgroundStyle: CssStyleProvider
-    let cssForegroundStyle: CssStyleProvider
-
-    /// - Returns: The receiver reduced to a single color to be used as background if possible.
-    let backgroundColor: () -> KvColor?
-    /// - Returns: The receiver reduced to a single color to be used as background if possible. E.g. it matches bottom color of gradient.
-    let bottomBackgroundColor: () -> KvColor?
-
-
-    // MARK: : KvShapeStyle
-
-    @inlinable
-    public func eraseToAnyShapeStyle() -> KvAnyShapeStyle { self }
+        return rhs.next() != nil
+    }
 
 }

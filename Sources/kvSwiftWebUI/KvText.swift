@@ -38,12 +38,12 @@ public struct KvText : Equatable {
     private(set) var content: Content
 
     @usableFromInline
-    private(set) var attributes: Attributes?
+    private(set) var attributes: Attributes
 
 
 
     @usableFromInline
-    init(content: Content, attributes: Attributes? = nil) {
+    init(content: Content, attributes: Attributes = .empty) {
         self.content = content
         self.attributes = attributes
     }
@@ -51,20 +51,20 @@ public struct KvText : Equatable {
 
     // TODO: DOC
     @inlinable
-    public init() { content = "" }
+    public init() { self.init(content: "") }
 
 
     // TODO: DOC
     @inlinable
     public init(verbatim content: String) {
-        self.content = .string(content)
+        self.init(content: .string(content))
     }
 
 
     // TODO: DOC
     @inlinable
     public init<S>(_ content: S) where S : StringProtocol {
-        self.content = .string(String(content))
+        self.init(content: .string(String(content)))
     }
 
 
@@ -79,12 +79,16 @@ public struct KvText : Equatable {
     // MARK: .Content
 
     @usableFromInline
-    indirect enum Content : Equatable, ExpressibleByStringLiteral {
+    enum Content : Equatable, ExpressibleByStringLiteral {
 
-        case joined(KvText, KvText)
+        /// - Note: Block is used to reduce size of `Content` instances.
+        case joined(() -> (KvText, KvText))
+
         case string(String)
-        /// It can be used, when attributes of a text can't be merged with the assocuated child text. E.g. superscript inside subscript.
-        case text(KvText)
+        /// It can be used, when attributes of a text can't be merged with the associated child text. E.g. superscript inside subscript.
+        ///
+        /// - Note: Block is used to reduce size of `Content` instances.
+        case text(() -> KvText)
 
 
         // MARK: : ExpressibleByStringLiteral
@@ -95,14 +99,34 @@ public struct KvText : Equatable {
         }
 
 
+        // MARK: : Equatable
+
+        @usableFromInline
+        static func ==(lhs: Content, rhs: Content) -> Bool {
+            switch lhs {
+            case .joined(let lhs):
+                guard case .joined(let rhs) = rhs, lhs() == rhs() else { return false }
+            case .string(let string):
+                guard case .string(string) = rhs else { return false }
+            case .text(let lhs):
+                guard case .text(let rhs) = rhs, lhs() == rhs() else { return false }
+            }
+            return true
+        }
+
+
         // MARK: Operations
 
         @usableFromInline
         var isEmpty: Bool {
             switch self {
-            case .joined(let lhs, let rhs): lhs.isEmpty && rhs.isEmpty
-            case .string(let string): string.isEmpty
-            case .text(let text): text.isEmpty
+            case .joined(let block):
+                let (lhs, rhs) = block()
+                return lhs.isEmpty && rhs.isEmpty
+            case .string(let string):
+                return string.isEmpty
+            case .text(let block):
+                return block().isEmpty
             }
         }
 
@@ -110,14 +134,14 @@ public struct KvText : Equatable {
         // MARK: Operators
 
         @usableFromInline
-        static func +(lhs: Self, rhs: Self) -> Self {
+        static func +(lhs: Content, rhs: Content) -> Content {
             guard !rhs.isEmpty else { return lhs }
             guard !lhs.isEmpty else { return rhs }
-            
+
 
             /// - Returns: A content string when *text* is a string with no attributes.
             func PlainString(_ text: Text) -> String? {
-                guard text.attributes?.isEmpty != false,
+                guard text.attributes.isEmpty,
                       case .string(let string) = text.content
                 else { return nil }
 
@@ -130,30 +154,33 @@ public struct KvText : Equatable {
                 return .string(lstring + rstring)
 
             case (.string(let lstring), .text(let rtext)):
-                guard let rstring = PlainString(rtext) else { break }
+                guard let rstring = PlainString((consume rtext)()) else { break }
                 return .string(lstring + rstring)
 
             case (.text(let ltext), .string(let rstring)):
+                let ltext = (consume ltext)()
                 guard let lstring = PlainString(ltext) else { break }
                 return .string(lstring + rstring)
 
             case (.text(let ltext), .text(let rtext)):
-                let text = ltext + rtext
-                return text.attributes?.isEmpty != false ? text.content : .text(text)
+                let text = (consume ltext)() + (consume rtext)()
+                return text.attributes.isEmpty ? text.content : .text({ text })
 
-            case (.string(let lstring), .joined(let mtext, let rtext)):
+            case (.string(let lstring), .joined(let block)):
+                let (mtext, rtext) = (consume block)()
                 guard let mstring = PlainString(mtext) else { break }
-                return .joined(.init(content: .string(lstring + mstring)), rtext)
+                return .joined { (KvText(content: .string(lstring + mstring)), rtext) }
 
-            case (.joined(let ltext, let mtext), .string(let rstring)):
+            case (.joined(let block), .string(let rstring)):
+                let (ltext, mtext) = block()
                 guard let mstring = PlainString(mtext) else { break }
-                return .joined(ltext, .init(content: .string(mstring + rstring)))
+                return .joined { (ltext, KvText(content: .string(mstring + rstring))) }
 
             case (.text, .joined), (.joined, .text), (.joined, .joined):
                 break
             }
 
-            return .joined(.init(content: lhs), .init(content: rhs))
+            return .joined { (KvText(content: lhs), KvText(content: rhs)) }
         }
 
     }
@@ -169,41 +196,117 @@ public struct KvText : Equatable {
         static let empty: Self = .init()
 
 
+        /// Attributes those are rendered as CSS styles.
         @usableFromInline
-        var font: KvFont?
+        private(set) var styles: [Style : Any] = .init()
+
+        /// Attributes those are rendered as HTML tags.
+        @usableFromInline
+        private(set) var wrappers: [Wrapper : Any] = .init()
+
 
         @usableFromInline
-        var fontWeight: KvFont.Weight?
+        init() { }
+
 
         @usableFromInline
-        var isItalic: Bool
+        init(transform: (inout Attributes) -> Void) {
+            transform(&self)
+        }
+
+
+        // MARK: .Style
+
+        /// Attributes those are rendered as CSS styles.
+        @usableFromInline
+        enum Style : Hashable, Comparable {
+            case font
+            case fontWeight
+            case foregroundStyle
+            case isItalic
+        }
+
+
+        // MARK: .Wrapper
+
+        /// Attributes those are rendered as HTML tags.
+        @usableFromInline
+        enum Wrapper : Hashable, Comparable {
+            case characterStyle
+            case linkURL
+        }
+
+
+        // MARK: : Equatable
 
         @usableFromInline
-        var characterStyle: CharacterStyle?
+        static func ==(lhs: Attributes, rhs: Attributes) -> Bool {
+            guard lhs.styles.count == rhs.styles.count,
+                  lhs.wrappers.count == rhs.wrappers.count
+            else { return false }
+
+            for (key, lhs) in lhs.styles {
+                switch key {
+                case .font:
+                    guard cast(lhs, as: \.font) == rhs.font else { return false }
+                case .fontWeight:
+                    guard cast(lhs, as: \.fontWeight) == rhs.fontWeight else { return false }
+                case .foregroundStyle:
+                    guard cast(lhs, as: \.foregroundStyle) == rhs.foregroundStyle else { return false }
+                case .isItalic:
+                    guard cast(lhs, as: \.isItalic) == rhs.isItalic else { return false }
+                }
+            }
+
+            for (key, lhs) in lhs.wrappers {
+                switch key {
+                case .characterStyle:
+                    guard cast(lhs, as: \.characterStyle) == rhs.characterStyle else { return false }
+                case .linkURL:
+                    guard cast(lhs, as: \.linkURL) == rhs.linkURL else { return false }
+                }
+            }
+
+            return true
+        }
+
+
+        // MARK: Subscripts
 
         @usableFromInline
-        var foregroundStyle: KvColor?
+        subscript<T>(style: Style) -> T? {
+            get { styles[style].map { $0 as! T } }
+            set { styles[style] = newValue }
+        }
+
+
+        @usableFromInline
+        subscript<T>(wrapper: Wrapper) -> T? {
+            get { wrappers[wrapper].map { $0 as! T } }
+            set { wrappers[wrapper] = newValue }
+        }
+
+
+        // MARK: Properties
+
+        @usableFromInline
+        var font: KvFont?? { get { self[.font] } set { self[.font] = newValue } }
+
+        @usableFromInline
+        var fontWeight: KvFont.Weight?? { get { self[.fontWeight] } set { self[.fontWeight] = newValue } }
+
+        @usableFromInline
+        var isItalic: Bool? { get { self[.isItalic] } set { self[.isItalic] = newValue } }
+
+        @usableFromInline
+        var characterStyle: CharacterStyle? { get { self[.characterStyle] } set { self[.characterStyle] = newValue } }
+
+        @usableFromInline
+        var foregroundStyle: KvColor?? { get { self[.foregroundStyle] } set { self[.foregroundStyle] = newValue } }
 
         /// - Note: It's not an `URL` due to the errors with `borrowing` keyword in come cases.
         @usableFromInline
-        var linkURI: String?
-
-
-        @usableFromInline
-        init(font: KvFont? = nil, 
-             fontWeight: KvFont.Weight? = nil,
-             isItalic: Bool = false,
-             characterStyle: CharacterStyle? = nil,
-             foregroundStyle: KvColor? = nil,
-             linkURI: String? = nil
-        ) {
-            self.font = font
-            self.fontWeight = fontWeight
-            self.isItalic = isItalic
-            self.characterStyle = characterStyle
-            self.foregroundStyle = foregroundStyle
-            self.linkURI = linkURI
-        }
+        var linkURL: URL? { get { self[.linkURL] } set { self[.linkURL] = newValue } }
 
 
         // MARK: .CharacterStyle
@@ -220,37 +323,56 @@ public struct KvText : Equatable {
         var isEmpty: Bool { self == .empty }
 
 
+        /// This method reduces number of explicit type declarations.
+        private static func cast<T>(_ value: Any, as: KeyPath<Self, T?>) -> T { value as! T }
+
 
         func cssAttributes(in context: borrowing KvHtmlContext) -> KvHtmlKit.CssAttributes? {
-            let cssAttributes = KvHtmlKit.CssAttributes(
-                styles: font?.cssStyle(in: context),
-                fontWeight.map { "font-weight:\($0.cssValue)" },
-                isItalic ? "font-style:italic" : nil,
-                (foregroundStyle?.cssExpression(in: context)).map { .joined("color:", $0) }
-            )
+            let cssAttributes = styles.keys
+                .sorted()
+                .reduce(into: KvHtmlKit.CssAttributes()) { css, key in
+                    let value = styles[key]!
+
+                    switch key {
+                    case .font:
+                        css.append(style: Attributes.cast(value, as: \.font)?.cssStyle(in: context))
+                    case .fontWeight:
+                        css.append(style: Attributes.cast(value, as: \.fontWeight).map { "font-weight:\($0.cssValue)" })
+                    case .foregroundStyle:
+                        css.append(style: (Attributes.cast(value, as: \.foregroundStyle)?.cssExpression(in: context)).map { "color:\($0)" })
+                    case .isItalic:
+                        css.append(style: Attributes.cast(value, as: \.isItalic) == true ? "font-style:italic" : nil)
+                    }
+                }
 
             guard !cssAttributes.isEmpty else { return nil }
             return cssAttributes
         }
 
 
-        /// - Returns: Given bytes wrapped by tags providing applicatino of some attributes of the receiver.
-        func wrapping(_ innerBytes: consuming KvHtmlBytes) -> KvHtmlBytes {
-            var bytes = innerBytes
+        /// - Returns: Given bytes wrapped by tags providing application of some attributes of the receiver.
+        func wrapping(_ innerFragment: consuming KvHtmlRepresentation.Fragment) -> KvHtmlRepresentation.Fragment {
+            var fragment = innerFragment
 
-            if let linkURI {
-                bytes = .tag(.a, attributes: .href(URL(string: linkURI)!), innerHTML: bytes)
-            }
-            if let characterStyle {
-                let tag: KvHtmlKit.Tag = switch characterStyle {
-                case .subscript: .sub
-                case .superscript: .sup
+            wrappers.keys
+                .sorted()
+                .forEach { key in
+                    let value = wrappers[key]!
+
+                    switch key {
+                    case .characterStyle:
+                        let tag: KvHtmlKit.Tag = switch Attributes.cast(value, as: \.characterStyle) {
+                        case .subscript: .sub
+                        case .superscript: .sup
+                        }
+                        fragment = .tag(tag, innerHTML: fragment)
+
+                    case .linkURL:
+                        fragment = KvLinkKit.representation(url: Attributes.cast(value, as: \.linkURL), innerHTML: fragment)
+                    }
                 }
 
-                bytes = .tag(tag, innerHTML: bytes)
-            }
-
-            return bytes
+            return fragment
         }
 
     }
@@ -289,35 +411,23 @@ public struct KvText : Equatable {
 
     /// - Returns: The receiver's content without attributes as *KvHtmlBytes*.
     @usableFromInline
-    var escapedPlainBytes: KvHtmlBytes {
+    var escapedPlainBytes: String {
         switch content {
-        case .joined(let lhs, let rhs): .joined(lhs.escapedPlainBytes, rhs.escapedPlainBytes)
-        case .string(let string): KvHtmlKit.Escaping.innerText(string)
-        case .text(let text): text.escapedPlainBytes
+        case .joined(let block):
+            let (lhs, rhs) = block()
+            return "\(lhs.escapedPlainBytes)\(rhs.escapedPlainBytes)"
+        case .string(let string):
+            return KvHtmlKit.Escaping.innerText(string)
+        case .text(let block):
+            return block().escapedPlainBytes
         }
     }
 
 
-    /// - Returns: A copy where attributes are reset.
     @usableFromInline
-    consuming func dropAttributes() -> KvText {
+    consuming func withModifiedAttributes(_ block: (inout Attributes) -> Void) -> KvText {
         var copy = self
-        copy.attributes = nil
-        return copy
-    }
-
-
-    /// - Parameter block: The argument is always non-nil.
-    @usableFromInline
-    consuming func withModifiedAttributes(_ block: (inout Attributes?) -> Void) -> KvText {
-        var copy = self
-
-        if copy.attributes == nil {
-            copy.attributes = .init()
-        }
-
         block(&copy.attributes)
-
         return copy
     }
 
@@ -328,21 +438,21 @@ public struct KvText : Equatable {
     // TODO: DOC
     @inlinable
     public consuming func font(_ font: Font?) -> KvText { withModifiedAttributes {
-        $0!.font = font
+        $0.font = font
     } }
 
 
     // TODO: DOC
     @inlinable
     public consuming func fontWeight(_ weight: KvFont.Weight?) -> KvText { withModifiedAttributes {
-        $0!.fontWeight = weight
+        $0.fontWeight = weight
     } }
 
 
     // TODO: DOC
     @inlinable
     public consuming func foregroundStyle(_ style: KvColor?) -> KvText { withModifiedAttributes {
-        $0!.foregroundStyle = style
+        $0.foregroundStyle = style
     } }
 
 
@@ -354,7 +464,7 @@ public struct KvText : Equatable {
     // TODO: DOC
     @inlinable
     public consuming func italic(_ isActive: Bool) -> KvText { withModifiedAttributes {
-        $0!.isItalic = isActive
+        $0.isItalic = isActive
     } }
 
 
@@ -364,26 +474,30 @@ public struct KvText : Equatable {
     /// - SeeAlso: ``superscript``.
     @inlinable
     public var `subscript` : KvText { consuming get {
-        switch attributes?.characterStyle {
+        switch attributes.characterStyle {
         case .none:
-            withModifiedAttributes { $0!.characterStyle = .subscript }
+            return withModifiedAttributes { $0.characterStyle = .subscript }
         case .some:
-            KvText(content: .text(self), attributes: .init(characterStyle: .subscript))
+            let text = self
+            return KvText(content: .text { text },
+                   attributes: .init { $0.characterStyle = .subscript })
         }
     } }
 
 
     // TODO: DOC
-    /// - Important: Consequent ``subscript`` and ``superscript`` modifiers ane nested.
+    /// - Important: Consequent ``subscript`` and ``superscript`` modifiers are nested.
     ///
     /// - SeeAlso: ``subscript``.
     @inlinable
     public var superscript : KvText { consuming get {
-        switch attributes?.characterStyle {
+        switch attributes.characterStyle {
         case .none:
-            withModifiedAttributes { $0!.characterStyle = .superscript }
+            return withModifiedAttributes { $0.characterStyle = .superscript }
         case .some:
-            KvText(content: .text(self), attributes: .init(characterStyle: .superscript))
+            let text = self
+            return KvText(content: .text { text },
+                   attributes: .init { $0.characterStyle = .superscript })
         }
     } }
 
@@ -392,7 +506,7 @@ public struct KvText : Equatable {
     /// Consider ``KvLink`` view then link is entire text or arbitrary view.
     @inlinable
     public consuming func link(_ url: URL) -> KvText { withModifiedAttributes {
-        $0!.linkURI = url.absoluteString
+        $0.linkURL = url
     } }
 
 
@@ -407,9 +521,9 @@ public struct KvText : Equatable {
         guard !lhs.isEmpty else { return rhs }
 
         // When both attributes are empty or equal.
-        guard ((lhs.attributes?.isEmpty != false) && (rhs.attributes?.isEmpty != false))
+        guard (lhs.attributes.isEmpty && rhs.attributes.isEmpty)
                 || lhs.attributes == rhs.attributes
-        else { return KvText(content: .joined(lhs, rhs), attributes: nil) }
+        else { return KvText(content: .joined { (lhs, rhs) }) }
 
         return .init(content: lhs.content + rhs.content, attributes: lhs.attributes)
     }
@@ -428,38 +542,46 @@ extension KvText : KvView { public var body: KvNeverView { Body() } }
 
 extension KvText : KvHtmlRenderable {
 
-    func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
-        context.representation(cssAttributes: attributes?.cssAttributes(in: context.html)) { context, cssAttributes, viewConfiguration in
+    func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
+        context.representation(cssAttributes: attributes.cssAttributes(in: context.html)) { context, cssAttributes in
 
-            func InnerHTML(_ text: KvText) -> KvHtmlBytes {
-                let innerBytes: KvHtmlBytes = switch text.content {
-                case .joined(let lhs, let rhs): .joined(InnerHTML(lhs), InnerHTML(rhs))
-                case .string(let string): KvHtmlKit.Escaping.innerText(string)
-                case .text(let text): InnerHTML(text)
+            func InnerHTML(_ text: KvText) -> KvHtmlRepresentation.Fragment {
+                var fragment: KvHtmlRepresentation.Fragment = switch text.content {
+                case .joined(let block): InnerHTML(block())
+                case .string(let string): .init(KvHtmlKit.Escaping.innerText(string))
+                case .text(let block): InnerHTML(block())
                 }
 
-                return switch text.attributes {
-                case .none: innerBytes
-                case .some(let attributes): .tag(.span,
-                                                 css: attributes.cssAttributes(in: context.html),
-                                                 innerHTML: attributes.wrapping(innerBytes))
+                let attributes = text.attributes
+
+                if !attributes.isEmpty {
+                    fragment = .tag(.span,
+                                    css: attributes.cssAttributes(in: context.html),
+                                    innerHTML: attributes.wrapping(fragment))
                 }
+
+                return fragment
             }
 
 
-            let innerHTML: KvHtmlBytes = switch content {
-            case .joined(let lhs, let rhs): .joined(InnerHTML(lhs), InnerHTML(rhs))
-            case .string(let string): KvHtmlKit.Escaping.innerText(string)
-            case .text(let text): InnerHTML(text)
+            func InnerHTML(_ texts: (KvText, KvText)) -> KvHtmlRepresentation.Fragment {
+                .init(InnerHTML(texts.0), InnerHTML(texts.1))
             }
 
-            let textStyle = context.environment.textStyle ?? attributes?.font?.textStyle
 
-            return .init(bytes: .tag(
+            let innerFragment: KvHtmlRepresentation.Fragment = switch content {
+            case .joined(let block): InnerHTML(block())
+            case .string(let string): .init(KvHtmlKit.Escaping.innerText(string))
+            case .text(let block): InnerHTML(block())
+            }
+
+            let textStyle = context.environmentNode?.values.font?.textStyle ?? attributes.font??.textStyle
+
+            return .tag(
                 Self.tag(for: textStyle),
                 css: cssAttributes,
-                innerHTML: attributes?.wrapping(innerHTML) ?? innerHTML
-            ))
+                innerHTML: attributes.wrapping(innerFragment)
+            )
         }
     }
 
@@ -488,6 +610,10 @@ extension KvText : KvHtmlRenderable {
 // MARK: Auxiliary Constants
 
 extension KvText {
+
+    /// A space character. Is a shorthand for `Text(verbatim: " ")`.
+    @inlinable
+    public static var space: Self { .init(" ") }
 
     /// No-break space (NBSP).
     ///

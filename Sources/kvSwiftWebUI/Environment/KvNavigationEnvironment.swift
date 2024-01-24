@@ -17,47 +17,30 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvHtmlBytesTests.swift
+//  KvNavigationEnvironment.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 18.11.2023.
+//  Created by Svyatoslav Popov on 16.01.2024.
 //
 
-import XCTest
+// MARK: - \.navigationPath
 
-@testable import kvSwiftWebUI
+fileprivate struct KvNavigationPathKey : KvEnvironmentKey {
 
-
-
-final class KvHtmlBytesTests : XCTestCase {
-
-    // MARK: - testStringLiteral()
-
-    func testStringLiteral() {
-
-        func Assert(_ input: String) {
-            let result = KvHtmlBytes.init(stringLiteral: input)
-            XCTAssertEqual(result.accumulate().data, input.data(using: .utf8))
-        }
-
-        Assert(" />")
-    }
+    typealias Value = KvNavigationPath
 
 
+    static var defaultValue: Value { .empty }
 
-    // MARK: - testTag()
-
-    func testTag() {
-        assertEqual(.tag(.br), "<br />")
-        assertEqual(.tag(.link, attributes: .href("/main.css"), .linkRel("stylesheet")), "<link href=\"/main.css\" rel=\"stylesheet\" />")
-    }
+}
 
 
+extension KvEnvironmentValues {
 
-    // MARK: - Auxiliaries
-
-    private func assertEqual(_ bytes: KvHtmlBytes, _ expected: String) {
-        XCTAssertEqual(bytes.accumulate().data, expected.data(using: .utf8)!)
+    // TODO: DOC
+    public var navigationPath: KvNavigationPath {
+        get { self[KvNavigationPathKey.self] }
+        set { self[KvNavigationPathKey.self] = newValue }
     }
 
 }

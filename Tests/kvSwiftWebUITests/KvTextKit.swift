@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 //
-//  Copyright (c) 2023 Svyatoslav Popov (info@keyvar.com).
+//  Copyright (c) 2024 Svyatoslav Popov (info@keyvar.com).
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 //  License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
@@ -17,31 +17,33 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvLayoutEnvironment.swift
+//  KvTextKit.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 22.11.2023.
+//  Created by Svyatoslav Popov on 23.01.2024.
 //
 
-// MARK: - \.horizontalSizeClass
+import Foundation
 
-fileprivate struct KvHorizontalSizeClassKey : KvEnvironmentKey {
-
-    typealias Value = UserInterfaceSizeClass?
+@testable import kvSwiftWebUI
 
 
-    static var defaultValue: Value { nil }
 
-}
+/// A collection of auxiliaries for testing.
+struct KvTextKit { private init() { }
 
+    /// - Returns: HTML code of given view.
+    static func renderHTML<V : KvView>(for view: V) -> String {
+        let context = KvHtmlRepresentationContext.root(
+            html: .init(.init(), cssAsset: .init(parent: nil), rootPath: nil, navigationPath: .empty)
+        )
 
-extension KvEnvironmentValues {
+        var data = Data()
 
-    // TODO: DOC
-    // TODO: DOC: View is pre-synthesized for all size classes.
-    public var horizontalSizeClass: KvUserInterfaceSizeClass? {
-        get { self[KvHorizontalSizeClassKey.self] }
-        set { self[KvHorizontalSizeClassKey.self] = newValue }
+        KvHtmlRepresentation(of: view, in: context)
+            .forEach { data.append($0) }
+
+        return .init(data: data, encoding: .utf8)!
     }
 
 }

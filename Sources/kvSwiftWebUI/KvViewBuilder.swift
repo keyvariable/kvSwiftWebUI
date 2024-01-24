@@ -35,17 +35,21 @@ public struct KvViewBuilder {
 
 
     @inlinable
-    public static func buildBlock<Component>(_ component: Component) -> Component
+    public static func buildExpression<Component>(_ component: Component) -> Component
     where Component : KvView
     { component }
 
 
     @inlinable
+    public static func buildExpression<Component>(_ component: Component?) -> ConditionalView<Component, KvEmptyView>
+    where Component : KvView
+    { component.map { .init(trueView: $0) } ?? .init(falseView: .init()) }
+
+
+    @inlinable
     public static func buildOptional<Component>(_ component: Component?) -> ConditionalView<Component, KvEmptyView>
     where Component : KvView
-    {
-        component.map { .init(trueView: $0) } ?? .init(falseView: .init())
-    }
+    { buildExpression(component) }
 
 
     @inlinable
@@ -64,7 +68,6 @@ public struct KvViewBuilder {
     public static func buildPartialBlock<Component>(first: Component) -> Component
     where Component : KvView
     { first }
-
 
     @inlinable
     public static func buildPartialBlock<C0, C1>(accumulated: C0, next: C1) -> GroupOfTwo<C0, C1>
@@ -90,7 +93,7 @@ public struct KvViewBuilder {
 
     // MARK: .ConditionalView
 
-    public struct ConditionalView<TrueView, FalseView> : KvView, KvHtmlRenderable
+    public struct ConditionalView<TrueView, FalseView> : KvView, KvHtmlRenderable, KvWrapperView
     where TrueView : KvView, FalseView : KvView
     {
 
@@ -124,16 +127,27 @@ public struct KvViewBuilder {
 
         // MARK: : KvHtmlRenderable
 
-        func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
+        func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
             switch content {
             case .trueView(let trueView):
-                return trueView.htmlRepresentation(in: context)
+                KvHtmlRepresentation.Fragment { trueView.htmlRepresentation(in: context) }
             case .falseView(let falseView):
-                return falseView.htmlRepresentation(in: context)
+                KvHtmlRepresentation.Fragment { falseView.htmlRepresentation(in: context) }
+            }
+        }
+
+
+        // MARK: : KvWrapperView
+
+        var contentView: any KvView {
+            return switch content {
+            case .trueView(let trueView): trueView
+            case .falseView(let falseView): falseView
             }
         }
 
     }
+
 
 
     // MARK: - GroupOfTwo
@@ -142,14 +156,13 @@ public struct KvViewBuilder {
     where V0 : KvView, V1 : KvView
     {
 
-        let v0: V0
-        let v1: V1
+        /// Subviews are stored in a closure of an escaping block to reduce consumption of stack memory.
+        let content: () -> (V0, V1)
 
 
         @usableFromInline
         init(_ v0: V0, _ v1: V1) {
-            self.v0 = v0
-            self.v1 = v1
+            content = { (v0, v1) }
         }
 
 
@@ -160,9 +173,13 @@ public struct KvViewBuilder {
 
         // MARK: : KvHtmlRenderable
 
-        func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
-            .joined(v0.htmlRepresentation(in: context),
-                    v1.htmlRepresentation(in: context))
+        func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
+            .init {
+                let (v0, v1) = content()
+                return .init(v0.htmlRepresentation(in: context),
+                             v1.htmlRepresentation(in: context))
+            }
+
         }
 
     }
@@ -175,16 +192,14 @@ public struct KvViewBuilder {
     where V0 : KvView, V1 : KvView, V2 : KvView
     {
 
-        let v0: V0
-        let v1: V1
-        let v2: V2
+        /// Subviews are stored in a closure of an escaping block to reduce consumption of stack memory.
+        let content: () -> (V0, V1, V2)
 
 
         @usableFromInline
         init(_ g: GroupOfTwo<V0, V1>, _ v2: V2) {
-            self.v0 = g.v0
-            self.v1 = g.v1
-            self.v2 = v2
+            let (v0, v1) = g.content()
+            content = { (v0, v1, v2) }
         }
 
 
@@ -195,10 +210,13 @@ public struct KvViewBuilder {
 
         // MARK: : KvHtmlRenderable
 
-        func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
-            .joined(v0.htmlRepresentation(in: context),
-                    v1.htmlRepresentation(in: context),
-                    v2.htmlRepresentation(in: context))
+        func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
+            .init {
+                let (v0, v1, v2) = content()
+                return .init(v0.htmlRepresentation(in: context),
+                             v1.htmlRepresentation(in: context),
+                             v2.htmlRepresentation(in: context))
+            }
         }
 
     }
@@ -211,18 +229,14 @@ public struct KvViewBuilder {
     where V0 : KvView, V1 : KvView, V2 : KvView, V3 : KvView
     {
 
-        let v0: V0
-        let v1: V1
-        let v2: V2
-        let v3: V3
+        /// Subviews are stored in a closure of an escaping block to reduce consumption of stack memory.
+        let content: () -> (V0, V1, V2, V3)
 
 
         @usableFromInline
         init(_ g: GroupOfThree<V0, V1, V2>, _ v3: V3) {
-            self.v0 = g.v0
-            self.v1 = g.v1
-            self.v2 = g.v2
-            self.v3 = v3
+            let (v0, v1, v2) = g.content()
+            content = { (v0, v1, v2, v3) }
         }
 
 
@@ -233,13 +247,26 @@ public struct KvViewBuilder {
 
         // MARK: : KvHtmlRenderable
 
-        func renderHTML(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation {
-            .joined(v0.htmlRepresentation(in: context),
-                    v1.htmlRepresentation(in: context),
-                    v2.htmlRepresentation(in: context),
-                    v3.htmlRepresentation(in: context))
+        func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
+            .init {
+                let (v0, v1, v2, v3) = content()
+                return .init(v0.htmlRepresentation(in: context),
+                             v1.htmlRepresentation(in: context),
+                             v2.htmlRepresentation(in: context),
+                             v3.htmlRepresentation(in: context))
+            }
         }
 
     }
+
+}
+
+
+
+// MARK: - KvWrapperView
+
+protocol KvWrapperView {
+
+    var contentView: any KvView { get }
 
 }
