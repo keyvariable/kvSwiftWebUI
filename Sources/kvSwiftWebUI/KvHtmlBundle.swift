@@ -55,7 +55,7 @@ public class KvHtmlBundle {
     public init<RootView>(with configuration: borrowing Configuration, @KvViewBuilder rootView: @escaping () -> RootView) throws
     where RootView : KvView
     {
-        configuration.icon?.htmlResources.forEach(assets.insert(_:))
+        configuration.icon?.forEachHtmlResource(assets.insert(_:))
 
         responseCache = configuration.responseCacheSize.map {
             .init(maximumByteSize: $0.value)

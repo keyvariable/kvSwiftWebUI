@@ -86,6 +86,8 @@ struct RootView : View {
                 BasicsView()
             case .colors:
                 ColorCatalogView()
+            case .scripts:
+                ScriptView()
             }
         }
     }
@@ -95,15 +97,18 @@ struct RootView : View {
 
         case basics
         case colors
+        case scripts
 
 
         var header: Text {
             switch self {
             case .basics: Text("The Basics")
             case .colors: Text("Colors")
+            case .scripts: Text("Scripts")
             }
         }
 
+        #warning("Text for the scripts")
         var overview: Text {
             switch self {
             case .basics:
@@ -114,6 +119,9 @@ struct RootView : View {
                 Text("Web sites are often organized in a hierarchy of pages.")
                 + .space + Text("This simple example shows a catalog of some colors available in kvSwiftWebUI framework.")
                 + .space + Text("kvSwiftWebUI automatically generates links to pages.")
+
+            case .scripts:
+                Text("TODO")
             }
         }
 

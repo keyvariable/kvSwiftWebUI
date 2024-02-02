@@ -74,27 +74,6 @@ public struct KvApplicationIcon {
 
     // MARK: HTML
 
-    var htmlResources: Set<KvHtmlResource> {
-        var htmlResources = Set<KvHtmlResource>()
-
-        switch resource {
-        case .prepared(directoryURL: let directoryURL):
-            FileManager.default.enumerator(at: directoryURL, includingPropertiesForKeys: nil, options: .skipsSubdirectoryDescendants)?.forEach { element in
-                guard let url = element as? URL else { return }
-
-                let contentType: KvHttpContentType? = .from(url)
-
-                enumerateLinkAttributes(forFileAt: url, contentType: contentType) {
-                    htmlResources.insert(
-                        .init(content: .local(.url(url), .init(path: url.lastPathComponent)), contentType: contentType, linkAttributes: $0)
-                    )
-                }
-            }
-        }
-
-        return htmlResources
-    }
-
     var htmlHeaders: String? {
         typealias Tag = KvHtmlKit.Tag
 
@@ -113,6 +92,24 @@ public struct KvApplicationIcon {
         guard !headers.isEmpty else { return nil }
 
         return headers
+    }
+
+
+    func forEachHtmlResource(_ body: (KvHtmlResource) -> Void) {
+        switch resource {
+        case .prepared(directoryURL: let directoryURL):
+            FileManager.default.enumerator(at: directoryURL, includingPropertiesForKeys: nil, options: .skipsSubdirectoryDescendants)?.forEach { element in
+                guard let url = element as? URL else { return }
+
+                let contentType: KvHttpContentType? = .from(url)
+
+                enumerateLinkAttributes(forFileAt: url, contentType: contentType) {
+                    body(.init(content: .local(.url(url), .init(path: url.lastPathComponent)),
+                               contentType: contentType,
+                               headAttributes: $0.map { .link($0) }))
+                }
+            }
+        }
     }
 
 

@@ -176,6 +176,7 @@ extension KvEnvironmentValues {
             case gridColumnAlignment
             case multilineTextAlignment
             case navigationTitle
+            case scriptResources
             case textCase
         }
 
@@ -227,9 +228,14 @@ extension KvEnvironmentValues {
             addition.regularValues.forEach { (key, value) in
                 switch key {
                 case .fixedSize:
+                    // Accumulation
                     result.fixedSize = .union(result.fixedSize, Self.cast(value, as: \.fixedSize))
+                case .scriptResources:
+                    // Accumulation
+                    result.scriptResources = .union(result.scriptResources, Self.cast(value, as: \.scriptResources))
                 case .font, .foregroundStyle, .gridCellColumnSpan, .gridColumnAlignment, .multilineTextAlignment, .navigationTitle,
                         .textCase:
+                    // Replacement
                     result.regularValues[key] = value
                 }
             }
@@ -286,6 +292,9 @@ extension KvEnvironmentValues {
 
         /// Use ``modify(padding:)`` or ``modify(paddingBlock:)`` to change the value.
         private(set) var padding: KvCssEdgeInsets? { get { self[.padding] } set { self[.padding] = newValue } }
+
+        @usableFromInline
+        var scriptResources: KvAccumulatingOrderedSet<KvScriptResource>? { get { self[.scriptResources] } set { self[.scriptResources] = newValue } }
 
         @usableFromInline
         var textCase: KvText.Case? { get { self[.textCase] } set { self[.textCase] = newValue } }
@@ -418,7 +427,7 @@ extension KvEnvironmentValues {
                     case .textCase:
                         css.append(style: "text-transform:\(Self.cast(value, as: \.textCase).cssTextTransform)")
 
-                    case .navigationTitle:
+                    case .navigationTitle, .scriptResources:
                         break
                     }
                 }

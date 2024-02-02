@@ -30,30 +30,35 @@ import kvHttpKit
 
 
 
-struct KvHtmlResource : Hashable {
+struct KvHtmlResource {
 
     let content: Content
     let contentType: KvHttpContentType?
 
-    /// Attributes of link tag for the resource.
-    ///
-    /// - Note: `Href` attribute is inserted automatically.
-    let linkAttributes: [KvHtmlKit.Attribute]?
 
 
-
-    init(content: Content, contentType: KvHttpContentType? = nil, linkAttributes: [KvHtmlKit.Attribute]? = nil) {
+    init(content: Content, contentType: KvHttpContentType? = nil, headAttributes: Attributes? = nil) {
         self.content = content
         self.contentType = contentType
-        self.linkAttributes = linkAttributes
+        self.headAttributes = headAttributes
     }
+
+
+
+    /// Attributes used to synthesize a tag for HTML head section.
+    private let headAttributes: Attributes?
 
 
 
     // MARK: Fabrics
 
-    static func css(_ content: Content) -> Self {
-        .init(content: content, contentType: .text(.css), linkAttributes: [ .linkRel("stylesheet") ])
+    static func css(_ content: Content) -> KvHtmlResource {
+        .init(content: content, contentType: .text(.css), headAttributes: .link(.linkRel("stylesheet")))
+    }
+
+
+    static func externalScript(_ content: Content) -> KvHtmlResource {
+        .init(content: content, contentType: .text(.javascript), headAttributes: .externalScript)
     }
 
     
@@ -68,7 +73,7 @@ struct KvHtmlResource : Hashable {
         case external(URL)
 
 
-        var uri: HtmlLink.URI {
+        var uri: Header.URI {
             switch self {
             case .local(_, let path): .localPath(path.joined)
             case .external(let url): .url(url)
@@ -91,60 +96,79 @@ struct KvHtmlResource : Hashable {
 
 
 
-    // MARK: : Equatable
+    // MARK: .Attributes
 
-    static func ==(lhs: Self, rhs: Self) -> Bool { lhs.content.uri == rhs.content.uri }
+    enum Attributes {
+
+        case externalScript
+        case link([KvHtmlKit.Attribute])
 
 
+        // MARK: Fabrics
 
-    // MARK: : Hashable
+        static func link(_ attributes: KvHtmlKit.Attribute...) -> Attributes { .link(attributes) }
 
-    func hash(into hasher: inout Hasher) {
-        content.uri.hash(into: &hasher)
     }
 
 
 
     // MARK: Operations
 
-    var htmlLink: HtmlLink? {
-        guard let linkAttributes else { return nil }
+    var header: Header? {
+        guard let headAttributes else { return nil }
 
-        return .init(uri: content.uri, linkAttributes: linkAttributes)
+        return switch headAttributes {
+        case .externalScript:
+            Header.externalScript(content.uri)
+        case .link(let attributes):
+            Header.link(content.uri, attributes)
+        }
     }
 
 
 
-    // MARK: .HtmlLink
+    // MARK: .Header
 
-    struct HtmlLink : Hashable {
+    /// Representation of a resource that is used to synthesize the HTML code when the context is available. E.g. the base path.
+    ///
+    /// - Note: It conforms to `Identifiable` to be stored in the ordered set.
+    enum Header : Identifiable {
 
-        let uri: URI
-        let linkAttributes: [KvHtmlKit.Attribute]
+        case externalScript(URI)
+        case link(URI, [KvHtmlKit.Attribute])
 
 
         // MARK: .URI
 
-        enum URI : Hashable, Comparable {
+        enum URI : Hashable {
 
             case localPath(String)
             case url(URL)
 
 
-            // MARK: : Comparable
+            // MARK: HTML
 
-            static func <(lhs: Self, rhs: Self) -> Bool {
-
-                func RawValue(_ uri: Self) -> String {
-                    switch uri {
-                    case .localPath(let string): string
-                    case .url(let url): url.absoluteString
-                    }
+            func hrefAttribute(basePath: KvUrlPath?) -> KvHtmlKit.Attribute {
+                switch self {
+                case .localPath(let path): .href(path, relativeTo: basePath)
+                case .url(let url): .href(url)      // External resources are not resolved against basePath.
                 }
-
-                return RawValue(lhs) < RawValue(rhs)
             }
+
+
+            func srcAttribute(basePath: KvUrlPath?) -> KvHtmlKit.Attribute {
+                switch self {
+                case .localPath(let path): .src(path, relativeTo: basePath)
+                case .url(let url): .src(url)      // External resources are not resolved against basePath.
+                }
+            }
+
         }
+
+
+        // MARK: : Identifiable
+
+        var id: URI { uri }
 
 
         // MARK: : Equatable
@@ -161,13 +185,22 @@ struct KvHtmlResource : Hashable {
 
         // MARK: Operations
 
-        func html(basePath: KvUrlPath?) -> String {
-            let href: KvHtmlKit.Attribute = switch uri {
-            case .localPath(let path): .href(path, relativeTo: basePath)
-            case .url(let url): .href(url)      // External resources are not resolved against basePath.
+        private var uri: URI {
+            switch self {
+            case .externalScript(let uri), .link(let uri, _): uri
             }
+        }
 
-            return KvHtmlKit.Tag.link.html(attributes: [ linkAttributes, [ href ] ].joined())
+
+        // MARK: HTML
+
+        func html(basePath: KvUrlPath?) -> String {
+            switch self {
+            case .externalScript(let uri):
+                KvHtmlKit.Tag.script.html(attributes: uri.srcAttribute(basePath: basePath))
+            case .link(let uri, let attributes):
+                KvHtmlKit.Tag.link.html(attributes: [ attributes, [ uri.hrefAttribute(basePath: basePath) ] ].joined())
+            }
         }
 
     }
