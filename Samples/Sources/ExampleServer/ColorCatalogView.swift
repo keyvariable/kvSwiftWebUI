@@ -43,7 +43,7 @@ struct ColorCatalogView : View {
 
     var body: some View {
         Page(title: Text("Color Catalog"),
-             subtitle: Text("This page contains previews of some colors available in kvSwiftWebUI framework."),
+             subtitle: Text("This page contains previews of some colors available in kvSwiftWebUI framework"),
              sourceFilePath: "ColorCatalogView.swift"
         ) {
             customColorSection

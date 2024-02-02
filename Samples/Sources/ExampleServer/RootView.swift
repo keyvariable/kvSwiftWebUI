@@ -44,7 +44,7 @@ struct RootView : View {
         ///
         /// See ``ColorDetailView`` for a view having custom structure.
         Page(title: Text("\"ExampleServer\" Sample"),
-             subtitle: Text("A sample server application with simple HTML frontend on kvSwiftWebUI framework."),
+             subtitle: Text("A sample server application with simple HTML frontend on kvSwiftWebUI framework"),
              sourceFilePath: "RootView.swift"
         ) {
             /// Page contents are organized to sections: ``Section1``, ``Section2``, ``BodySection``.
