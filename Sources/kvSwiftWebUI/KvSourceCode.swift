@@ -84,12 +84,12 @@ extension KvSourceCode : KvView {
 extension KvSourceCode : KvHtmlRenderable {
 
     func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
-        context.representation(cssAttributes: .init(style: "overflow-x:scroll")) { context, cssAttributes in
+        context.representation(htmlAttributes: .init { $0.append(styles: "overflow-x:scroll") }) { context, htmlAttributes in
             let fragment = KvText(verbatim: content)
                 .font(font ?? Defaults.font)
                 .htmlRepresentation(in: context)
 
-            return .tag(.div, css: cssAttributes, innerHTML: .tag(.pre, innerHTML: fragment))
+            return .tag(.div, attributes: htmlAttributes ?? .empty, innerHTML: .tag(.pre, innerHTML: fragment))
         }
     }
 

@@ -96,14 +96,14 @@ struct KvModifiedView : KvView {
     // MARK: HTML Representation
 
     func htmlRepresentation(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
-        var containerCSS: KvHtmlKit.CssAttributes?
-        let context = context.descendant(environment: environment, extractedCssAttributes: &containerCSS)
+        var containerHtmlAttributes: KvHtmlKit.Attributes?
+        let context = context.descendant(environment: environment, extractedHtmlAttributes: &containerHtmlAttributes)
 
         var fragment = sourceProvider().htmlRepresentation(in: context)
 
         // Container with extracted CSS attributes.
-        if let containerCSS = containerCSS {
-            fragment = .tag(.div, css: containerCSS, innerHTML: fragment)
+        if let containerHtmlAttributes {
+            fragment = .tag(.div, attributes: containerHtmlAttributes, innerHTML: fragment)
         }
 
         if let viewConfiguration = environment.viewConfiguration {

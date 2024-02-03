@@ -53,7 +53,9 @@ struct KvHtmlResource {
     // MARK: Fabrics
 
     static func css(_ content: Content) -> KvHtmlResource {
-        .init(content: content, contentType: .text(.css), headAttributes: .link(.linkRel("stylesheet")))
+        .init(content: content,
+              contentType: .text(.css),
+              headAttributes: .link(.init { $0[.linkRel] = "stylesheet" }))
     }
 
 
@@ -99,15 +101,8 @@ struct KvHtmlResource {
     // MARK: .Attributes
 
     enum Attributes {
-
         case externalScript
-        case link([KvHtmlKit.Attribute])
-
-
-        // MARK: Fabrics
-
-        static func link(_ attributes: KvHtmlKit.Attribute...) -> Attributes { .link(attributes) }
-
+        case link(KvHtmlKit.Attributes)
     }
 
 
@@ -135,7 +130,7 @@ struct KvHtmlResource {
     enum Header : Identifiable {
 
         case externalScript(URI)
-        case link(URI, [KvHtmlKit.Attribute])
+        case link(URI, KvHtmlKit.Attributes)
 
 
         // MARK: .URI
@@ -148,18 +143,18 @@ struct KvHtmlResource {
 
             // MARK: HTML
 
-            func hrefAttribute(basePath: KvUrlPath?) -> KvHtmlKit.Attribute {
+            func setHref(to attributes: inout KvHtmlKit.Attributes, basePath: KvUrlPath?) {
                 switch self {
-                case .localPath(let path): .href(path, relativeTo: basePath)
-                case .url(let url): .href(url)      // External resources are not resolved against basePath.
+                case .localPath(let path): attributes.set(href: path, relativeTo: basePath)
+                case .url(let url): attributes.set(href: url)       // External resources are not resolved against basePath.
                 }
             }
 
 
-            func srcAttribute(basePath: KvUrlPath?) -> KvHtmlKit.Attribute {
+            func setSrc(to attributes: inout KvHtmlKit.Attributes, basePath: KvUrlPath?) {
                 switch self {
-                case .localPath(let path): .src(path, relativeTo: basePath)
-                case .url(let url): .src(url)      // External resources are not resolved against basePath.
+                case .localPath(let path): attributes.set(src: path, relativeTo: basePath)
+                case .url(let url): attributes.set(src: url)        // External resources are not resolved against basePath.
                 }
             }
 
@@ -197,9 +192,11 @@ struct KvHtmlResource {
         func html(basePath: KvUrlPath?) -> String {
             switch self {
             case .externalScript(let uri):
-                KvHtmlKit.Tag.script.html(attributes: uri.srcAttribute(basePath: basePath))
-            case .link(let uri, let attributes):
-                KvHtmlKit.Tag.link.html(attributes: [ attributes, [ uri.hrefAttribute(basePath: basePath) ] ].joined())
+                return KvHtmlKit.Tag.script.html(attributes: .init { uri.setSrc(to: &$0, basePath: basePath) })
+
+            case .link(let uri, var attributes):
+                uri.setHref(to: &attributes, basePath: basePath)
+                return KvHtmlKit.Tag.link.html(attributes: attributes)
             }
         }
 

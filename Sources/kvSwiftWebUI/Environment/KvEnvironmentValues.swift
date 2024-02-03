@@ -398,58 +398,58 @@ extension KvEnvironmentValues {
         }
 
 
-        // MARK: CSS
+        // MARK: HTML
 
-        /// - Returns: CSS attributes synthesized from the receiver.
-        func cssAttributes(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlKit.CssAttributes? {
+        /// - Returns: HTML tag attributes synthesized from the receiver.
+        func htmlAttributes(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlKit.Attributes? {
             guard !regularValues.isEmpty || !constrainedValues.isEmpty else { return nil }
 
-            var css = KvHtmlKit.CssAttributes()
+            let attributes = KvHtmlKit.Attributes { attributes in
+                regularValues.keys
+                    .sorted()
+                    .forEach { key in
+                        let value = regularValues[key]!
 
-            regularValues.keys
-                .sorted()
-                .forEach { key in
-                    let value = regularValues[key]!
+                        switch key {
+                        case .fixedSize:
+                            attributes.append(optionalStyles: Self.cast(value, as: \.fixedSize).cssFlexShrink(in: context))
+                        case .font:
+                            attributes.append(styles: Self.cast(value, as: \.font).cssStyle(in: context.html))
+                        case .foregroundStyle:
+                            attributes.append(styles: Self.cast(value, as: \.foregroundStyle).cssForegroundStyle(context.html, nil))
+                        case .gridCellColumnSpan:
+                            attributes.append(styles: "grid-column:span \(Self.cast(value, as: \.gridCellColumnSpan))")
+                        case .gridColumnAlignment:
+                            attributes.insert(classes: context.html.cssFlexClass(for: Self.cast(value, as: \.gridColumnAlignment), as: .mainSelf))
+                        case .multilineTextAlignment:
+                            attributes.append(styles: "text-align:\(Self.cast(value, as: \.multilineTextAlignment).cssTextAlign.css)")
+                        case .textCase:
+                            attributes.append(styles: "text-transform:\(Self.cast(value, as: \.textCase).cssTextTransform)")
 
-                    switch key {
-                    case .fixedSize:
-                        css.append(style: Self.cast(value, as: \.fixedSize).cssFlexShrink(in: context))
-                    case .font:
-                        css.append(style: Self.cast(value, as: \.font).cssStyle(in: context.html))
-                    case .foregroundStyle:
-                        css.append(style: Self.cast(value, as: \.foregroundStyle).cssForegroundStyle(context.html, nil))
-                    case .gridCellColumnSpan:
-                        css.append(style: "grid-column:span \(Self.cast(value, as: \.gridCellColumnSpan))")
-                    case .gridColumnAlignment:
-                        css.insert(classes: context.html.cssFlexClass(for: Self.cast(value, as: \.gridColumnAlignment), as: .mainSelf))
-                    case .multilineTextAlignment:
-                        css.append(style: "text-align:\(Self.cast(value, as: \.multilineTextAlignment).cssTextAlign.css)")
-                    case .textCase:
-                        css.append(style: "text-transform:\(Self.cast(value, as: \.textCase).cssTextTransform)")
-
-                    case .navigationTitle, .scriptResources:
-                        break
+                        case .navigationTitle, .scriptResources:
+                            break
+                        }
                     }
-                }
 
-            constrainedValues.keys
-                .sorted()
-                .forEach { key in
-                    let value = constrainedValues[key]!
+                constrainedValues.keys
+                    .sorted()
+                    .forEach { key in
+                        let value = constrainedValues[key]!
 
-                    switch key {
-                    case .background:
-                        css.append(style: Self.cast(value, as: \.background).cssBackgroundStyle(context.html, nil))
-                    case .clipShape:
-                        css.formUnion(Self.cast(value, as: \.clipShape).css)
-                    case .frame:
-                        css.formUnion(Self.cast(value, as: \.frame).cssAttributes(in: context))
-                    case .padding:
-                        css.append(style: "padding:\(Self.cast(value, as: \.padding).css)")
+                        switch key {
+                        case .background:
+                            attributes.append(styles: Self.cast(value, as: \.background).cssBackgroundStyle(context.html, nil))
+                        case .clipShape:
+                            attributes.formUnion(Self.cast(value, as: \.clipShape).htmlAttributes)
+                        case .frame:
+                            attributes.formUnion(Self.cast(value, as: \.frame).htmlAttributes(in: context))
+                        case .padding:
+                            attributes.append(styles: "padding:\(Self.cast(value, as: \.padding).css)")
+                        }
                     }
-                }
+            }
 
-            return !css.isEmpty ? css : nil
+            return !attributes.isEmpty ? attributes : nil
         }
 
 
@@ -533,13 +533,13 @@ extension KvEnvironmentValues {
                 }
 
 
-                // MARK: Operations
+                // MARK: HTML
 
-                func cssAttributes(_ dimension: String, isMainAxis: Bool? = nil) -> KvHtmlKit.CssAttributes {
-                    .init(
-                        styles: ideal.map { "\(dimension):\($0.css)" },
-                        minimum.map { "min-\(dimension):\($0.css)" },
-                        maximum.flatMap {
+                func htmlAttributes(_ dimension: String, isMainAxis: Bool? = nil) -> KvHtmlKit.Attributes {
+                    .init {
+                        let ideal = ideal.map { "\(dimension):\($0.css)" }
+                        let minimum = minimum.map { "min-\(dimension):\($0.css)" }
+                        let maximum = maximum.flatMap {
                             switch ($0, isMainAxis) {
                             case (.value(.infinity, _), .some(let isMainAxis)):
                                 isMainAxis ? "justify-self:stretch" : "align-self:stretch"
@@ -549,31 +549,31 @@ extension KvEnvironmentValues {
                                 "max-\(dimension):\($0.css)"
                             }
                         }
-                    )
+
+                        $0.append(optionalStyles: ideal, minimum, maximum)
+                    }
                 }
 
             }
 
 
-            // MARK: Operations
+            // MARK: HTML
 
-            func cssAttributes(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlKit.CssAttributes {
-                var attributes: KvHtmlKit.CssAttributes = .init(
-                    classes: "flexH",
-                    context.html.cssFlexClass(for: alignment.horizontal, as: .mainContent),
-                    context.html.cssFlexClass(for: alignment.vertical, as: .crossItems)
-                )
+            func htmlAttributes(in context: borrowing KvHtmlRepresentationContext) -> KvHtmlKit.Attributes {
+                .init { attributes in
+                    attributes.insert(classes: "flexH",
+                                      context.html.cssFlexClass(for: alignment.horizontal, as: .mainContent),
+                                      context.html.cssFlexClass(for: alignment.vertical, as: .crossItems))
 
-                let layoutDirection = context.containerAttributes?.layoutDirection
+                    let layoutDirection = context.containerAttributes?.layoutDirection
 
-                if let widthCSS = width?.cssAttributes("width", isMainAxis: layoutDirection.map { $0 == .horizontal }) {
-                    attributes.formUnion(widthCSS)
+                    if let widthAttributes = width?.htmlAttributes("width", isMainAxis: layoutDirection.map { $0 == .horizontal }) {
+                        attributes.formUnion(widthAttributes)
+                    }
+                    if let heightAttributes = height?.htmlAttributes("height", isMainAxis: layoutDirection.map { $0 == .vertical }) {
+                        attributes.formUnion(heightAttributes)
+                    }
                 }
-                if let heightCSS = height?.cssAttributes("height", isMainAxis: layoutDirection.map { $0 == .vertical }) {
-                    attributes.formUnion(heightCSS)
-                }
-
-                return attributes
             }
 
         }

@@ -342,36 +342,12 @@ extension KvHtmlKit {
         /// - Important: The result can contain trailing slash.
         ///
         /// - SeeAlso: ``closing()``.
-        func opening<Attributes>(css: CssAttributes? = nil, attributes: Attributes, hasContent: Bool) -> String
-        where Attributes : Sequence, Attributes.Element == Attribute
-        {
-            // TODO: Review performance and memory consumption.
-            let attributes: String = [
-                attributes.lazy.map({ $0.html }).joined(separator: " "),
-                css?.classAttribute?.html,
-                css?.styleAttribute?.html,
-            ]
-                .compactMap { entry -> String? in
-                    guard let entry, !entry.isEmpty else { return nil }
-                    return entry
-                }
-                .joined(separator: " ")
-
+        func opening(attributes: borrowing Attributes = .empty, hasContent: Bool) -> String {
             let name = name
             var openingTag = name
-            if !attributes.isEmpty {
-                openingTag += " \(attributes)"
-            }
+            attributes.forEachExpression { openingTag += " \($0)" }
 
             return hasContent || properties.contains(.requiresEndingTag) ? "<\(openingTag)>" : "<\(openingTag)/>"
-        }
-
-
-        /// - Important: The result can contain trailing slash.
-        ///
-        /// - SeeAlso: ``closing()``.
-        func opening(css: CssAttributes? = nil, attributes: Attribute?..., hasContent: Bool) -> String {
-            opening(css: css, attributes: attributes.lazy.compactMap { $0 }, hasContent: hasContent)
         }
 
 
@@ -380,11 +356,9 @@ extension KvHtmlKit {
         }
 
 
-        func html<Attributes>(css: CssAttributes? = nil, attributes: Attributes, innerHTML: String? = nil) -> String
-        where Attributes : Sequence, Attributes.Element == Attribute
-        {
+        func html(attributes: borrowing Attributes = .empty, innerHTML: String? = nil) -> String {
             let hasContent = innerHTML != nil
-            let opening = self.opening(css: css, attributes: attributes, hasContent: hasContent)
+            let opening = self.opening(attributes: attributes, hasContent: hasContent)
 
             return switch closing(hasContent: hasContent) {
             case .some(let closing):
@@ -392,11 +366,6 @@ extension KvHtmlKit {
             case .none:
                 opening
             }
-        }
-
-
-        func html(css: CssAttributes? = nil, attributes: Attribute?..., innerHTML: String? = nil) -> String {
-            html(css: css, attributes: attributes.lazy.compactMap { $0 }, innerHTML: innerHTML)
         }
 
     }
@@ -412,75 +381,25 @@ extension KvHtmlKit {
     /// - Note: Attributes are equal when their HTML names are equal.
     enum Attribute : Hashable {
 
-        case `class`(AnySequence<String>)
-        case content(String)
-        case href(String)
-        case linkRel(String)
-        case media(String)
-        case name(String)
-        case src(String)
-        case style(String)
-        case type(KvHttpContentType)
+        case `class`
+        case content
+        case href
+        case linkRel
+        case media
+        case name
+        case src
+        case style
+        case target
+        case type
 
-        case raw(name: String, value: String?)
-
-
-        // MARK: Fabrics
-
-        static func `class`(_ values: String...) -> Self { .class(AnySequence(values)) }
-
-
-        static func href(_ uri: String, relativeTo basePath: KvUrlPath?) -> Self {
-            .href(Attribute.uri(uri, relativeTo: basePath))
-        }
-
-        static func href(_ url: URL) -> Self {
-            .href(url.absoluteString)
-        }
-
-
-        static func media(colorScheme: String) -> Self { .media("(prefers-color-scheme:\(colorScheme))") }
-
-
-        static func raw(_ name: String, _ value: String?) -> Self { .raw(name: name, value: value) }
-
-
-        static func src(_ uri: String, relativeTo basePath: KvUrlPath?) -> Self {
-            .src(Attribute.uri(uri, relativeTo: basePath))
-        }
-
-        static func src(_ url: URL) -> Self {
-            .src(url.absoluteString)
-        }
-
-
-        // MARK: : Equatable
-
-        static func ==(lhs: Self, rhs: Self) -> Bool { lhs.htmlName == rhs.htmlName }
-
-
-        // MARK: : Hashable
-
-        func hash(into hasher: inout Hasher) {
-            htmlName.hash(into: &hasher)
-        }
+        case raw(String)
 
 
         // MARK: HTML
 
-        var html: String {
-            let value: String? = switch self {
-            case .class(let names):
-                names.joined(separator: " ")
-            case .content(let value), .href(let value), .linkRel(let value), .media(let value), .name(let value), .src(let value), .style(let value):
-                value
-            case .raw(_, let value):
-                value
-            case .type(let contentType):
-                contentType.value
-            }
-
-            return switch value {
+        /// - Returns: Attribute expression with name, equality sign, quoted value.
+        func html(value: String?) -> String {
+            switch value {
             case .some(let valueBytes):
                 "\(htmlName)=\"\(KvHtmlKit.Escaping.attributeValue(valueBytes))\""
             case .none:
@@ -491,23 +410,285 @@ extension KvHtmlKit {
 
         var htmlName: String {
             switch self {
-            case .class(_): "class"
-            case .content(_): "content"
-            case .href(_): "href"
-            case .linkRel(_): "rel"
-            case .media(_): "media"
-            case .name(_): "name"
-            case .raw(let name, _): String(KvHtmlKit.Escaping.attributeName(name))
-            case .src(_): "src"
-            case .style(_): "style"
-            case .type(_): "type"
+            case .class: "class"
+            case .content: "content"
+            case .href: "href"
+            case .linkRel: "rel"
+            case .media: "media"
+            case .name: "name"
+            case .raw(let name): String(KvHtmlKit.Escaping.attributeName(name))
+            case .src: "src"
+            case .style: "style"
+            case .target: "target"
+            case .type: "type"
+            }
+        }
+
+    }
+
+}
+
+
+
+// MARK: .Attributes
+
+extension KvHtmlKit {
+
+    /// Accumulator of HTML attributes.
+    struct Attributes {
+
+        init() { }
+
+
+        init(_ transform: (inout Attributes) -> Void) { transform(&self) }
+
+
+        /// By default values are stored as `String` or `NSNull`. `NSNull` is used to store attributes having omitted value.
+        /// Some attributes are stored as values of dedicated type, like class is stored as `Set` of strings.
+        private var container: [Attribute : Any] = .init()
+
+
+        // MARK: Fabrics
+
+        static let empty = Attributes()
+
+
+        static func union(_ lhs: Attributes?, _ rhs: Attributes?) -> Attributes? {
+            guard var result = lhs else { return rhs }
+            guard let rhs else { return lhs }
+            result.formUnion(rhs)
+            return result
+        }
+
+
+        static func union(_ lhs: Attributes?, _ rhs: Attributes) -> Attributes {
+            guard var result = lhs else { return rhs }
+            result.formUnion(rhs)
+            return result
+        }
+
+
+        static func union(_ lhs: Attributes, _ rhs: Attributes?) -> Attributes {
+            var result = lhs
+            if let rhs {
+                result.formUnion(rhs)
+            }
+            return result
+        }
+
+
+        // MARK: Subscripts
+
+        /// A subscript providing access and replacement of raw attribute values.
+        ///
+        /// - Important: `Attributes` type provides dedicated handling for some attributes.
+        ///     For example, accumulating methods are provided for class and style attributes, type attribute can be initialized from value of `KvHttpContentType`.
+        subscript(attribute: Attribute) -> Value? {
+            get {
+                switch attribute {
+                case .class:
+                    (classes?.joined(separator: " ")).map(Value.string(_:))
+                case .style:
+                    (styles?.joined(separator: ";")).map(Value.string(_:))
+                case .content, .href, .linkRel, .media, .name, .raw(_), .src, .target, .type:
+                    container[attribute].map(Value.init(_:))
+                }
+            }
+            set { 
+                switch attribute {
+                case .class:
+                    assertionFailure("Don't use subscript to set raw class value, use dedicated methods instead.")
+                    classes = newValue?.asString.map { Set($0.split(separator: " ").lazy.map(String.init(_:))) }
+                case .style:
+                    assertionFailure("Don't use subscript to set raw style value, use dedicated methods instead.")
+                    styles = newValue?.asString.map { [ $0 ] }
+                case .content, .href, .linkRel, .media, .name, .raw(_), .src, .target, .type:
+                    container[attribute] = newValue?.rawValue
+                }
+            }
+        }
+
+
+        /// Type casting subscript. It's used to minimize type casting expressions.
+        private subscript<T>(casting attribute: Attribute) -> T? {
+            get { container[attribute].map { $0 as! T } }
+            set { container[attribute] = newValue }
+        }
+
+
+        // MARK: .Value
+
+        enum Value : ExpressibleByNilLiteral, ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
+
+            case string(String)
+            case null
+
+
+            fileprivate init(_ value: Any) {
+                switch value {
+                case is NSNull:
+                    self = .null
+                default:
+                    self = .string(value as! String)
+                }
+            }
+
+
+            fileprivate var rawValue: Any {
+                switch self {
+                case .string(let value): value
+                case .null: NSNull()
+                }
+            }
+
+
+            init(nilLiteral: ()) { self = .null }
+
+
+            init(stringLiteral value: StringLiteralType) { self = .string(value) }
+
+
+            var asString: String? {
+                switch self {
+                case .string(let string): string
+                case .null: nil
+                }
+            }
+
+        }
+
+
+        // MARK: Dedicated Properties
+
+        private var classes: Set<String>? { get { self[casting: .class] } set { self[casting: .class] = newValue } }
+
+        private var styles: [String]? { get { self[casting: .style] } set { self[casting: .style] = newValue } }
+
+
+        // MARK: `class`
+
+        mutating func insert(classes: Set<String>) {
+            self.classes?.formUnion(classes)
+            ?? (self.classes = classes)
+        }
+
+
+        mutating func insert(classes: String...) {
+            self.classes?.formUnion(classes)
+            ?? (self.classes = .init(classes))
+        }
+
+
+        mutating func insert<S>(classes: S) where S : Sequence, S.Element == String {
+            self.classes?.formUnion(classes)
+            ?? (self.classes = .init(classes))
+        }
+
+
+        mutating func insert(optionalClasses: String?...) { insert(classes: optionalClasses.lazy.compactMap { $0 }) }
+
+
+        // MARK: `href`
+
+        /// Sets ``Attribute/href`` attribute from relative path and the base path.
+        mutating func set(href path: String, relativeTo basePath: KvUrlPath? = nil) {
+            container[.href] = Attributes.resolve(path: path, relativeTo: basePath)
+        }
+
+
+        mutating func set(href url: URL) { container[.href] = url.absoluteString }
+
+
+        // MARK: `media`
+
+        mutating func set(mediaColorScheme colorScheme: String) { container[.media] = "(prefers-color-scheme:\(colorScheme))" }
+
+
+        // MARK: `src`
+
+        /// Sets ``Attribute/src`` attribute from relative path and the base path.
+        mutating func set(src path: String, relativeTo basePath: KvUrlPath? = nil) {
+            container[.src] = Attributes.resolve(path: path, relativeTo: basePath)
+        }
+
+
+        mutating func set(src url: URL) { container[.src] = url.absoluteString }
+
+
+        // MARK: `style`
+
+        mutating func append(styles: [String]) {
+            self.styles?.append(contentsOf: styles)
+            ?? (self.styles = styles)
+        }
+
+
+        mutating func append<S>(styles: S) where S : Sequence, S.Element == String {
+            self.styles?.append(contentsOf: styles)
+            ?? (self.styles = Array(styles))
+        }
+
+
+        mutating func append(styles: String...) { append(styles: styles) }
+
+
+        mutating func append(optionalStyles: String?...) { append(styles: optionalStyles.lazy.compactMap { $0 }) }
+
+
+        // MARK: `type`
+
+        /// Sets value or ``Attribute/type`` attribute.
+        mutating func set(type: KvHttpContentType) {
+            container[.type] = type.value
+        }
+
+
+        // MARK: Operations
+
+        /// - Note: For example, If some tag has empty string value, then the container is not empty.
+        var isEmpty: Bool { container.isEmpty }
+
+
+        mutating func formUnion(_ rhs: Attributes) {
+            rhs.container.forEach { (key, value) in
+                switch key {
+                case .class:
+                    insert(classes: Attributes.cast(value, as: \.classes))
+                case .style:
+                    append(styles: Attributes.cast(value, as: \.styles))
+                default:
+                    container[key] = value
+                }
+            }
+        }
+
+
+        // MARK: HTML
+
+        /// Invokes *body* with HTML expressions for each attribute.
+        func forEachExpression(_ body: (String) -> Void) {
+            container.forEach { (key, value) in
+                let value: String? = switch key {
+                case .class:
+                    Attributes.cast(value, as: \.classes).joined(separator: " ")
+                case .style:
+                    Attributes.cast(value, as: \.styles).joined(separator: ";")
+                case .content, .href, .linkRel, .media, .name, .raw(_), .src, .target, .type:
+                    Value(value).asString
+                }
+
+                body(key.html(value: value))
             }
         }
 
 
         // MARK: Auxiliaries
 
-        private static func uri(_ path: String, relativeTo basePath: KvUrlPath?) -> String {
+        /// This method reduces number of explicit type declarations.
+        private static func cast<T>(_ value: Any, as: KeyPath<Attributes, T?>) -> T { value as! T }
+
+
+        private static func resolve(path: String, relativeTo basePath: KvUrlPath?) -> String {
             let path = switch path.first {
             case .none:
                 ""
@@ -519,119 +700,6 @@ extension KvHtmlKit {
 
             return "\(basePath?.isEmpty != false ? "" : "/\(basePath!.joined)")\(path)"
         }
-
-    }
-
-}
-
-
-
-// MARK: .CssAttributes
-
-extension KvHtmlKit {
-
-    /// Values of attributes related to CSS.
-    struct CssAttributes {
-
-        private(set) var classes: Set<String>
-        private(set) var styles: [String]?
-
-
-        init(classes: Set<String> = [ ], styles: [String]? = nil) {
-            self.classes = classes
-            self.styles = styles
-        }
-
-
-        init(classes: Set<String> = [ ], style: String) {
-            self.init(classes: classes, styles: [ style ])
-        }
-
-
-        init(classes: Set<String>, style: String?) {
-            self.init(classes: classes, styles: style.map { [ $0 ] })
-        }
-
-
-        init(classes: String?..., style: String? = nil) {
-            self.init(classes: .init(classes.lazy.compactMap { $0 }), style: style)
-        }
-
-
-        init(classes: String?..., styles: String?...) { self.init(
-            classes: .init(classes.lazy.compactMap { $0 }),
-            styles: styles.lazy.compactMap({ $0 })
-        ) }
-
-
-        // MARK: Fabrics
-
-        static func union(_ lhs: Self?, _ rhs: Self?) -> Self? {
-            rhs.map { union(lhs, $0) } ?? lhs
-        }
-
-
-        static func union(_ lhs: Self?, _ rhs: Self) -> Self {
-            guard var result = lhs else { return rhs }
-            result.formUnion(rhs)
-            return result
-        }
-
-
-        // MARK: Operations
-
-        var isEmpty: Bool { classes.isEmpty && styles?.isEmpty != false }
-
-
-        var classAttribute: Attribute? {
-            !classes.isEmpty ? .class(.init(classes.sorted())) : nil
-        }
-
-        var styleAttribute: Attribute? {
-            guard let style = styles?.joined(separator: ";"),
-                  !style.isEmpty
-            else { return nil }
-
-            return .style(style)
-        }
-
-
-        mutating func insert(classes: String...) {
-            self.classes.formUnion(classes)
-        }
-
-
-        mutating func formUnion(_ rhs: Self) {
-            classes.formUnion(rhs.classes)
-
-            styles = switch (styles, rhs.styles) {
-            case (.none, .none):
-                nil
-            case (.some(let lhs), .some(let rhs)):
-                lhs + rhs
-            case (.some(let style), .none), (.none, .some(let style)):
-                style
-            }
-        }
-
-
-        mutating func append(style: String) {
-            styles?.append(style) ?? (styles = [ style ])
-        }
-
-
-        mutating func append(style: String?) {
-            guard let style else { return }
-            append(style: style)
-        }
-
-
-        mutating func append<S>(styles: S) where S : Sequence, S.Element == String {
-            self.styles?.append(contentsOf: styles) ?? (self.styles = Array(styles))
-        }
-
-
-        mutating func append(styles: String?...) { append(styles: styles.lazy.compactMap { $0 }) }
 
     }
 

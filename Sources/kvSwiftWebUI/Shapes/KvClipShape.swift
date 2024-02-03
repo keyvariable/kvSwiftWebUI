@@ -52,12 +52,12 @@ public struct KvClipShape {
 
 
 
-    // MARK: CSS
+    // MARK: HTML
 
-    var css: KvHtmlKit.CssAttributes {
+    var htmlAttributes: KvHtmlKit.Attributes {
         switch content {
         case .borderRadius(let borderRadius):
-            return .init(style: "overflow:hidden;border-radius:\(borderRadius.css)")
+            return .init { $0.append(styles: "overflow:hidden;border-radius:\(borderRadius.css)") }
         }
     }
 

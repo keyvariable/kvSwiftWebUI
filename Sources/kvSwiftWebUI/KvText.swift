@@ -327,26 +327,28 @@ public struct KvText : Equatable {
         private static func cast<T>(_ value: Any, as: KeyPath<Self, T?>) -> T { value as! T }
 
 
-        func cssAttributes(in context: borrowing KvHtmlContext) -> KvHtmlKit.CssAttributes? {
-            let cssAttributes = styles.keys
-                .sorted()
-                .reduce(into: KvHtmlKit.CssAttributes()) { css, key in
-                    let value = styles[key]!
+        func htmlAttributes(in context: borrowing KvHtmlContext) -> KvHtmlKit.Attributes? {
+            let htmlAttributes = KvHtmlKit.Attributes { attributes in
+                styles.keys
+                   .sorted()
+                   .forEach { key in
+                       let value = styles[key]!
 
-                    switch key {
-                    case .font:
-                        css.append(style: Attributes.cast(value, as: \.font)?.cssStyle(in: context))
-                    case .fontWeight:
-                        css.append(style: Attributes.cast(value, as: \.fontWeight).map { "font-weight:\($0.cssValue)" })
-                    case .foregroundStyle:
-                        css.append(style: (Attributes.cast(value, as: \.foregroundStyle)?.cssExpression(in: context)).map { "color:\($0)" })
-                    case .isItalic:
-                        css.append(style: Attributes.cast(value, as: \.isItalic) == true ? "font-style:italic" : nil)
-                    }
-                }
+                       switch key {
+                       case .font:
+                           attributes.append(optionalStyles: Attributes.cast(value, as: \.font)?.cssStyle(in: context))
+                       case .fontWeight:
+                           attributes.append(optionalStyles: Attributes.cast(value, as: \.fontWeight).map { "font-weight:\($0.cssValue)" })
+                       case .foregroundStyle:
+                           attributes.append(optionalStyles: (Attributes.cast(value, as: \.foregroundStyle)?.cssExpression(in: context)).map { "color:\($0)" })
+                       case .isItalic:
+                           attributes.append(optionalStyles: Attributes.cast(value, as: \.isItalic) == true ? "font-style:italic" : nil)
+                       }
+                   }
+            }
 
-            guard !cssAttributes.isEmpty else { return nil }
-            return cssAttributes
+            guard !htmlAttributes.isEmpty else { return nil }
+            return htmlAttributes
         }
 
 
@@ -543,7 +545,7 @@ extension KvText : KvView { public var body: KvNeverView { Body() } }
 extension KvText : KvHtmlRenderable {
 
     func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
-        context.representation(cssAttributes: attributes.cssAttributes(in: context.html)) { context, cssAttributes in
+        context.representation(htmlAttributes: attributes.htmlAttributes(in: context.html)) { context, htmlAttributes in
 
             func InnerHTML(_ text: KvText) -> KvHtmlRepresentation.Fragment {
                 var fragment: KvHtmlRepresentation.Fragment = switch text.content {
@@ -556,7 +558,7 @@ extension KvText : KvHtmlRenderable {
 
                 if !attributes.isEmpty {
                     fragment = .tag(.span,
-                                    css: attributes.cssAttributes(in: context.html),
+                                    attributes: attributes.htmlAttributes(in: context.html) ?? .empty,
                                     innerHTML: attributes.wrapping(fragment))
                 }
 
@@ -579,7 +581,7 @@ extension KvText : KvHtmlRenderable {
 
             return .tag(
                 Self.tag(for: textStyle),
-                css: cssAttributes,
+                attributes: htmlAttributes ?? .empty,
                 innerHTML: attributes.wrapping(innerFragment)
             )
         }

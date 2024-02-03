@@ -137,7 +137,7 @@ fileprivate struct KvHtmlRepresentationModifiers { private init() { }
             return .init(KvUserInterfaceSizeClass.allCases.lazy.map { horizontalSizeClass in
                 let context = context.descendant(
                     containerAttributes: context.containerAttributes,    // Preserving container context.
-                    cssAttributes: .init(classes: horizontalSizeClass.cssHorizontalClass)
+                    htmlAttributes: .init { $0.insert(classes: horizontalSizeClass.cssHorizontalClass) }
                 )
                 context.push(environment: .init { $0.horizontalSizeClass = horizontalSizeClass })
 

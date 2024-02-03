@@ -99,7 +99,7 @@ struct KvHtmlBodyImpl : KvHtmlBody {
         // MARK: : KvHtmlRenderable
 
         func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
-            context.representation(options: .noContainer) { context, cssAttributes in
+            context.representation(options: .noContainer) { context, htmlAttributes in
                 /// Finalized HTML representation is generated here to collect some view information (e.g. first background style, navigation title, etc.) and use it below.
                 let representation = KvHtmlRepresentation(of: content, in: context)
 
@@ -112,12 +112,12 @@ struct KvHtmlBodyImpl : KvHtmlBody {
 
                 let fragment = rootView.htmlRepresentation(in: context)
 
-                let extraCSS = KvViewConfiguration {
+                let extraAttributes = KvViewConfiguration {
                     if $0.modify(background: backgroundStyle) != nil { assertionFailure("Warning: body background hasn't been applied") }
                 }
-                .cssAttributes(in: context)
+                .htmlAttributes(in: context)
 
-                return .tag(.body, css: .union(cssAttributes, extraCSS), innerHTML: fragment)
+                return .tag(.body, attributes: .union(htmlAttributes, extraAttributes) ?? .empty, innerHTML: fragment)
             }
         }
 

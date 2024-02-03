@@ -61,13 +61,14 @@ public struct KvShapeStyleView : KvView {
 
 
         func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
-            context.representation { context, cssAttributes in
+            context.representation { context, htmlAttributes in
                 var fragment = KvHtmlRepresentation.Fragment.tag(
-                    .div, css: .init(styles: content.cssBackgroundStyle(context.html, nil), "width:100%;height:100%")
+                    .div,
+                    attributes: .init { $0.append(styles: content.cssBackgroundStyle(context.html, nil), "width:100%;height:100%") }
                 )
 
-                if let cssAttributes = cssAttributes {
-                    fragment = .tag(.div, css: cssAttributes, innerHTML: fragment)
+                if let htmlAttributes {
+                    fragment = .tag(.div, attributes: htmlAttributes, innerHTML: fragment)
                 }
 
                 return fragment

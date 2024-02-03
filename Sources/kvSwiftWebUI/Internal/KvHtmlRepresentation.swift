@@ -138,42 +138,24 @@ struct KvHtmlRepresentation {
         }
 
 
-        static func tag<Attributes>(_ tag: KvHtmlKit.Tag,
-                                    css: KvHtmlKit.CssAttributes? = nil,
-                                    attributes: Attributes,
-                                    innerHTML: consuming Fragment? = nil
-        ) -> Fragment
-        where Attributes : Sequence, Attributes.Element == KvHtmlKit.Attribute
-        {
+        static func tag(_ tag: KvHtmlKit.Tag, attributes: KvHtmlKit.Attributes, innerHTML: consuming Fragment? = nil) -> Fragment {
             let hasContent = innerHTML != nil
-            let opening = tag.opening(css: css, attributes: attributes, hasContent: hasContent)
+            let opening = tag.opening(attributes: attributes, hasContent: hasContent)
             let closing = tag.closing(hasContent: hasContent)
 
             return self.tag(opening: .string(opening), innerHTML: innerHTML, closing: closing.map(Payload.string(_:)))
         }
 
 
-        static func tag<Attributes>(_ tag: KvHtmlKit.Tag,
-                                    css: @escaping () -> KvHtmlKit.CssAttributes? = { nil },
-                                    attributes: @escaping () -> Attributes = { [ ] },
-                                    innerHTML: consuming Fragment? = nil
-        ) -> Fragment
-        where Attributes : Sequence, Attributes.Element == KvHtmlKit.Attribute
-        {
+        static func tag(_ tag: KvHtmlKit.Tag,
+                        attributes: @escaping () -> KvHtmlKit.Attributes = { .empty },
+                        innerHTML: consuming Fragment? = nil
+        ) -> Fragment {
             let hasContent = innerHTML != nil
-            let opening = Payload.stringBlock { tag.opening(css: css(), attributes: attributes(), hasContent: hasContent) }
+            let opening = Payload.stringBlock { tag.opening(attributes: attributes(), hasContent: hasContent) }
             let closing = tag.closing(hasContent: hasContent)
 
             return self.tag(opening: opening, innerHTML: innerHTML, closing: closing.map(Payload.string(_:)))
-        }
-
-
-        static func tag(_ tag: KvHtmlKit.Tag,
-                        css: KvHtmlKit.CssAttributes? = nil,
-                        attributes: KvHtmlKit.Attribute?...,
-                        innerHTML: consuming Fragment? = nil
-        ) -> Self {
-            self.tag(tag, css: css, attributes: attributes.lazy.compactMap { $0 }, innerHTML: innerHTML)
         }
 
 
@@ -378,13 +360,13 @@ class KvHtmlRepresentationContext {
                  environmentNode: EnvironmentNode?,
                  containerAttributes: ContainerAttributes?,
                  viewConfiguration: KvViewConfiguration?,
-                 cssAttributes: KvHtmlKit.CssAttributes?
+                 htmlAttributes: KvHtmlKit.Attributes?
     ) {
         self.html = html
         self.environmentNode = environmentNode
         self.containerAttributes = containerAttributes
         self.viewConfiguration = viewConfiguration
-        self.cssAttributes = cssAttributes
+        self.htmlAttributes = htmlAttributes
     }
 
 
@@ -393,7 +375,7 @@ class KvHtmlRepresentationContext {
     private var viewConfiguration: KvViewConfiguration?
 
     /// Attributes to apply to the synthesized representation.
-    private var cssAttributes: KvHtmlKit.CssAttributes?
+    private var htmlAttributes: KvHtmlKit.Attributes?
 
 
 
@@ -404,7 +386,7 @@ class KvHtmlRepresentationContext {
               environmentNode: environment.map(EnvironmentNode.init(_:)),
               containerAttributes: nil,
               viewConfiguration: environment?.viewConfiguration,
-              cssAttributes: nil)
+              htmlAttributes: nil)
     }
 
 
@@ -538,30 +520,30 @@ class KvHtmlRepresentationContext {
 
     func representation(
         containerAttributes: ContainerAttributes? = nil,
-        cssAttributes: KvHtmlKit.CssAttributes? = nil,
+        htmlAttributes: KvHtmlKit.Attributes? = nil,
         options: Options = [ ],
-        _ body: (KvHtmlRepresentationContext, borrowing KvHtmlKit.CssAttributes?) -> KvHtmlRepresentation.Fragment
+        _ body: (KvHtmlRepresentationContext, borrowing KvHtmlKit.Attributes?) -> KvHtmlRepresentation.Fragment
     ) -> KvHtmlRepresentation.Fragment {
         // Here `self.containerAttributes` is passed to apply it in the extracted CSS.
         var context = self.descendant(containerAttributes: self.containerAttributes)
 
         // TODO: Pass frame CSS to descendant context in come cases.
         let needsContainer = !options.contains(.noContainer) && viewConfiguration?.frame != nil
-        let containerCSS: KvHtmlKit.CssAttributes?// = (consume needsContainer) ? context.extractCssAttributes() : nil
+        let containerHtmlAttributes: KvHtmlKit.Attributes?
 
         switch consume needsContainer {
         case true:
-            containerCSS = context.extractCssAttributes()
+            containerHtmlAttributes = context.extractHtmlAttributes()
 
             context = context.descendant()
 
         case false:
-            containerCSS = nil
+            containerHtmlAttributes = nil
         }
 
         var fragment : KvHtmlRepresentation.Fragment
         do {
-            let innerCSS = context.extractCssAttributes(mergedWith: cssAttributes)
+            let innerCSS = context.extractHtmlAttributes(mergedWith: htmlAttributes)
 
             context.containerAttributes = containerAttributes
 
@@ -569,8 +551,8 @@ class KvHtmlRepresentationContext {
             fragment = body(context, innerCSS)
         }
 
-        if let containerCSS {
-            fragment = .tag(.div, css: containerCSS, innerHTML: fragment)
+        if let containerHtmlAttributes {
+            fragment = .tag(.div, attributes: containerHtmlAttributes, innerHTML: fragment)
         }
 
         return fragment
@@ -579,29 +561,29 @@ class KvHtmlRepresentationContext {
 
 
     /// - Parameter container: Context of container the resulting context is inside.
-    /// - Parameter cssAttributes: Attributes to merge with the receiver's attributes.
+    /// - Parameter htmlAttributes: Attributes to merge with the receiver's attributes.
     ///
     /// - Returns: New context with given values and optionally inherited values.
     func descendant(containerAttributes: ContainerAttributes? = nil,
-                    cssAttributes: KvHtmlKit.CssAttributes? = nil
+                    htmlAttributes: KvHtmlKit.Attributes? = nil
     ) -> KvHtmlRepresentationContext {
-        let cssAttributes = KvHtmlKit.CssAttributes.union(self.cssAttributes, cssAttributes)
+        let htmlAttributes = KvHtmlKit.Attributes.union(self.htmlAttributes, htmlAttributes)
 
         return .init(html: html,
                      environmentNode: environmentNode,
                      containerAttributes: containerAttributes,
                      viewConfiguration: self.viewConfiguration,
-                     cssAttributes: cssAttributes)
+                     htmlAttributes: htmlAttributes)
     }
 
 
     /// If *environment* contains view configuration then
     /// method produces descendant context where view configuration is merged or replaced with given value.
-    /// If it's impossible to merge then replaced view configuration is converted to CSS and the result is written into *extractedCssAttributes*.
+    /// If it's impossible to merge then replaced view configuration is converted to CSS and the result is written into *extractedHtmlAttributes*.
     ///
     /// - Returns: The resulting context.
     func descendant(environment: KvEnvironmentValues,
-                    extractedCssAttributes: inout KvHtmlKit.CssAttributes?
+                    extractedHtmlAttributes: inout KvHtmlKit.Attributes?
     ) -> KvHtmlRepresentationContext {
         let descendant: KvHtmlRepresentationContext
 
@@ -614,7 +596,7 @@ class KvHtmlRepresentationContext {
                   environmentNode: environmentNode,
                   containerAttributes: self.containerAttributes,
                   viewConfiguration: viewConfiguration ?? self.viewConfiguration,
-                  cssAttributes: self.cssAttributes)
+                  htmlAttributes: self.htmlAttributes)
         }
 
 
@@ -626,7 +608,7 @@ class KvHtmlRepresentationContext {
             // The receiver is cloned to extract CSS then.
             descendant = Descendant()
 
-            extractedCssAttributes = descendant.extractCssAttributes()
+            extractedHtmlAttributes = descendant.extractHtmlAttributes()
 
             descendant.viewConfiguration = environmentNode.values.viewConfiguration
             descendant.containerAttributes = nil
@@ -644,8 +626,8 @@ class KvHtmlRepresentationContext {
         let context = self.descendant(containerAttributes: containerAttributes)
 
         // Container context is changed here.
-        if let gridAttributes = context.gridCssAttributes(verticalAlignment) {
-            context.push(cssAttributes: gridAttributes)
+        if let gridAttributes = context.gridHtmlAttributes(verticalAlignment) {
+            context.push(htmlAttributes: gridAttributes)
         }
 
         return context
@@ -653,20 +635,20 @@ class KvHtmlRepresentationContext {
 
 
 
-    /// - Returns: Extracted the receiver's CSS attributes optionally merged with given *attributes*.
+    /// - Returns: Extracted the receiver's HTML attributes optionally merged with given *attributes*.
     ///
-    /// - Note: The receiver's contents related to CSS attributes are reset.
-    /// - Important: Extraction of CSS has some side effects.
-    private func extractCssAttributes(mergedWith attributes: consuming KvHtmlKit.CssAttributes? = nil) -> KvHtmlKit.CssAttributes? {
-        var cssAttributes = KvHtmlKit.CssAttributes.union(viewConfiguration?.cssAttributes(in: self), self.cssAttributes)
+    /// - Note: The receiver's contents related to HTML attributes are reset.
+    /// - Important: Extraction of HTML has some side effects.
+    private func extractHtmlAttributes(mergedWith attributes: consuming KvHtmlKit.Attributes? = nil) -> KvHtmlKit.Attributes? {
+        var htmlAttributes = KvHtmlKit.Attributes.union(viewConfiguration?.htmlAttributes(in: self), self.htmlAttributes)
 
 
-        func Accumulate(_ attributes: KvHtmlKit.CssAttributes) {
-            cssAttributes?.formUnion(attributes) ?? (cssAttributes = attributes)
+        func Accumulate(_ attributes: KvHtmlKit.Attributes) {
+            htmlAttributes?.formUnion(attributes) ?? (htmlAttributes = attributes)
         }
 
 
-        if let gridAttributes = gridCssAttributes() {
+        if let gridAttributes = gridHtmlAttributes() {
             Accumulate(gridAttributes)
         }
         if let attributes = attributes {
@@ -674,13 +656,13 @@ class KvHtmlRepresentationContext {
         }
 
         self.viewConfiguration = nil
-        self.cssAttributes = nil
+        self.htmlAttributes = nil
 
-        return cssAttributes
+        return htmlAttributes
     }
 
 
-    private func gridCssAttributes(_ verticalAlignment: KvVerticalAlignment? = nil) -> KvHtmlKit.CssAttributes? {
+    private func gridHtmlAttributes(_ verticalAlignment: KvVerticalAlignment? = nil) -> KvHtmlKit.Attributes? {
         guard let container = containerAttributes else { return nil }
 
         container.gridColumnCounder?.increase(viewConfiguration?.gridCellColumnSpan ?? 1)
@@ -689,10 +671,10 @@ class KvHtmlRepresentationContext {
 
         self.containerAttributes = rowContainerAttributes
 
-        var attributes = KvHtmlKit.CssAttributes(
-            styles: "grid-row:\(rowIndex)",
-            spanFlag ? "grid-column:1/-1" : nil
-        )
+        var attributes = KvHtmlKit.Attributes {
+            $0.append(optionalStyles: "grid-row:\(rowIndex)",
+                      spanFlag ? "grid-column:1/-1" : nil)
+        }
 
         if let flexClass = verticalAlignment.map({ html.cssFlexClass(for: $0, as: .crossSelf) }) {
             attributes.insert(classes: flexClass)
@@ -707,10 +689,10 @@ class KvHtmlRepresentationContext {
     }
 
 
-    /// Merges given *cssAttributes* into the receiver's CSS attributes.
-    private func push(cssAttributes: consuming KvHtmlKit.CssAttributes) {
-        self.cssAttributes?.formUnion(cssAttributes)
-        ?? (self.cssAttributes = cssAttributes)
+    /// Merges given *htmlAttributes* into the receiver's CSS attributes.
+    private func push(htmlAttributes: consuming KvHtmlKit.Attributes) {
+        self.htmlAttributes?.formUnion(htmlAttributes)
+        ?? (self.htmlAttributes = htmlAttributes)
     }
 
 }

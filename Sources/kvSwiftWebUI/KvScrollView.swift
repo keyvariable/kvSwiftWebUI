@@ -64,19 +64,19 @@ extension KvScrollView : KvHtmlRenderable {
         func OverflowCSS(scroll: Bool) -> String { scroll ? "auto" : "visible" }
 
 
-        let scrollCSS: KvHtmlKit.CssAttributes = .init(
-            styles: "overflow:\(OverflowCSS(scroll: axes.contains(.horizontal))) \(OverflowCSS(scroll: axes.contains(.vertical)))",
-            axes.contains(.horizontal) ? "width:100%" : nil,
-            axes.contains(.vertical) ? "height:100%" : nil
-        )
+        let scrollAttributes: KvHtmlKit.Attributes = .init {
+            $0.append(optionalStyles: "overflow:\(OverflowCSS(scroll: axes.contains(.horizontal))) \(OverflowCSS(scroll: axes.contains(.vertical)))",
+                      axes.contains(.horizontal) ? "width:100%" : nil,
+                      axes.contains(.vertical) ? "height:100%" : nil)
+        }
 
-        return context.representation(cssAttributes: scrollCSS) { context, cssAttributes in
+        return context.representation(htmlAttributes: scrollAttributes) { context, htmlAttributes in
             var fragment = content.htmlRepresentation(in: context)
 
             // Inner container
-            fragment = .tag(.div, css: .init(styles: "width:fit-content;height:fit-content"), innerHTML: fragment)
+            fragment = .tag(.div, attributes: .init { $0.append(styles: "width:fit-content;height:fit-content") }, innerHTML: fragment)
 
-            return .tag(.div, css: cssAttributes, innerHTML: fragment)
+            return .tag(.div, attributes: htmlAttributes ?? .empty, innerHTML: fragment)
         }
     }
 
