@@ -20,7 +20,7 @@
 //===----------------------------------------------------------------------===//
 //
 //  Package.swift
-//  kvSwiftWebUI/Samples
+//  Samples-kvSwiftWebUI
 //
 //  Created by Svyatoslav Popov on 30.10.2023.
 //
