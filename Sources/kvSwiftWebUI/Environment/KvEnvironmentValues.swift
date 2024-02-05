@@ -177,6 +177,7 @@ extension KvEnvironmentValues {
             case multilineTextAlignment
             case navigationTitle
             case scriptResources
+            case tag
             case textCase
         }
 
@@ -234,7 +235,7 @@ extension KvEnvironmentValues {
                     // Accumulation
                     result.scriptResources = .union(result.scriptResources, Self.cast(value, as: \.scriptResources))
                 case .font, .foregroundStyle, .gridCellColumnSpan, .gridColumnAlignment, .multilineTextAlignment, .navigationTitle,
-                        .textCase:
+                        .tag, .textCase:
                     // Replacement
                     result.regularValues[key] = value
                 }
@@ -295,6 +296,9 @@ extension KvEnvironmentValues {
 
         @usableFromInline
         var scriptResources: KvAccumulatingOrderedSet<KvScriptResource>? { get { self[.scriptResources] } set { self[.scriptResources] = newValue } }
+
+        @usableFromInline
+        var tag: AnyHashable? { get { self[.tag] } set { self[.tag] = newValue } }
 
         @usableFromInline
         var textCase: KvText.Case? { get { self[.textCase] } set { self[.textCase] = newValue } }
@@ -423,6 +427,19 @@ extension KvEnvironmentValues {
                             attributes.insert(classes: context.html.cssFlexClass(for: Self.cast(value, as: \.gridColumnAlignment), as: .mainSelf))
                         case .multilineTextAlignment:
                             attributes.append(styles: "text-align:\(Self.cast(value, as: \.multilineTextAlignment).cssTextAlign.css)")
+                        case .tag:
+                            let id: String? = switch value {
+                            case let string as String: string
+                            case let value as LosslessStringConvertible: value.description
+                            case let value as any RawRepresentable:
+                                switch value.rawValue {
+                                case let string as String: string
+                                case let value as LosslessStringConvertible: value.description
+                                default: nil
+                                }
+                            default: nil
+                            }
+                            attributes[.id] = id.map { .string($0) }
                         case .textCase:
                             attributes.append(styles: "text-transform:\(Self.cast(value, as: \.textCase).cssTextTransform)")
 

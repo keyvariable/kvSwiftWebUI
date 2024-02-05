@@ -44,7 +44,8 @@ let package = Package(
             dependencies: [ .product(name: "kvSwiftWebUI", package: "kvSwiftWebUI"),
                             .product(name: "kvServerKit", package: "kvServerKit.swift") ],
             resources: [ .copy("Resources/https.pem"),
-                         .copy("Resources/img") ]
+                         .copy("Resources/img"),
+                         .copy("Resources/js") ]
         ),
     ]
 )

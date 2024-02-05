@@ -33,7 +33,17 @@ extension KvView {
 
     /// This modifier associates given script resource with the receiver.
     ///
-    /// Scripts resources are accumulated and passed to HTML builder.
+    /// Scripts are accumulated and passed to HTML builder.
+    ///
+    /// Below is a simple example of embedded and referenced scrips:
+    /// ```swift
+    /// EmptyView()
+    ///     .script("window.alert('Hello!')")
+    ///     .script(at: Bundle.module.url(
+    ///         forResource: "SomeScript",
+    ///         withExtension: "js"
+    ///     )!)
+    /// ```
     @inlinable
     public consuming func script(_ resource: KvScriptResource) -> some KvView { mapConfiguration { configuration -> Void in
         if configuration!.scriptResources?.insert(resource) == nil {
@@ -44,14 +54,29 @@ extension KvView {
 
     /// This modifier associates a script at given URL with the receiver.
     ///
-    /// It's a shorthand for ``script(_:)-3zaoe`` modifier.
+    /// Scripts are accumulated and passed to HTML builder.
+    ///
+    /// Example:
+    /// ```swift
+    /// EmptyView()
+    ///     .script(at: Bundle.module.url(
+    ///         forResource: "SomeScript",
+    ///         withExtension: "js"
+    ///     )!)
+    /// ```
     @inlinable
     public consuming func script(at url: URL) -> some KvView { script(KvScriptResource.url(url)) }
 
 
-    /// This modifier associates a script at given URL with the receiver.
+    /// This modifier associates a script with given source code.
     ///
-    /// It's a shorthand for ``script(_:)-3zaoe`` modifier.
+    /// Scripts are accumulated and passed to HTML builder.
+    ///
+    /// Example:
+    /// ```swift
+    /// EmptyView()
+    ///     .script("window.alert('Hello!')")
+    /// ```
     @inlinable
     public consuming func script(_ sourceCode: String) -> some KvView { script(KvScriptResource.sourceCode(sourceCode)) }
 

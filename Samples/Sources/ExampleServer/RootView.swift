@@ -36,7 +36,7 @@ struct RootView : View {
 
     // MARK: : View
 
-    /// Views have to provide it's contents in `body` property.
+    /// Views have to provide its contents in `body` property.
     /// The resulting type is inferred automatically at compile time.
     var body: some View {
         /// A view providing default page structure: header with title, subtitle, optional back navigation links, optional reference to source file on GitHub.
@@ -108,20 +108,26 @@ struct RootView : View {
             }
         }
 
-        #warning("Text for the scripts")
         var overview: Text {
             switch self {
             case .basics:
-                Text("This article contains small examples of working with views and view modifiers.")
-                + .space + Text("Building hierarchies from modified views allows you to create complex and beautiful web interfaces.")
+                Text("""
+                    This article contains small examples of working with views and view modifiers. \
+                    Building hierarchies from modified views allows you to create complex and beautiful web interfaces.
+                    """)
 
             case .colors:
-                Text("Web sites are often organized in a hierarchy of pages.")
-                + .space + Text("This simple example shows a catalog of some colors available in kvSwiftWebUI framework.")
-                + .space + Text("kvSwiftWebUI automatically generates links to pages.")
+                Text("""
+                    Web sites are often organized in a hierarchy of pages. \
+                    This simple example shows a catalog of some colors available in kvSwiftWebUI framework. \
+                    kvSwiftWebUI automatically generates links to pages.
+                    """)
 
             case .scripts:
-                Text("TODO")
+                Text("""
+                    Scripts are widely used to provide various functionality in HTML documents. \
+                    This article contains some examples of working with scripts.
+                    """)
             }
         }
 

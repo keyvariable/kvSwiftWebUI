@@ -362,7 +362,7 @@ extension KvHtmlKit {
 
             return switch closing(hasContent: hasContent) {
             case .some(let closing):
-                "\(opening)\(innerHTML!)\(closing)"
+                "\(opening)\(innerHTML ?? "")\(closing)"
             case .none:
                 opening
             }
@@ -384,6 +384,7 @@ extension KvHtmlKit {
         case `class`
         case content
         case href
+        case id
         case linkRel
         case media
         case name
@@ -413,6 +414,7 @@ extension KvHtmlKit {
             case .class: "class"
             case .content: "content"
             case .href: "href"
+            case .id: "id"
             case .linkRel: "rel"
             case .media: "media"
             case .name: "name"
@@ -490,7 +492,7 @@ extension KvHtmlKit {
                     (classes?.joined(separator: " ")).map(Value.string(_:))
                 case .style:
                     (styles?.joined(separator: ";")).map(Value.string(_:))
-                case .content, .href, .linkRel, .media, .name, .raw(_), .src, .target, .type:
+                case .content, .href, .id, .linkRel, .media, .name, .raw(_), .src, .target, .type:
                     container[attribute].map(Value.init(_:))
                 }
             }
@@ -502,7 +504,7 @@ extension KvHtmlKit {
                 case .style:
                     assertionFailure("Don't use subscript to set raw style value, use dedicated methods instead.")
                     styles = newValue?.asString.map { [ $0 ] }
-                case .content, .href, .linkRel, .media, .name, .raw(_), .src, .target, .type:
+                case .content, .href, .id, .linkRel, .media, .name, .raw(_), .src, .target, .type:
                     container[attribute] = newValue?.rawValue
                 }
             }
@@ -673,7 +675,7 @@ extension KvHtmlKit {
                     Attributes.cast(value, as: \.classes).joined(separator: " ")
                 case .style:
                     Attributes.cast(value, as: \.styles).joined(separator: ";")
-                case .content, .href, .linkRel, .media, .name, .raw(_), .src, .target, .type:
+                case .content, .href, .id, .linkRel, .media, .name, .raw(_), .src, .target, .type:
                     Value(value).asString
                 }
 
