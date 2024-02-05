@@ -142,7 +142,7 @@ public class KvHtmlBundle {
                     return value
 
                 case .physicalMemoryRatio(let ratio):
-                    return .init(clamp(ratio, 0.0, 1.0) * Double(ProcessInfo.processInfo.physicalMemory))
+                    return .init(clamp(ratio, 0.0 as Double, 1.0 as Double) * Double(ProcessInfo.processInfo.physicalMemory))
                 }
             }
 

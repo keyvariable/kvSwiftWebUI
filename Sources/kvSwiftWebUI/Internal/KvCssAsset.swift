@@ -216,33 +216,41 @@ class KvCssAsset {
 
 
     var css: String {
-        declarations.keys
-            .sorted(by: { ($0?.cssQuery ?? "") < ($1?.cssQuery ?? "") })
-            .lazy.map { mediaQuery -> String in
-                let mediaQueryNode = self.declarations[mediaQuery]!
 
-                let styles: String = mediaQueryNode.keys
-                    .sorted(by: { ($0 ?? "") < ($1 ?? "") })
-                    .lazy.map { selector -> String in
-                        let selectorNode = mediaQueryNode[selector]!
+        func CssForMediaQuery(_ mediaQuery: MediaQuery?) -> String {
+            let mediaQueryNode = self.declarations[mediaQuery]!
 
-                        let styles: String = selectorNode.keys
-                            .sorted()
-                            .lazy.map { selectorNode[$0]! }
-                            .joined()
 
-                        return switch selector {
-                        case .none: styles
-                        case .some(let selector): "\(selector){\(styles)}"
-                        }
-                    }
+            func CssForSelector(_ selector: String?) -> String {
+                let selectorNode = mediaQueryNode[selector]!
+
+                let styles: String = selectorNode.keys
+                    .sorted()
+                    .lazy.map { selectorNode[$0]! }
                     .joined()
 
-                return switch mediaQuery {
+                return switch selector {
                 case .none: styles
-                case .some(let query): "@media \(query.cssQuery){\(styles)}"
+                case .some(let selector): "\(selector){\(styles)}"
                 }
             }
+
+
+            let styles: String = mediaQueryNode.keys
+                .sorted(by: { ($0 ?? "") < ($1 ?? "") })
+                .lazy.map(CssForSelector(_:))
+                .joined()
+
+            return switch mediaQuery {
+            case .none: styles
+            case .some(let query): "@media \(query.cssQuery){\(styles)}"
+            }
+        }
+
+
+        return declarations.keys
+            .sorted(by: { ($0?.cssQuery ?? "") < ($1?.cssQuery ?? "") })
+            .lazy.map(CssForMediaQuery(_:))
             .joined()
     }
 
