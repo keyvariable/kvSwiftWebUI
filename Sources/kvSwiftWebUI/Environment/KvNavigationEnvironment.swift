@@ -25,22 +25,19 @@
 
 // MARK: - \.navigationPath
 
-fileprivate struct KvNavigationPathKey : KvEnvironmentKey {
-
-    typealias Value = KvNavigationPath
-
-
-    static var defaultValue: Value { .empty }
-
-}
-
-
 extension KvEnvironmentValues {
 
+    private struct NavigationPathKey : KvEnvironmentKey {
+
+        static var defaultValue: KvNavigationPath { .empty }
+
+    }
+
+
     // TODO: DOC
-    public var navigationPath: KvNavigationPath {
-        get { self[KvNavigationPathKey.self] }
-        set { self[KvNavigationPathKey.self] = newValue }
+    public internal(set) var navigationPath: KvNavigationPath {
+        get { self[NavigationPathKey.self] }
+        set { self[NavigationPathKey.self] = newValue }
     }
 
 }

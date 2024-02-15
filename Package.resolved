@@ -14,8 +14,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/keyvariable/kvServerKit.swift.git",
       "state" : {
-        "revision" : "d3da0768548dc214096341110ad5bfdcc6768b92",
-        "version" : "0.11.0"
+        "revision" : "70efd95018390a959c9246102ed76232f5220021",
+        "version" : "0.12.0"
       }
     },
     {

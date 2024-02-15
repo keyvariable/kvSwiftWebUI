@@ -32,10 +32,29 @@ import kvKit
 
 /// *KvHtmlBundle* resolves the root view to collection HTTP responses including HTML, styles, resources, etc.
 ///
-/// When bundle is initialized, the responses are fetched by URL paths using ``response(at:)`` method.
+/// When bundle is initialized, use ``response(for:)`` or ``response(at:as:)`` methods to process requests and get responses.
 ///
 /// By default it's assumed that bundle is served to the domain's root path and maximum size of response cache is 50% of physical memory on the machine.
 /// Use ``Configuration`` structure and ``init(with:rootView:)`` initializer to customize bundle.
+///
+/// When the responses are served with [kvServerKit](https://github.com/keyvariable/kvServerKit.swift.git ),
+/// bundles can be used as the response expressions:
+/// ```swift
+/// import kvServerKit
+/// import kvSwiftWebUI
+/// import kvSwiftWebUI_kvServerKit
+///
+/// @main
+/// struct ExampleServer : KvServer {
+///     private let bundle: KvHtmlBundle = <#...#>
+///
+///     var body: some KvResponseRootGroup {
+///         KvGroup(http: .v1_1(), at: Host.current().addresses, on: [ 8080 ]) {
+///             bundle
+///         }
+///     }
+/// }
+/// ```
 public class KvHtmlBundle {
 
     /// A shorthand for ``init(with:rootView:)``.
@@ -55,6 +74,8 @@ public class KvHtmlBundle {
     public init<RootView>(with configuration: borrowing Configuration, @KvViewBuilder rootView: @escaping () -> RootView) throws
     where RootView : KvView
     {
+        localization = .init(configuration.localizationBundle ?? .main)
+
         configuration.icon?.forEachHtmlResource(assets.insert(_:))
 
         responseCache = configuration.responseCacheSize.map {
@@ -65,25 +86,27 @@ public class KvHtmlBundle {
             for: rootView(),
             with: .init(rootPath: configuration.rootPath,
                         iconHeaders: configuration.icon?.htmlHeaders,
-                        assets: assets)
+                        assets: assets,
+                        localization: localization)
         )
 
         do {
             let navigationController = navigationController
             // - NOTE: Catching reference to `self` is avoided to prevent retain cycle.
-            responseBlock = { navigationController.htmlResponse(at: $0) }
+            responseBlock = { navigationController.htmlResponse(for: $0) }
         }
     }
 
 
 
     private let assets = KvHtmlBundleAssets()
+    private let localization: KvLocalization
 
     private let navigationController: KvNavigationController
 
-    private let responseCache: KvHttpResponseCache<KvUrlPath.Slice>?
+    private let responseCache: KvHttpResponseCache<ProcessedRequest>?
     /// A block to be used to synthesize response when there is no cached value.
-    private let responseBlock: (KvUrlPath.Slice) -> KvHttpResponseContent?
+    private let responseBlock: (borrowing ProcessedRequest) -> KvHttpResponseContent?
 
 
 
@@ -100,6 +123,9 @@ public class KvHtmlBundle {
         /// Maximum size of cached responses. If `nil` then the cache is disabled. By default cache uses 50% of physical memory on the machine.
         public var responseCacheSize: ResponseCacheSize?
 
+        /// A bundle to use as localization source. If `nil` then `.main` bundle is used.
+        public var localizationBundle: Bundle?
+
 
 
         /// - Parameters:
@@ -109,11 +135,13 @@ public class KvHtmlBundle {
         @inlinable
         public init(rootPath: KvUrlPath? = nil,
                     icon: KvApplicationIcon? = nil,
-                    responseCacheSize: ResponseCacheSize? = .physicalMemoryRatio(0.5)
+                    responseCacheSize: ResponseCacheSize? = .physicalMemoryRatio(0.5),
+                    localizationBundle: Bundle? = nil
         ) {
             self.rootPath = rootPath
             self.icon = icon
             self.responseCacheSize = responseCacheSize
+            self.localizationBundle = localizationBundle
         }
 
 
@@ -152,17 +180,118 @@ public class KvHtmlBundle {
 
 
 
-    // MARK: Operations
+    // MARK: .Request
 
-    /// - Returns: An HTTP response with contents of resource at given *path* in the bundle.
-    public func response(at path: KvUrlPath.Slice) -> KvHttpResponseContent? {
-        assets[path]
-        ?? navigationResponse(at: path)
+    public struct Request {
+
+        public typealias HttpHeader = (name: String, value: String)
+
+
+        /// Path to requested resource.
+        public var path: KvUrlPath.Slice
+
+        /// Iterator of HTTP headers.
+        public var headerIterator: AnyIterator<HttpHeader>?
+
+
+        /// A member-wise initializer.
+        @inlinable
+        public init(path: KvUrlPath.Slice, headerIterator: AnyIterator<HttpHeader>? = nil) {
+            self.path = path
+            self.headerIterator = headerIterator
+        }
+
+
+        // MARK: Modifiers
+
+        @usableFromInline
+        consuming func modified(transform: (inout Request) -> Void) -> Request {
+            var copy = self
+            transform(&copy)
+            return copy
+        }
+
+
+        /// This modifier assigns given iterator of HTTP headers to the receiver.
+        @inlinable
+        public consuming func headerIterator<H>(_ headerIterator: H) -> Request
+        where H : IteratorProtocol, H.Element == HttpHeader
+        { modified {
+            $0.headerIterator = .init(headerIterator)
+        } }
+
     }
 
 
-    private func navigationResponse(at path: KvUrlPath.Slice) -> KvHttpResponseContent? {
-        responseCache?[path, default: { responseBlock(path) }] ?? responseBlock(path)
+
+    // MARK: .Representation
+
+    /// Representation of a resource in bundle.
+    public struct Representation : Hashable {
+
+        /// Language tag ([RFC 5646](https://datatracker.ietf.org/doc/html/rfc5646 )) to be used to select localized resources.
+        public var languageTag: String?
+
+    }
+
+
+
+    // MARK: .ProcessedRequest
+
+    struct ProcessedRequest : Hashable {
+
+        let path: KvUrlPath.Slice
+        let representation: Representation
+
+    }
+
+
+
+    // MARK: Operations
+
+    /// - Returns: A representation from HTTP request headers.
+    public func representation<H>(fromHttpHeaders headerIterator: H? = Optional<[Request.HttpHeader]>.none) -> Representation
+    where H : Sequence, H.Element == Request.HttpHeader
+    {
+        var representation = Representation()
+
+        // TODO: Refactoring to a cycle is required if two or more headers are be handled.
+
+        do {
+            let languageTags = headerIterator?
+                .first(where: { $0.name.caseInsensitiveCompare("Accept-Language") == .orderedSame })?
+                .value
+
+            if let languageTags {
+                representation.languageTag = localization.selectLanguageTag(forAcceptLanguageHeader: languageTags)
+            }
+        }
+
+        return representation
+    }
+
+
+    /// - Returns: An HTTP response with contents of a resource matching given *request*.
+    ///
+    /// - SeeAlso: ``representation(fromHttpHeaders:)``.
+    public func response(for request: borrowing Request) -> KvHttpResponseContent? {
+        response(at: request.path, as: self.representation(fromHttpHeaders: request.headerIterator))
+    }
+
+
+    /// - Returns: An HTTP response with contents of a resource at given *path* in the bundle.
+    ///
+    /// - Note: `representation` is a closure to avoid it's evaluation when there is no need in it.
+    public func response(at path: borrowing KvUrlPath.Slice,
+                         as representation: @autoclosure () -> Representation
+    ) -> KvHttpResponseContent? {
+        assets[path]
+        ?? navigationResponse(for: .init(path: path, representation: representation()))
+    }
+
+
+    private func navigationResponse(for request: ProcessedRequest) -> KvHttpResponseContent? {
+        responseCache?[request, default: { responseBlock(request) }] ?? responseBlock(request)
     }
 
 }

@@ -38,12 +38,13 @@ struct KvNavigationController {
 
     init<RootView : KvView>(for rootView: RootView, with configuration: Configuration) {
         self.configuration = configuration
-        self.rootNode = .from(rootView, with: configuration)
+
+        rootNodes = .for(rootView, with: configuration)
     }
 
 
 
-    private let rootNode: StaticNode
+    private let rootNodes: RootNodes
 
 
 
@@ -57,16 +58,61 @@ struct KvNavigationController {
 
         let assets: KvHtmlBundleAssets
 
+        let localization: KvLocalization
+
+    }
+
+
+
+    // MARK: .RootNodes
+
+    private enum RootNodes {
+
+        /// Keys are the language tags.
+        case localized([String : StaticNode])
+        case `static`(StaticNode)
+
+
+        // MARK: .Fabrics
+
+        static func `for`<RootView : KvView>(_ rootView: RootView, with configuration: borrowing Configuration) -> RootNodes {
+            var rootNodes: [String : StaticNode] = .init()
+
+            configuration.localization.forEachLanguageTag { languageTag in
+                rootNodes[languageTag] = .from(rootView, with: configuration, languageTag)
+            }
+
+            return switch rootNodes.isEmpty {
+            case false: .localized(rootNodes)
+            case true: .static(.from(rootView, with: configuration))
+            }
+        }
+
+
+        // MARK: Subscripts
+
+        subscript(representation: KvHtmlBundle.Representation) -> StaticNode? {
+            switch self {
+            case .localized(let nodes):
+                let node = representation.languageTag.flatMap { nodes[$0] }
+                assert(node != nil, "Internal inconsistency: language tag in \(representation) representation must match available localizations")
+                return node
+
+            case .static(let node):
+                return node
+            }
+        }
+
     }
 
 
 
     // MARK: Operations
 
-    func htmlResponse(at path: KvUrlPath.Slice) -> KvHttpResponseContent? {
-        var node: AnyNode = .staticNode(rootNode)
+    func htmlResponse(for request: borrowing KvHtmlBundle.ProcessedRequest) -> KvHttpResponseContent? {
+        guard var node = rootNodes[request.representation].map(AnyNode.staticNode(_:)) else { return nil }
 
-        for component in path.components {
+        for component in request.path.components {
             guard let nextNode = node.next(for: String(component), with: configuration) else { return nil }
 
             node = nextNode
@@ -128,13 +174,15 @@ struct KvNavigationController {
         init(_ body: KvHtmlBody,
              cssAsset: KvCssAsset,
              navigationPath: KvNavigationPath? = nil,
-             configuration: borrowing Configuration
+             configuration: borrowing Configuration,
+             localizationContext: KvLocalization.Context
         ) {
             self.context = KvHtmlContext(
                 configuration.assets,
                 cssAsset: cssAsset,
                 rootPath: configuration.rootPath,
                 navigationPath: navigationPath ?? .init(elements: [ .init(value: .root, title: nil) ]),
+                localizationContext: localizationContext,
                 extraHeaders: configuration.iconHeaders.map { [ $0 ] }
             )
 
@@ -161,7 +209,8 @@ struct KvNavigationController {
             return .init(body,
                          cssAsset: .init(parent: context.cssAsset.parent),
                          navigationPath: navigationPath + .component(rawValue: data, data: destination.value),
-                         configuration: configuration)
+                         configuration: configuration,
+                         localizationContext: context.localizationContext)
         }
 
     }
@@ -177,6 +226,8 @@ struct KvNavigationController {
         let navigationDestinations: Node.NavigationDestinations?
         let navigationPath: KvNavigationPath
 
+        let localizationContext: KvLocalization.Context
+
         /// It can be `nil` when there is no generated CSS.
         let cssAsset: KvCssAsset.Prototype?
 
@@ -191,6 +242,8 @@ struct KvNavigationController {
 
             navigationDestinations = context.navigationDestinations
             navigationPath = node.navigationPath
+
+            localizationContext = context.localizationContext
         }
 
 
@@ -202,8 +255,8 @@ struct KvNavigationController {
         // MARK: Fabrics
 
         /// Traverses the static navigation destinations and returns the root node.
-        static func from<Content : KvView>(_ view: Content, with configuration: borrowing Configuration) -> StaticNode {
-            let node = StaticNode.root(view, configuration: configuration)
+        static func from<Content : KvView>(_ view: Content, with configuration: borrowing Configuration, _ languageTag: String? = nil) -> StaticNode {
+            let node = StaticNode.root(view, configuration: configuration, languageTag)
 
             node.processStaticDestinations(with: configuration)
 
@@ -211,10 +264,13 @@ struct KvNavigationController {
         }
 
 
-        private static func root<Content : KvView>(_ view: Content, configuration: borrowing Configuration) -> StaticNode {
+        private static func root<Content : KvView>(_ view: Content, configuration: borrowing Configuration, _ languageTag: String?) -> StaticNode {
+            let localizationContext = configuration.localization.context(languageTag: languageTag)
+
             let node = Node(KvHtmlBodyImpl(content: view),
                             cssAsset: .init(parent: nil),
-                            configuration: configuration)
+                            configuration: configuration,
+                            localizationContext: localizationContext)
 
             // Caching the root CSS asset.
             var cssAssetPrototype: KvCssAsset.Prototype?
@@ -238,7 +294,8 @@ struct KvNavigationController {
                 destination.body,
                 cssAsset: .init(parent: cssAsset),
                 navigationPath: navigationPath + .component(rawValue: data, data: destination.value),
-                configuration: configuration
+                configuration: configuration,
+                localizationContext: localizationContext
             ))
         }
 
@@ -257,7 +314,8 @@ struct KvNavigationController {
                     let node = Node(destination.body,
                                     cssAsset: sharedCssAsset,
                                     navigationPath: navigationPath + .component(rawValue: data, data: destination.value),
-                                    configuration: configuration)
+                                    configuration: configuration,
+                                    localizationContext: localizationContext)
                     return (node, data)
                 }
                 _ = consume sharedCssAsset
@@ -344,13 +402,13 @@ struct KvNavigationController {
 
         var accumulator = Accumulator()
 
-        // TODO: Accumulate entire document inside KvHtmlRepresentation and perform hashing with the data list resolution.
-        accumulator.append("<!DOCTYPE html><html><head>")
+        // TODO: Accumulate entire document inside KvHtmlRepresentation and perform simultanous accumulation of data from the the data list (from KvHtmlRepresentation) and evaluation of the hash digest.
+        accumulator.append("<!DOCTYPE html><html\(context.localizationContext.languageTag.map { " lang=\"\($0)\"" } ?? "")><head>")
         do {
             let title: String? = context.navigationPath.elements
                 .reversed()
-                .lazy.compactMap { $0.title?.escapedPlainBytes }
-                .reduce(context.navigationTitle?.escapedPlainBytes) {
+                .lazy.compactMap { $0.title?.escapedPlainBytes(in: context.localizationContext) }
+                .reduce(context.navigationTitle?.escapedPlainBytes(in: context.localizationContext)) {
                     $0 != nil ? "\($0!) | \($1)" : $1
                 }
                 .map { "<title>\($0)</title>" }

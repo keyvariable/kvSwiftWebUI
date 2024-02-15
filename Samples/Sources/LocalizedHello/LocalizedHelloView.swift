@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 //
-//  Copyright (c) 2023 Svyatoslav Popov (info@keyvar.com).
+//  Copyright (c) 2024 Svyatoslav Popov (info@keyvar.com).
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 //  License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
@@ -17,28 +17,35 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvLayoutEnvironment.swift
-//  kvSwiftWebUI
+//  LocalizedHelloView.swift
+//  Samples-kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 22.11.2023.
+//  Created by Svyatoslav Popov on 14.02.2024.
 //
 
-// MARK: - \.horizontalSizeClass
-
-extension KvEnvironmentValues {
-
-    private struct HorizontalSizeClassKey : KvEnvironmentKey {
-
-        static var defaultValue: UserInterfaceSizeClass? { nil }
-
-    }
+import kvSwiftWebUI
 
 
-    // TODO: DOC
-    // TODO: DOC: View is pre-synthesized for all size classes.
-    public var horizontalSizeClass: KvUserInterfaceSizeClass? {
-        get { self[HorizontalSizeClassKey.self] }
-        set { self[HorizontalSizeClassKey.self] = newValue }
+
+struct LocalizedHelloView : View {
+
+    /// Current localization context is available in the environment at `\.localization` key path.
+    ///
+    /// Here it's used to print current language tag.
+    @KvEnvironment(\.localization) private var localization
+
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text("HELLO")
+                .font(.largeTitle)
+                .padding(.vertical, .em(2))
+
+            Text(verbatim: ".languageTag == \(localization.languageTag.map { "\"\($0)\"" } ?? "nil")")
+                .font(.system(.footnote, design: .monospaced))
+                .foregroundStyle(.label.secondary)
+        }
+        .padding(.bottom, .em(2))
     }
 
 }

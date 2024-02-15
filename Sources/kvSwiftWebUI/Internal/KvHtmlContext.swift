@@ -51,6 +51,10 @@ class KvHtmlContext {
     }(navigationPath.urlPath)
 
 
+    let localizationContext: KvLocalization.Context
+
+
+
     /// First non-nil navigation title.
     private(set) var navigationTitle: KvText?
     /// All declared destinations.
@@ -65,12 +69,14 @@ class KvHtmlContext {
          cssAsset: KvCssAsset,
          rootPath: KvUrlPath?,
          navigationPath: KvNavigationPath,
+         localizationContext: KvLocalization.Context,
          extraHeaders: [String]? = nil
     ) {
         self.assets = assets
         self.cssAsset = cssAsset
         self.rootPath = rootPath
         self.navigationPath = navigationPath
+        self.localizationContext = localizationContext
         self.extraHeaders = extraHeaders ?? [ ]
     }
 

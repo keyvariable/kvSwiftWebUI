@@ -17,8 +17,18 @@ Note: `swift run ExampleServer` command builds and runs *ExampleServer* sample.
 - [BasicsView.swift](Sources/ExampleServer/BasicsView.swift) — a view containing small examples of working with views and view modifiers;
 - [ColorCatalogView.swift](Sources/ExampleServer/ColorCatalogView.swift) — color library view using grids to present color previews
   and `\.horizontalSizeClass` environment value to adapt UI to width of viewport;
+- [ScriptView.swift](Sources/ExampleServer/ScriptView.swift) - a view containing simple examples of java scripts.
 - [Aux/](Sources/ExampleServer/Aux) — collection of auxiliary views;
 - [ExampleServer.swift](Sources/ExampleServer/ExampleServer.swift) — HTTP server also providing the main function.
+
+
+## LocalizedHello
+
+Localization is an important part of developing user-friendly interfaces.
+This example displays «Hello!» label in English, Chinese, Hindi and many other languages.
+By default, the phrase is displayed in default package localization: English.
+
+Note: `swift run LocalizedHello` command builds and runs *LocalizedHello* sample.
 
 
 ## Authors

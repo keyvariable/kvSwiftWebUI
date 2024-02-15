@@ -73,6 +73,7 @@ struct KvHtmlBodyImpl : KvHtmlBody {
 
         var environment = KvEnvironmentValues(viewConfiguration)
         environment.navigationPath = htmlContext.navigationPath
+        environment.localization = htmlContext.localizationContext
 
         return rootRepresentationProvider(.root(html: htmlContext, environment: environment))
     }
@@ -162,6 +163,9 @@ struct KvHtmlBodyImpl : KvHtmlBody {
         let content: Content
 
 
+        @Environment(\.localization) private var localization
+
+
         // MARK: .Constants
 
         private struct Constants { private init() { }
@@ -181,10 +185,31 @@ struct KvHtmlBodyImpl : KvHtmlBody {
         }
 
         private var signatureBanner: some View {
-            let text =
-            Text("Made with ")
-            + Text("kvSwiftWebUI")
-                .link(URL(string: "https://github.com/keyvariable/kvSwiftWebUI.git")!)
+            let string = localization.string(forKey: "Made with kvSwiftWebUI",
+                                             bundle: .module, 
+                                             comment: "Content of the signature banner. Note, that «kvSwiftWebUI» is attributed with link to GitHub.")
+
+            let text: Text
+            do {
+                var accumulator = Text(verbatim: "")
+                var source = Substring(string)
+
+                while let range = source.firstRange(of: "kvSwiftWebUI") {
+                    defer { source = source[range.upperBound...] }
+
+                    if range.lowerBound != source.startIndex {
+                        accumulator += Text(verbatim: String(source[..<range.lowerBound]))
+                    }
+                    accumulator += Text(verbatim: String(source[range]))
+                        .link(URL(string: "https://github.com/keyvariable/kvSwiftWebUI.git")!)
+                }
+
+                if !source.isEmpty {
+                    accumulator += Text(verbatim: String(source))
+                }
+
+                text = accumulator
+            }
 
             return text
                 .padding(.horizontal)

@@ -17,33 +17,45 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvTextKit.swift
+//  KvContextEnvironment.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 23.01.2024.
+//  Created by Svyatoslav Popov on 11.02.2024.
 //
 
 import Foundation
 
-@testable import kvSwiftWebUI
 
 
+// MARK: - \.localization
 
-/// A collection of auxiliaries for testing.
-struct KvTextKit { private init() { }
+extension KvEnvironmentValues {
 
-    /// - Returns: HTML code of given view.
-    static func renderHTML<V : KvView>(for view: V) -> String {
-        let context = KvHtmlRepresentationContext.root(
-            html: .init(.init(), cssAsset: .init(parent: nil), rootPath: nil, navigationPath: .empty)
-        )
+    private struct LocalizationKey : KvEnvironmentKey {
 
-        var data = Data()
+        static var defaultValue: KvLocalization.Context? { nil }
 
-        KvHtmlRepresentation(of: view, in: context)
-            .forEach { data.append($0) }
+    }
 
-        return .init(data: data, encoding: .utf8)!
+
+    /// Current localization context.
+    ///
+    /// Below is an example of common usage:
+    /// ```swift
+    /// struct HelloView : View {
+    ///     @Environment(\.localization) private var localization
+    ///
+    ///     var body: some View {
+    ///         let hello = localization.string(forKey: "hello!")
+    ///         Text(verbatim: hello.uppercased())
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// - Note: ``Text`` view supports localization so in most cases there is no need to access localization context.
+    public internal(set) var localization: KvLocalization.Context {
+        get { self[LocalizationKey.self]! }
+        set { self[LocalizationKey.self] = newValue }
     }
 
 }

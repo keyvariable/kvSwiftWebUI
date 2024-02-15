@@ -57,22 +57,32 @@ public struct KvText : Equatable {
     // TODO: DOC
     @inlinable
     public init(verbatim content: String) {
-        self.init(content: .string(content))
+        self.init(content: .verbatim(content))
     }
 
 
     // TODO: DOC
     @inlinable
     public init<S>(_ content: S) where S : StringProtocol {
-        self.init(content: .string(String(content)))
+        self.init(content: .localizable(.init(key: String(content))))
     }
 
 
     // TODO: DOC
     @inlinable
     public init(_ key: KvLocalizedStringKey, tableName: String? = nil, bundle: Bundle? = nil, comment: StaticString? = nil) {
-        self.init(verbatim: (bundle ?? .main).localizedString(forKey: key.content, value: nil, table: tableName))
+        self.init(content: .localizable(.init(key: key.content, table: tableName, bundle: bundle)))
     }
+
+
+    #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+    // TODO: DOC
+    @available(macOS 13, iOS 16, tvOS 16, watchOS 9, *)
+    @inlinable
+    public init(_ resource: LocalizedStringResource) {
+        self.init(verbatim: String(localized: resource))
+    }
+    #endif // os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 
 
 
@@ -84,18 +94,21 @@ public struct KvText : Equatable {
         /// - Note: Block is used to reduce size of `Content` instances.
         case joined(() -> (KvText, KvText))
 
-        case string(String)
+        case localizable(KvLocalization.StringResource)
+
         /// It can be used, when attributes of a text can't be merged with the associated child text. E.g. superscript inside subscript.
         ///
         /// - Note: Block is used to reduce size of `Content` instances.
         case text(() -> KvText)
+
+        case verbatim(String)
 
 
         // MARK: : ExpressibleByStringLiteral
 
         @usableFromInline
         init(stringLiteral value: StringLiteralType) {
-            self = .string(value)
+            self = .verbatim(value)
         }
 
 
@@ -106,10 +119,12 @@ public struct KvText : Equatable {
             switch lhs {
             case .joined(let lhs):
                 guard case .joined(let rhs) = rhs, lhs() == rhs() else { return false }
-            case .string(let string):
-                guard case .string(string) = rhs else { return false }
+            case .localizable(let resource):
+                guard case .localizable(resource) = rhs else { return false }
             case .text(let lhs):
                 guard case .text(let rhs) = rhs, lhs() == rhs() else { return false }
+            case .verbatim(let string):
+                guard case .verbatim(string) = rhs else { return false }
             }
             return true
         }
@@ -123,10 +138,12 @@ public struct KvText : Equatable {
             case .joined(let block):
                 let (lhs, rhs) = block()
                 return lhs.isEmpty && rhs.isEmpty
-            case .string(let string):
-                return string.isEmpty
+            case .localizable(_):
+                return false    // The resolved string is unknown at the moment so `false` is returned.
             case .text(let block):
                 return block().isEmpty
+            case .verbatim(let string):
+                return string.isEmpty
             }
         }
 
@@ -142,7 +159,7 @@ public struct KvText : Equatable {
             /// - Returns: A content string when *text* is a string with no attributes.
             func PlainString(_ text: Text) -> String? {
                 guard text.attributes.isEmpty,
-                      case .string(let string) = text.content
+                      case .verbatim(let string) = text.content
                 else { return nil }
 
                 return string
@@ -150,33 +167,33 @@ public struct KvText : Equatable {
 
 
             switch (lhs, rhs) {
-            case (.string(let lstring), .string(let rstring)):
-                return .string(lstring + rstring)
+            case (.verbatim(let lstring), .verbatim(let rstring)):
+                return .verbatim(lstring + rstring)
 
-            case (.string(let lstring), .text(let rtext)):
+            case (.verbatim(let lstring), .text(let rtext)):
                 guard let rstring = PlainString((consume rtext)()) else { break }
-                return .string(lstring + rstring)
+                return .verbatim(lstring + rstring)
 
-            case (.text(let ltext), .string(let rstring)):
+            case (.text(let ltext), .verbatim(let rstring)):
                 let ltext = (consume ltext)()
                 guard let lstring = PlainString(ltext) else { break }
-                return .string(lstring + rstring)
+                return .verbatim(lstring + rstring)
 
             case (.text(let ltext), .text(let rtext)):
                 let text = (consume ltext)() + (consume rtext)()
                 return text.attributes.isEmpty ? text.content : .text({ text })
 
-            case (.string(let lstring), .joined(let block)):
+            case (.verbatim(let lstring), .joined(let block)):
                 let (mtext, rtext) = (consume block)()
                 guard let mstring = PlainString(mtext) else { break }
-                return .joined { (KvText(content: .string(lstring + mstring)), rtext) }
+                return .joined { (KvText(content: .verbatim(lstring + mstring)), rtext) }
 
-            case (.joined(let block), .string(let rstring)):
+            case (.joined(let block), .verbatim(let rstring)):
                 let (ltext, mtext) = block()
                 guard let mstring = PlainString(mtext) else { break }
-                return .joined { (ltext, KvText(content: .string(mstring + rstring))) }
+                return .joined { (ltext, KvText(content: .verbatim(mstring + rstring))) }
 
-            case (.text, .joined), (.joined, .text), (.joined, .joined):
+            case (.localizable, _), (_, .localizable), (.text, .joined), (.joined, .text), (.joined, .joined):
                 break
             }
 
@@ -412,16 +429,17 @@ public struct KvText : Equatable {
 
 
     /// - Returns: The receiver's content without attributes as *KvHtmlBytes*.
-    @usableFromInline
-    var escapedPlainBytes: String {
+    func escapedPlainBytes(in context: borrowing KvLocalization.Context) -> String {
         switch content {
         case .joined(let block):
             let (lhs, rhs) = block()
-            return "\(lhs.escapedPlainBytes)\(rhs.escapedPlainBytes)"
-        case .string(let string):
-            return KvHtmlKit.Escaping.innerText(string)
+            return "\(lhs.escapedPlainBytes(in: context))\(rhs.escapedPlainBytes(in: context))"
+        case .localizable(let resource):
+            return context.string(resource)
         case .text(let block):
-            return block().escapedPlainBytes
+            return block().escapedPlainBytes(in: context)
+        case .verbatim(let string):
+            return KvHtmlKit.Escaping.innerText(string)
         }
     }
 
@@ -530,6 +548,10 @@ public struct KvText : Equatable {
         return .init(content: lhs.content + rhs.content, attributes: lhs.attributes)
     }
 
+
+    @inlinable
+    public static func +=(lhs: inout KvText, rhs: consuming KvText) { lhs = lhs + rhs }
+
 }
 
 
@@ -547,13 +569,26 @@ extension KvText : KvHtmlRenderable {
     func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
         context.representation(htmlAttributes: attributes.htmlAttributes(in: context.html)) { context, htmlAttributes in
 
-            func InnerHTML(_ text: KvText) -> KvHtmlRepresentation.Fragment {
-                var fragment: KvHtmlRepresentation.Fragment = switch text.content {
-                case .joined(let block): InnerHTML(block())
-                case .string(let string): .init(KvHtmlKit.Escaping.innerText(string))
-                case .text(let block): InnerHTML(block())
+            func ContentFragment(_ content: Content) -> KvHtmlRepresentation.Fragment {
+                let innerText: String
+
+                switch content {
+                case .joined(let block):
+                    return InnerHTML(block())
+                case .localizable(let resource):
+                    innerText = context.html.localizationContext.string(resource)
+                case .text(let block):
+                    return InnerHTML(block())
+                case .verbatim(let string):
+                    innerText = string
                 }
 
+                return .init(KvHtmlKit.Escaping.innerText(innerText))
+            }
+
+
+            func InnerHTML(_ text: KvText) -> KvHtmlRepresentation.Fragment {
+                var fragment = ContentFragment(text.content)
                 let attributes = text.attributes
 
                 if !attributes.isEmpty {
@@ -571,12 +606,7 @@ extension KvText : KvHtmlRenderable {
             }
 
 
-            let innerFragment: KvHtmlRepresentation.Fragment = switch content {
-            case .joined(let block): InnerHTML(block())
-            case .string(let string): .init(KvHtmlKit.Escaping.innerText(string))
-            case .text(let block): InnerHTML(block())
-            }
-
+            let innerFragment = ContentFragment(content)
             let textStyle = context.environmentNode?.values.font?.textStyle ?? attributes.font??.textStyle
 
             return .tag(
