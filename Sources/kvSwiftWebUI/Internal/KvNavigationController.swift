@@ -56,7 +56,7 @@ struct KvNavigationController {
 
         let iconHeaders: String?
 
-        let assets: KvHtmlBundleAssets
+        let assets: KvHttpBundleAssets
 
         let localization: KvLocalization
 
@@ -91,7 +91,7 @@ struct KvNavigationController {
 
         // MARK: Subscripts
 
-        subscript(representation: KvHtmlBundle.Representation) -> StaticNode? {
+        subscript(representation: KvHttpBundle.Representation) -> StaticNode? {
             switch self {
             case .localized(let nodes):
                 let node = representation.languageTag.flatMap { nodes[$0] }
@@ -109,7 +109,7 @@ struct KvNavigationController {
 
     // MARK: Operations
 
-    func htmlResponse(for request: borrowing KvHtmlBundle.ProcessedRequest) -> KvHttpResponseContent? {
+    func htmlResponse(for request: borrowing KvHttpBundle.ProcessedRequest) -> KvHttpResponseContent? {
         guard var node = rootNodes[request.representation].map(AnyNode.staticNode(_:)) else { return nil }
 
         for component in request.path.components {

@@ -17,7 +17,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvHtmlBundle.swift
+//  KvHttpBundle.swift
 //  kvSwiftWebUI
 //
 //  Created by Svyatoslav Popov on 25.10.2023.
@@ -30,7 +30,7 @@ import kvKit
 
 
 
-/// *KvHtmlBundle* resolves the root view to collection HTTP responses including HTML, styles, resources, etc.
+/// *KvHttpBundle* resolves the root view to collection HTTP responses including HTML, styles, resources, etc.
 ///
 /// When bundle is initialized, use ``response(for:)`` or ``response(at:as:)`` methods to process requests and get responses.
 ///
@@ -46,7 +46,7 @@ import kvKit
 ///
 /// @main
 /// struct ExampleServer : KvServer {
-///     private let bundle: KvHtmlBundle = <#...#>
+///     private let bundle: KvHttpBundle = <#...#>
 ///
 ///     var body: some KvResponseRootGroup {
 ///         KvGroup(http: .v1_1(), at: Host.current().addresses, on: [ 8080 ]) {
@@ -55,7 +55,7 @@ import kvKit
 ///     }
 /// }
 /// ```
-public class KvHtmlBundle {
+public class KvHttpBundle {
 
     /// A shorthand for ``init(with:rootView:)``.
     @inlinable
@@ -99,7 +99,7 @@ public class KvHtmlBundle {
 
 
 
-    private let assets = KvHtmlBundleAssets()
+    private let assets = KvHttpBundleAssets()
     private let localization: KvLocalization
 
     private let navigationController: KvNavigationController
@@ -295,3 +295,11 @@ public class KvHtmlBundle {
     }
 
 }
+
+
+
+// MARK: - Legacy
+
+// TODO: Delete in 1.0.0
+@available(*, deprecated, renamed: "KvHttpBundle")
+public typealias KvHtmlBundle = KvHttpBundle

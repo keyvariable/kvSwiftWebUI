@@ -17,48 +17,37 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  LocalizedHello.swift
-//  Samples-kvSwiftWebUI
+//  KvTestKit.swift
+//  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 14.02.2024.
+//  Created by Svyatoslav Popov on 23.01.2024.
 //
 
 import Foundation
 
-import kvSwiftWebUI
-import kvSwiftWebUI_kvServerKit
-
-import kvServerKit
+@testable import kvSwiftWebUI
 
 
 
-/// See source code of *ExampleServer* target for detailed comments.
-@main
-struct LocalizedHello : KvServer {
+/// A collection of auxiliaries for testing.
+struct KvTestKit { private init() { }
 
-    private let frontendBundle = try! KvHttpBundle(
-        with: .init(localizationBundle: .module),
-        rootView: { LocalizedHelloView() }
-    )
+    /// - Returns: HTML code of given view.
+    static func renderHTML<V : KvView>(for view: V) -> String {
+        let context = KvHtmlRepresentationContext.root(
+            html: .init(.init(),
+                        cssAsset: .init(parent: nil),
+                        rootPath: nil,
+                        navigationPath: .empty,
+                        localizationContext: .disabled)
+        )
 
+        var data = Data()
 
-    // MARK: : KvServer
+        KvHtmlRepresentation(of: view, in: context)
+            .forEach { data.append($0) }
 
-    var body: some KvResponseRootGroup {
-        let ssl = try! ssl
-
-        KvGroup(http: .v2(ssl: ssl), at: Host.current().addresses, on: [ 8080 ]) {
-            frontendBundle
-        }
-    }
-
-
-    private var ssl: KvHttpChannel.Configuration.SSL {
-        get throws {
-            let pemPath = Bundle.module.url(forResource: "https", withExtension: "pem")!.path
-
-            return try .init(pemPath: pemPath)
-        }
+        return .init(data: data, encoding: .utf8)!
     }
 
 }

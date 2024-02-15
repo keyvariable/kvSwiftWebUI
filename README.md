@@ -16,7 +16,7 @@ allowing developer to focus on the design of the interface and the source code.
 A significant difference from *SwiftUI* is that lengths are in CSS units.
 It's possible to declare padding of `.em(1.5)` or a view of `min(.vw(100), 1024)` width.
 
-See [*Samples*](./Samples) package for an example.
+See [*Samples*](./Samples) package for examples.
 Also *ExampleServer* is running at [example.swiftwebui.keyvar.com](https://example.swiftwebui.keyvar.com).
 
 

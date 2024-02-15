@@ -37,7 +37,7 @@ class KvHtmlContext {
 
 
 
-    let assets: KvHtmlBundleAssets
+    let assets: KvHttpBundleAssets
 
     private(set) var cssAsset: KvCssAsset
 
@@ -65,7 +65,7 @@ class KvHtmlContext {
 
 
 
-    init(_ assets: KvHtmlBundleAssets,
+    init(_ assets: KvHttpBundleAssets,
          cssAsset: KvCssAsset,
          rootPath: KvUrlPath?,
          navigationPath: KvNavigationPath,

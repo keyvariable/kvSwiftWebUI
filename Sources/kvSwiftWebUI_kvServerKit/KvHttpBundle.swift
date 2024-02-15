@@ -1,18 +1,19 @@
 //
-//  KvHtmlBundle.swift
+//  KvHttpBundle.swift
 //  kvSwiftWebUI_kvServerKit
 //
 //  Created by Svyatoslav Popov on 11.02.2024.
 //
 
+import kvSwiftWebUI
+
 import kvHttpKit
 import kvServerKit
-import kvSwiftWebUI
 import NIOHTTP1
 
 
 
-extension KvHtmlBundle {
+extension KvHttpBundle {
 
     /// - Returns: A group with configured HTTP response.
     @inlinable
@@ -24,7 +25,7 @@ extension KvHtmlBundle {
                 .subpath
                 .content { input in
                     self.response(
-                        for: KvHtmlBundle.Request(path: input.subpath)
+                        for: KvHttpBundle.Request(path: input.subpath)
                             .headerIterator(input.requestHeaders.makeIterator())
                     )
                 }
@@ -37,15 +38,15 @@ extension KvHtmlBundle {
 
 extension KvResponseGroupBuilder {
 
-    /// Extends `KvResponseGroupBuilder` allowing `KvHtmlBundle` to be used as an expression in the group declarations:
+    /// Extends `KvResponseGroupBuilder` allowing `KvHttpBundle` to be used as an expression in the group declarations:
     /// ```swift
     /// KvGroup {
-    ///     htmlBundle
+    ///     httpBundle
     /// }
     /// ```
     @inlinable
-    public static func buildExpression(_ htmlBundle: KvHtmlBundle) -> some Group {
-        htmlBundle.httpResponseGroup
+    public static func buildExpression(_ httpBundle: KvHttpBundle) -> some Group {
+        httpBundle.httpResponseGroup
     }
 
 }
@@ -54,15 +55,15 @@ extension KvResponseGroupBuilder {
 
 extension KvResponseRootGroupBuilder {
 
-    /// Extends `KvResponseRootGroupBuilder` allowing `KvHtmlBundle` to be used as an expression in the group declarations:
+    /// Extends `KvResponseRootGroupBuilder` allowing `KvHttpBundle` to be used as an expression in the group declarations:
     /// ```swift
     /// KvGroup {
-    ///     htmlBundle
+    ///     httpBundle
     /// }
     /// ```
     @inlinable
-    public static func buildExpression(_ htmlBundle: KvHtmlBundle) -> some Group {
-        buildExpression(htmlBundle.httpResponseGroup)
+    public static func buildExpression(_ httpBundle: KvHttpBundle) -> some Group {
+        buildExpression(httpBundle.httpResponseGroup)
     }
 
 }

@@ -17,7 +17,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvHtmlBundleAssets.swift
+//  KvHttpBundleAssets.swift
 //  kvSwiftWebUI
 //
 //  Created by Svyatoslav Popov on 29.12.2023.
@@ -32,7 +32,7 @@ import kvKit
 
 
 /// - Note: It's a class to provide copy-by-reference semantic.
-class KvHtmlBundleAssets {
+class KvHttpBundleAssets {
 
     private let mutationLock = NSLock()
 

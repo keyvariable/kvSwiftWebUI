@@ -39,11 +39,11 @@ import kvServerKit
 @main
 struct ExampleServer : KvServer {
 
-    /// An HTML bundle generated from ``RootView``.
+    /// An HTTP bundle generated from ``RootView``.
     ///
-    /// HTML bundle manages HTML representations of view hierarchy and the assets and provides HTML responses via `KvHtmlBundle.response(at:)` method.
-    /// For example, HTML response of the root view is returned for empty path, response of purple color view is returned for `colors/purple` path.
-    private let frontendBundle = try! KvHtmlBundle(
+    /// HTTP bundles manage HTML representations of view hierarchy and the assets and provides HTTP responses via `KvHttpBundle.response(at:)` method.
+    /// For example, HTTP response of the root view is returned for empty path, response of purple color view is returned for `colors/purple` path.
+    private let frontendBundle = try! KvHttpBundle(
         /// It's important to provide correct bundle to enable localization.
         /// Usually in Swift packages `.module` contains resources of application so it have to be explicitly provided.
         with: .init(localizationBundle: .module),
@@ -61,7 +61,7 @@ struct ExampleServer : KvServer {
         KvGroup(http: .v2(ssl: ssl), at: Host.current().addresses, on: [ 8080 ]) {
             /// Bundle can be used as an expression when `kvSwiftWebUI_kvServerKit` is imported.
             ///
-            /// See `KvHtmlBundle.response(for:)` and `KvHtmlBundle.response(at:as:)` to process requests manually.
+            /// See `KvHttpBundle.response(for:)` and `KvHttpBundle.response(at:as:)` to process requests manually.
             frontendBundle
         }
     }
