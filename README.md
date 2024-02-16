@@ -34,7 +34,7 @@ Although there are no explicit restrictions for any platform, the development is
 
 #### Package Dependencies:
 ```swift
-.package(url: "https://github.com/keyvariable/kvSwiftWebUI.git", from: "0.2.0")
+.package(url: "https://github.com/keyvariable/kvSwiftWebUI.git", from: "0.3.0")
 ```
 #### Target Dependencies:
 ```swift
