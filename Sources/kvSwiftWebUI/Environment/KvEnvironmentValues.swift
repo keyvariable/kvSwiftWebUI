@@ -388,8 +388,8 @@ extension KvEnvironmentValues {
         }
 
 
-        mutating func appendNavigationDestinations<S, C>(staticData: S, destinationProvider: @escaping (String) -> (view: C, value: Any)?)
-        where S : Sequence, S.Element == String, C : KvView
+        mutating func appendNavigationDestinations<S, V>(staticData: S, destinationProvider: @escaping (String) -> (view: V, value: Any)?)
+        where S : Sequence, S.Element == String, V : KvView
         {
             let destinationProvider: NavigationDestinations.Provider = { data in
                 destinationProvider(data).map { (body: KvHtmlBodyImpl(content: $0.view), value: $0.value) }
