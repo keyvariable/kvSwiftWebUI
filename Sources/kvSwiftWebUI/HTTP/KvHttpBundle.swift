@@ -87,7 +87,8 @@ public class KvHttpBundle {
             with: .init(rootPath: configuration.rootPath,
                         iconHeaders: configuration.icon?.htmlHeaders,
                         assets: assets,
-                        localization: localization)
+                        localization: localization,
+                        authorsTag: configuration.authorsTag)
         )
 
         do {
@@ -126,6 +127,9 @@ public class KvHttpBundle {
         /// A bundle to use as localization source. If `nil` then `.main` bundle is used.
         public var localizationBundle: Bundle?
 
+        /// A text to be used as the author's tag.
+        public var authorsTag: KvText?
+
 
 
         /// - Parameters:
@@ -136,12 +140,14 @@ public class KvHttpBundle {
         public init(rootPath: KvUrlPath? = nil,
                     icon: KvApplicationIcon? = nil,
                     responseCacheSize: ResponseCacheSize? = .physicalMemoryRatio(0.5),
-                    localizationBundle: Bundle? = nil
+                    localizationBundle: Bundle? = nil,
+                    authorsTag: KvText? = nil
         ) {
             self.rootPath = rootPath
             self.icon = icon
             self.responseCacheSize = responseCacheSize
             self.localizationBundle = localizationBundle
+            self.authorsTag = authorsTag
         }
 
 

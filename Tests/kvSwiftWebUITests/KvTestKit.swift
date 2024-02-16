@@ -39,7 +39,8 @@ struct KvTestKit { private init() { }
                         cssAsset: .init(parent: nil),
                         rootPath: nil,
                         navigationPath: .empty,
-                        localizationContext: .disabled)
+                        localizationContext: .disabled,
+                        authorsTag: nil)
         )
 
         var data = Data()

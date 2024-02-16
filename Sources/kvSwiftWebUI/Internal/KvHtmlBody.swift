@@ -108,7 +108,8 @@ struct KvHtmlBodyImpl : KvHtmlBody {
 
                 let rootView = RootView(
                     backgroundColor: backgroundStyle.bottomBackgroundColor() ?? Constants.backgroundColor,
-                    content: RepresentationView(representation)
+                    content: RepresentationView(representation),
+                    authorsTag: context.html.authorsTag
                 )
 
                 let fragment = rootView.htmlRepresentation(in: context)
@@ -162,6 +163,8 @@ struct KvHtmlBodyImpl : KvHtmlBody {
         let backgroundColor: KvColor
         let content: Content
 
+        let authorsTag: Text?
+
 
         @Environment(\.localization) private var localization
 
@@ -185,40 +188,43 @@ struct KvHtmlBodyImpl : KvHtmlBody {
         }
 
         private var signatureBanner: some View {
+            VStack(spacing: .em(0.25)) {
+                authorsTag
+                frameworkTag
+            }
+            .padding(.horizontal)
+            .padding(.vertical, Constants.signatureBannerPadding)
+            .frame(width: .vw(100))
+            .fixedSize(horizontal: false, vertical: true)
+            .font(.system(.footnote).weight(.light))
+            .foregroundStyle(backgroundColor.label.tertiary)
+            .background(backgroundColor)
+        }
+
+
+        private var frameworkTag: Text {
             let string = localization.string(forKey: "Made with kvSwiftWebUI",
-                                             bundle: .module, 
+                                             bundle: .module,
                                              comment: "Content of the signature banner. Note, that «kvSwiftWebUI» is attributed with link to GitHub.")
 
-            let text: Text
-            do {
-                var accumulator = Text(verbatim: "")
-                var source = Substring(string)
+            var accumulator = Text(verbatim: "")
+            var source = Substring(string)
 
-                while let range = source.firstRange(of: "kvSwiftWebUI") {
-                    defer { source = source[range.upperBound...] }
+            while let range = source.firstRange(of: "kvSwiftWebUI") {
+                defer { source = source[range.upperBound...] }
 
-                    if range.lowerBound != source.startIndex {
-                        accumulator += Text(verbatim: String(source[..<range.lowerBound]))
-                    }
-                    accumulator += Text(verbatim: String(source[range]))
-                        .link(URL(string: "https://github.com/keyvariable/kvSwiftWebUI.git")!)
+                if range.lowerBound != source.startIndex {
+                    accumulator += Text(verbatim: String(source[..<range.lowerBound]))
                 }
-
-                if !source.isEmpty {
-                    accumulator += Text(verbatim: String(source))
-                }
-
-                text = accumulator
+                accumulator += Text(verbatim: String(source[range]))
+                    .link(URL(string: "https://github.com/keyvariable/kvSwiftWebUI.git")!)
             }
 
-            return text
-                .padding(.horizontal)
-                .padding(.vertical, Constants.signatureBannerPadding)
-                .frame(width: .vw(100))
-                .fixedSize(horizontal: false, vertical: true)
-                .font(.system(.footnote).weight(.light))
-                .foregroundStyle(backgroundColor.label.tertiary)
-                .background(backgroundColor)
+            if !source.isEmpty {
+                accumulator += Text(verbatim: String(source))
+            }
+
+            return accumulator
         }
 
     }

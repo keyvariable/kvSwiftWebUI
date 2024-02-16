@@ -54,6 +54,9 @@ class KvHtmlContext {
     let localizationContext: KvLocalization.Context
 
 
+    let authorsTag: Text?
+
+
 
     /// First non-nil navigation title.
     private(set) var navigationTitle: KvText?
@@ -70,6 +73,7 @@ class KvHtmlContext {
          rootPath: KvUrlPath?,
          navigationPath: KvNavigationPath,
          localizationContext: KvLocalization.Context,
+         authorsTag: Text?,
          extraHeaders: [String]? = nil
     ) {
         self.assets = assets
@@ -77,6 +81,7 @@ class KvHtmlContext {
         self.rootPath = rootPath
         self.navigationPath = navigationPath
         self.localizationContext = localizationContext
+        self.authorsTag = authorsTag
         self.extraHeaders = extraHeaders ?? [ ]
     }
 
