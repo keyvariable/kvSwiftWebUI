@@ -36,7 +36,7 @@ struct RootView : View {
 
     // MARK: : View
 
-    /// Views have to provide it's contents in `body` property.
+    /// Views have to provide its contents in `body` property.
     /// The resulting type is inferred automatically at compile time.
     var body: some View {
         /// A view providing default page structure: header with title, subtitle, optional back navigation links, optional reference to source file on GitHub.
@@ -44,7 +44,7 @@ struct RootView : View {
         ///
         /// See ``ColorDetailView`` for a view having custom structure.
         Page(title: Text("\"ExampleServer\" Sample"),
-             subtitle: Text("A sample server application with simple HTML frontend on kvSwiftWebUI framework."),
+             subtitle: Text("A sample server application with simple HTML frontend on kvSwiftWebUI framework"),
              sourceFilePath: "RootView.swift"
         ) {
             /// Page contents are organized to sections: ``Section1``, ``Section2``, ``BodySection``.
@@ -86,6 +86,8 @@ struct RootView : View {
                 BasicsView()
             case .colors:
                 ColorCatalogView()
+            case .scripts:
+                ScriptView()
             }
         }
     }
@@ -95,25 +97,37 @@ struct RootView : View {
 
         case basics
         case colors
+        case scripts
 
 
         var header: Text {
             switch self {
             case .basics: Text("The Basics")
             case .colors: Text("Colors")
+            case .scripts: Text("Scripts")
             }
         }
 
         var overview: Text {
             switch self {
             case .basics:
-                Text("This article contains small examples of working with views and view modifiers.")
-                + .space + Text("Building hierarchies from modified views allows you to create complex and beautiful web interfaces.")
+                Text("""
+                    This article contains small examples of working with views and view modifiers. \
+                    Building hierarchies from modified views allows you to create complex and beautiful web interfaces.
+                    """)
 
             case .colors:
-                Text("Web sites are often organized in a hierarchy of pages.")
-                + .space + Text("This simple example shows a catalog of some colors available in kvSwiftWebUI framework.")
-                + .space + Text("kvSwiftWebUI automatically generates links to pages.")
+                Text("""
+                    Web sites are often organized in a hierarchy of pages. \
+                    This simple example shows a catalog of some colors available in kvSwiftWebUI framework. \
+                    kvSwiftWebUI automatically generates links to pages.
+                    """)
+
+            case .scripts:
+                Text("""
+                    Scripts are widely used to provide various functionality in HTML documents. \
+                    This article contains some examples of working with scripts.
+                    """)
             }
         }
 

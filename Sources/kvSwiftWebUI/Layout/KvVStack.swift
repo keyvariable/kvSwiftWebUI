@@ -69,16 +69,16 @@ extension KvVStack : KvHtmlRenderable {
     func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
         context.representation(
             containerAttributes: .stack(.vertical),
-            cssAttributes: .init(
-                classes: "flexV",
-                context.html.cssFlexClass(for: KvVerticalAlignment.center, as: .mainContent),
-                context.html.cssFlexClass(for: alignment, as: .crossItems),
-                style: "row-gap:\((spacing ?? KvDefaults.vStackSpacing).css)"
-            )
-        ) { context, cssAttributes in
+            htmlAttributes: .init {
+                $0.insert(classes: "flexV",
+                          context.html.cssFlexClass(for: KvVerticalAlignment.center, as: .mainContent),
+                          context.html.cssFlexClass(for: alignment, as: .crossItems))
+                $0.append(styles: "row-gap:\((spacing ?? KvDefaults.vStackSpacing).css)")
+            }
+        ) { context, htmlAttributes in
             let fragment = content.htmlRepresentation(in: context)
 
-            return .tag(.div, css: cssAttributes, innerHTML: fragment)
+            return .tag(.div, attributes: htmlAttributes ?? .empty, innerHTML: fragment)
         }
     }
 

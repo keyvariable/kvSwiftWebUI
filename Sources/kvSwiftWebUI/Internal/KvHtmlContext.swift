@@ -37,7 +37,7 @@ class KvHtmlContext {
 
 
 
-    let assets: KvHtmlBundleAssets
+    let assets: KvHttpBundleAssets
 
     private(set) var cssAsset: KvCssAsset
 
@@ -51,6 +51,13 @@ class KvHtmlContext {
     }(navigationPath.urlPath)
 
 
+    let localizationContext: KvLocalization.Context
+
+
+    let authorsTag: Text?
+
+
+
     /// First non-nil navigation title.
     private(set) var navigationTitle: KvText?
     /// All declared destinations.
@@ -61,16 +68,20 @@ class KvHtmlContext {
 
 
 
-    init(_ assets: KvHtmlBundleAssets,
+    init(_ assets: KvHttpBundleAssets,
          cssAsset: KvCssAsset,
          rootPath: KvUrlPath?,
          navigationPath: KvNavigationPath,
+         localizationContext: KvLocalization.Context,
+         authorsTag: Text?,
          extraHeaders: [String]? = nil
     ) {
         self.assets = assets
         self.cssAsset = cssAsset
         self.rootPath = rootPath
         self.navigationPath = navigationPath
+        self.localizationContext = localizationContext
+        self.authorsTag = authorsTag
         self.extraHeaders = extraHeaders ?? [ ]
     }
 
@@ -78,10 +89,12 @@ class KvHtmlContext {
 
     private var extraHeaders: [String]
 
-    // TODO: Use ordered set
-    private var resourceLinks: Set<KvHtmlResource.HtmlLink> = .init()
+    private var resourceHeaders: KvAccumulatingOrderedSet<KvHtmlResource.Header> = .init()
 
     private var gFonts: GFonts = .init()
+
+    /// Set of inserted scripts.
+    private var scriptIDs: Set<KvScriptResource.ID> = .init()
 
 
 
@@ -89,8 +102,7 @@ class KvHtmlContext {
 
     /// All HTML headers registered in the receiver.
     var headers: String {
-        var headers: String = resourceLinks
-            .sorted(by: { $0.uri < $1.uri })
+        var headers: String = resourceHeaders
             .lazy.map { $0.html(basePath: self.rootPath) }
             .joined()
 
@@ -121,8 +133,8 @@ class KvHtmlContext {
     func insert(_ resource: KvHtmlResource) {
         assets.insert(resource)
 
-        if let htmlLink = resource.htmlLink {
-            resourceLinks.insert(htmlLink)
+        if let htmlHeader = resource.header {
+            resourceHeaders.insert(htmlHeader)
         }
     }
 
@@ -148,10 +160,28 @@ class KvHtmlContext {
     }
 
 
+    func insert(_ scriptResource: KvScriptResource) {
+        guard scriptIDs.insert(scriptResource.id).inserted == true else { return }
+
+        switch scriptResource.content {
+        case .sourceCode(let sourceCode, _):
+            extraHeaders.append(KvHtmlKit.Tag.script.html(innerHTML: sourceCode))
+
+        case .url(let url):
+            guard let uri = FileKit.uri(forFileAt: url, relativeTo: "script/", preserveExtension: true)
+            else { return KvDebug.pause("Warning: failed to access script at «\(url)» URL") }
+
+            insert(KvHtmlResource.externalScript(.local(.url(url), .init(path: uri))))
+        }
+    }
+
+
     func processViewConfiguration(_ viewConfiguration: borrowing KvViewConfiguration) {
         navigationTitle = navigationTitle ?? viewConfiguration.navigationTitle
         navigationDestinations = .merged(navigationDestinations, viewConfiguration.navigationDestinations)
         backgroundStyle = backgroundStyle ?? viewConfiguration.background?.eraseToAnyShapeStyle()
+
+        viewConfiguration.scriptResources?.forEach(self.insert(_:))
     }
 
 }
@@ -488,7 +518,7 @@ extension KvHtmlContext {
                     urlComponents.queryItems = [ .init(name: "family", value: "\(family):ital,wght@\(tuples)") ]
 
                     return KvHtmlResource.css(.external(urlComponents.url!))
-                        .htmlLink?
+                        .header?
                         .html(basePath: nil) // URLs to external resources are not resolved against base URL.
                 }
                 .joined()
@@ -556,7 +586,7 @@ extension KvHtmlContext {
             guard let uri = FileKit.uri(forFileAt: url, relativeTo: "img/", preserveExtension: true)
             else { return KvDebug.pause(code: "error://", "Failed to access image at «\(url)» URL") }
 
-            insert(.init(content: .local(.url(url), .init(path: uri)), contentType: .from(url)))
+            insert(KvHtmlResource(content: .local(.url(url), .init(path: uri)), contentType: .from(url)))
 
             return uri
         }
@@ -577,9 +607,6 @@ extension KvHtmlContext {
 
     /// Auxiliary code for arbitrary files like images, fonts etc.
     private struct FileKit { private init() { }
-
-        private static var data = Data(count: 4 << 10)
-
 
         static func uri(forFileAt url: URL, relativeTo basePath: String? = nil, preserveExtension: Bool = false) -> String? {
             guard let id = id(forFileAt: url) else { return nil }
@@ -607,9 +634,14 @@ extension KvHtmlContext {
         static func id(forFileAt url: URL) -> String? {
             guard let stream = InputStream(url: url) else { return nil }
 
-            let count = data.count
 
-            let digest = data.withUnsafeMutableBytes { buffer -> SHA256.Digest? in
+            /// This data is used as a read buffer.
+            struct Static { static var data = Data(count: 4 << 10) }
+
+
+            let count = Static.data.count
+
+            let digest = Static.data.withUnsafeMutableBytes { buffer -> SHA256.Digest? in
                 if stream.streamStatus == .notOpen {
                     stream.open()
                 }

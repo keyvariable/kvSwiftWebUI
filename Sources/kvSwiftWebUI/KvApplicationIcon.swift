@@ -74,27 +74,6 @@ public struct KvApplicationIcon {
 
     // MARK: HTML
 
-    var htmlResources: Set<KvHtmlResource> {
-        var htmlResources = Set<KvHtmlResource>()
-
-        switch resource {
-        case .prepared(directoryURL: let directoryURL):
-            FileManager.default.enumerator(at: directoryURL, includingPropertiesForKeys: nil, options: .skipsSubdirectoryDescendants)?.forEach { element in
-                guard let url = element as? URL else { return }
-
-                let contentType: KvHttpContentType? = .from(url)
-
-                enumerateLinkAttributes(forFileAt: url, contentType: contentType) {
-                    htmlResources.insert(
-                        .init(content: .local(.url(url), .init(path: url.lastPathComponent)), contentType: contentType, linkAttributes: $0)
-                    )
-                }
-            }
-        }
-
-        return htmlResources
-    }
-
     var htmlHeaders: String? {
         typealias Tag = KvHtmlKit.Tag
 
@@ -104,10 +83,19 @@ public struct KvApplicationIcon {
             guard let tintColor else { return }
 
             if !tintColor.darkTheme {
-                headers.append(Tag.meta.html(attributes: .name("msapplication-TileColor"), .content(tintColor.value)))
+                headers.append(Tag.meta.html(attributes: .init {
+                    $0[.name] = "msapplication-TileColor"
+                    $0[.content] = .string(tintColor.value)
+                }))
             }
 
-            headers.append(Tag.meta.html(attributes: .name("theme-color"), .content(tintColor.value), tintColor.darkTheme ? .media(colorScheme: "dark") : nil))
+            headers.append(Tag.meta.html(attributes: .init {
+                $0[.name] = "theme-color"
+                $0[.content] = .string(tintColor.value)
+                if tintColor.darkTheme {
+                    $0.set(mediaColorScheme: "dark")
+                }
+            }))
         }
 
         guard !headers.isEmpty else { return nil }
@@ -116,35 +104,64 @@ public struct KvApplicationIcon {
     }
 
 
+    func forEachHtmlResource(_ body: (KvHtmlResource) -> Void) {
+        switch resource {
+        case .prepared(directoryURL: let directoryURL):
+            FileManager.default.enumerator(at: directoryURL, includingPropertiesForKeys: nil, options: .skipsSubdirectoryDescendants)?.forEach { element in
+                guard let url = element as? URL else { return }
+
+                let contentType: KvHttpContentType? = .from(url)
+
+                enumerateLinkAttributes(forFileAt: url, contentType: contentType) {
+                    body(.init(content: .local(.url(url), .init(path: url.lastPathComponent)),
+                               contentType: contentType,
+                               headAttributes: $0.map { .link($0) }))
+                }
+            }
+        }
+    }
+
+
 
     // MARK: Auxiliaries
 
     /// - Parameter body: A block invoked with attributes of each link header tag. If link tag is not provided then *body* is invoked once with `nil` argument.
-    private func enumerateLinkAttributes(forFileAt url: URL, contentType: KvHttpContentType?, body: ([KvHtmlKit.Attribute]?) -> Void) {
+    private func enumerateLinkAttributes(forFileAt url: URL, contentType: KvHttpContentType?, body: (KvHtmlKit.Attributes?) -> Void) {
         let fileName = url.deletingPathExtension().lastPathComponent
         let fileExtension = url.pathExtension
 
         switch (fileName, fileExtension) {
         case ("apple-touch-icon", _):
-            return body([ .linkRel("apple-touch-icon") ])
+            return body(.init { $0[.linkRel] = "apple-touch-icon" })
 
         case ("safari-pinned-tab", "svg"):
             enumerateTintColorValues { tintColor in
-                body([ .linkRel("mask-icon"),
-                       tintColor.map { .raw("color", $0.value) },
-                       tintColor?.darkTheme == true ? .media(colorScheme: "dark") : nil
-                     ].compactMap { $0 })
+                body(.init {
+                    $0[.linkRel] = "mask-icon"
+                    if let tintColor {
+                        $0[.raw("color")] = .string(tintColor.value)
+                        if tintColor.darkTheme {
+                            $0.set(mediaColorScheme: "dark")
+                        }
+                    }
+                })
             }
 
         case (_, "webmanifest"):
-            return body([ .linkRel("manifest") ])
+            return body(.init { $0[.linkRel] = "manifest" })
 
         default:
             break
         }
 
         if let match = try? #/favicon-(\d+)x(\d+)/#.wholeMatch(in: fileName) {
-            return body([ .linkRel("icon"), .raw("sizes", "\(match.1)x\(match.2)"), contentType.map(KvHtmlKit.Attribute.type(_:)) ].compactMap { $0 })
+            return body(.init {
+                $0[.linkRel] = "icon"
+                $0[.raw("sizes")] = "\(match.1)x\(match.2)"
+                if let contentType {
+                    $0.set(type: contentType)
+                }
+            })
         }
 
         return body(nil)

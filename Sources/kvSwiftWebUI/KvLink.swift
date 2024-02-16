@@ -90,10 +90,10 @@ extension KvLink where Label == Text {
 extension KvLink : KvHtmlRenderable {
 
     func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
-        context.representation { context, cssAttributes in
+        context.representation { context, htmlAttributes in
             let fragment = label.htmlRepresentation(in: context)
 
-            return KvLinkKit.representation(url: url, css: cssAttributes, innerHTML: fragment)
+            return KvLinkKit.representation(url: url, htmlAttributes: htmlAttributes, innerHTML: fragment)
         }
     }
 
@@ -107,13 +107,23 @@ struct KvLinkKit {
 
     /// This code is extracted to be reused, e.g. in ``KvText`` having link attribute.
     static func representation(url: URL,
-                               css cssAttributes: KvHtmlKit.CssAttributes? = nil,
+                               htmlAttributes: KvHtmlKit.Attributes? = nil,
                                innerHTML: KvHtmlRepresentation.Fragment
     ) -> KvHtmlRepresentation.Fragment {
-        // - NOTE: URLs having explicit host are considered external so `target="_blank"` attribute is set.
-        let targetAttribute: KvHtmlKit.Attribute? = url.host != nil ? .raw("target", "_blank") : nil
-
-        return .tag(.a, css: cssAttributes, attributes: .href(url), targetAttribute, innerHTML: innerHTML)
+        .tag(
+            .a,
+            attributes: .union(
+                htmlAttributes,
+                .init {
+                    $0.set(href: url)
+                    // - NOTE: URLs having explicit host are considered external so `target="_blank"` attribute is set.
+                    if url.host != nil {
+                        $0[.target] = "_blank"
+                    }
+                }
+            ),
+            innerHTML: innerHTML
+        )
     }
 
 }

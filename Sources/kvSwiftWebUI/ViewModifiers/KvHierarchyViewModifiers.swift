@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 //
-//  Copyright (c) 2023 Svyatoslav Popov (info@keyvar.com).
+//  Copyright (c) 2024 Svyatoslav Popov (info@keyvar.com).
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 //  License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
@@ -17,48 +17,27 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvClipShape.swift
+//  KvHierarchyViewModifiers.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 29.11.2023.
+//  Created by Svyatoslav Popov on 03.02.2024.
 //
 
-import kvCssKit
+// MARK: View Hierarchy Modifiers
 
+extension KvView {
 
-
-public struct KvClipShape {
-
-    let content: Content
-
-
-
-    // MARK: Fabrics
-
-    static func borderRadius(_ radius: KvCssBorderRadius) -> Self {
-        .init(content: .borderRadius(radius))
-    }
-
-
-
-    // MARK: .Content
-
-    enum Content {
-
-        /// A clip shape is provided via `border-radius` CSS style.
-        case borderRadius(KvCssBorderRadius)
-
-    }
-
-
-
-    // MARK: HTML
-
-    var htmlAttributes: KvHtmlKit.Attributes {
-        switch content {
-        case .borderRadius(let borderRadius):
-            return .init { $0.append(styles: "overflow:hidden;border-radius:\(borderRadius.css)") }
-        }
+    /// This modifier associates given *tag* value with the receiver. It's assumed that views have unique tags.
+    ///
+    /// Tag is passed as `id` HTML attribute, when:
+    /// - `tag` is a `String`;
+    /// - `tag` conforms to `LosslessStringConvertible` protocol;
+    /// - `tag` conforms to `RawRepresentable` and the `RawValue` is `String` or `LosslessStringConvertible`.
+    @inlinable
+    public consuming func tag<T>(_ tag: T) -> some View
+    where T : Hashable
+    {
+        mapConfiguration { $0!.tag = tag }
     }
 
 }

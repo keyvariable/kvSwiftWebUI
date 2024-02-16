@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 //
-//  Copyright (c) 2023 Svyatoslav Popov (info@keyvar.com).
+//  Copyright (c) 2024 Svyatoslav Popov (info@keyvar.com).
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 //  License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
@@ -17,48 +17,35 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvClipShape.swift
-//  kvSwiftWebUI
+//  LocalizedHelloView.swift
+//  Samples-kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 29.11.2023.
+//  Created by Svyatoslav Popov on 14.02.2024.
 //
 
-import kvCssKit
+import kvSwiftWebUI
 
 
 
-public struct KvClipShape {
+struct LocalizedHelloView : View {
 
-    let content: Content
-
-
-
-    // MARK: Fabrics
-
-    static func borderRadius(_ radius: KvCssBorderRadius) -> Self {
-        .init(content: .borderRadius(radius))
-    }
+    /// Current localization context is available in the environment at `\.localization` key path.
+    ///
+    /// Here it's used to print current language tag.
+    @KvEnvironment(\.localization) private var localization
 
 
+    var body: some View {
+        VStack(spacing: 0) {
+            Text("HELLO")
+                .font(.largeTitle)
+                .padding(.vertical, .em(2))
 
-    // MARK: .Content
-
-    enum Content {
-
-        /// A clip shape is provided via `border-radius` CSS style.
-        case borderRadius(KvCssBorderRadius)
-
-    }
-
-
-
-    // MARK: HTML
-
-    var htmlAttributes: KvHtmlKit.Attributes {
-        switch content {
-        case .borderRadius(let borderRadius):
-            return .init { $0.append(styles: "overflow:hidden;border-radius:\(borderRadius.css)") }
+            Text(verbatim: ".languageTag == \(localization.languageTag.map { "\"\($0)\"" } ?? "nil")")
+                .font(.system(.footnote, design: .monospaced))
+                .foregroundStyle(.label.secondary)
         }
+        .padding(.bottom, .em(2))
     }
 
 }

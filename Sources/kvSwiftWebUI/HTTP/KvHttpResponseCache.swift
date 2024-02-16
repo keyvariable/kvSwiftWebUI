@@ -91,7 +91,7 @@ public class KvHttpResponseCache<Key : Hashable> {
     /// If any other thread trying to get value for a locked *key* then the thread is suspended until *key* is unlocked.
     ///
     /// - Important: Assuming *default* block is always the same for the same key.
-    subscript (key: Key, default fabric: () -> Response?) -> Response? {
+    subscript(key: Key, default fabric: () -> Response?) -> Response? {
         condition.withLock {
             switch underlying[key] {
             case .value(value: let value, access: let accessNode):

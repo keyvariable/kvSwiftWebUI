@@ -20,7 +20,7 @@
 //===----------------------------------------------------------------------===//
 //
 //  Package.swift
-//  kvSwiftWebUI/Samples
+//  Samples-kvSwiftWebUI
 //
 //  Created by Svyatoslav Popov on 30.10.2023.
 //
@@ -31,20 +31,39 @@ import PackageDescription
 let package = Package(
     name: "Samples-kvSwiftWebUI",
 
+    defaultLocalization: "en",
+
     platforms: [ .macOS(.v13), ],
 
-    products: [ .executable(name: "ExampleServer", targets: [ "ExampleServer" ]) ],
+    products: [ .executable(name: "ExampleServer", targets: [ "ExampleServer" ]),
+                .executable(name: "LocalizedHello", targets: [ "LocalizedHello" ]),
+    ],
 
     dependencies: [ .package(path: "../"),
-                    .package(url: "https://github.com/keyvariable/kvServerKit.swift.git", from: "0.6.0") ],
+                    .package(url: "https://github.com/keyvariable/kvServerKit.swift.git", from: "0.6.0")
+    ],
 
     targets: [
         .executableTarget(
             name: "ExampleServer",
             dependencies: [ .product(name: "kvSwiftWebUI", package: "kvSwiftWebUI"),
-                            .product(name: "kvServerKit", package: "kvServerKit.swift") ],
+                            .product(name: "kvSwiftWebUI_kvServerKit", package: "kvSwiftWebUI"),
+                            .product(name: "kvServerKit", package: "kvServerKit.swift")
+            ],
             resources: [ .copy("Resources/https.pem"),
-                         .copy("Resources/img") ]
+                         .copy("Resources/img"),
+                         .copy("Resources/js"),
+            ]
         ),
+        .executableTarget(
+            name: "LocalizedHello",
+            dependencies: [ .product(name: "kvSwiftWebUI", package: "kvSwiftWebUI"),
+                            .product(name: "kvSwiftWebUI_kvServerKit", package: "kvSwiftWebUI"),
+                            .product(name: "kvServerKit", package: "kvServerKit.swift")
+            ],
+            resources: [ .copy("Resources/https.pem"),
+                         .process("Resources/Localizable.xcstrings"),
+            ]
+        )
     ]
 )

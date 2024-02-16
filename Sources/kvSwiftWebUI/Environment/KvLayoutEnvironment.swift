@@ -25,23 +25,20 @@
 
 // MARK: - \.horizontalSizeClass
 
-fileprivate struct KvHorizontalSizeClassKey : KvEnvironmentKey {
-
-    typealias Value = UserInterfaceSizeClass?
-
-
-    static var defaultValue: Value { nil }
-
-}
-
-
 extension KvEnvironmentValues {
+
+    private struct HorizontalSizeClassKey : KvEnvironmentKey {
+
+        static var defaultValue: UserInterfaceSizeClass? { nil }
+
+    }
+
 
     // TODO: DOC
     // TODO: DOC: View is pre-synthesized for all size classes.
     public var horizontalSizeClass: KvUserInterfaceSizeClass? {
-        get { self[KvHorizontalSizeClassKey.self] }
-        set { self[KvHorizontalSizeClassKey.self] = newValue }
+        get { self[HorizontalSizeClassKey.self] }
+        set { self[HorizontalSizeClassKey.self] = newValue }
     }
 
 }

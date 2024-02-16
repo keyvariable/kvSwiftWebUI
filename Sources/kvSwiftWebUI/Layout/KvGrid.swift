@@ -78,22 +78,24 @@ extension KvGrid : KvHtmlRenderable {
 
         return context.representation(
             containerAttributes: .grid(alignment),
-            cssAttributes: .init(classes: "grid",
-                                 context.html.cssFlexClass(for: alignment.vertical, as: .crossItems),
-                                 context.html.cssFlexClass(for: alignment.horizontal, as: .mainItems),
-                                 style: "gap:\(gap.css)")
-        ) { context, cssAttributes in
+            htmlAttributes: .init {
+                $0.insert(classes: "grid",
+                          context.html.cssFlexClass(for: alignment.vertical, as: .crossItems),
+                          context.html.cssFlexClass(for: alignment.horizontal, as: .mainItems))
+                $0.append(styles: "gap:\(gap.css)")
+            }
+        ) { context, htmlAttributes in
             let fragment = content.htmlRepresentation(in: context)
 
             // - NOTE: Styles must be calculated after all the child rows are synthesized and number columns are known.
             return .tag(
                 .div,
-                css: {
-                    var cssAttributes = cssAttributes
+                attributes: {
+                    var htmlAttributes = htmlAttributes
                     if let gridColumnCount = context.containerAttributes?.gridColumnCount {
-                        cssAttributes?.append(style: "grid-template-columns:repeat(\(gridColumnCount),auto)")
+                        htmlAttributes?.append(styles: "grid-template-columns:repeat(\(gridColumnCount),auto)")
                     }
-                    return cssAttributes
+                    return htmlAttributes ?? .empty
                 },
                 innerHTML: fragment
             )

@@ -46,7 +46,7 @@ public typealias View = KvView
 /// As in SwiftUI there are basic views like ``Text``, ``Image``, ``Link``, layout views like ``HStack``, ``VStack``, ``Grid``, etc.
 /// Also there are various view modifiers like ``KvView/font(_:)``, ``KvView/padding(_:)-5ybsj``.
 ///
-/// Views just declare user interface. Use ``KvHtmlBundle`` to generate HTML responses.
+/// Views just declare user interface. Use ``KvHttpBundle`` to generate HTTP responses.
 public protocol KvView {
 
     /// It's inferred from implementation of the required property ``KvView/body-swift.property``.
@@ -137,7 +137,7 @@ fileprivate struct KvHtmlRepresentationModifiers { private init() { }
             return .init(KvUserInterfaceSizeClass.allCases.lazy.map { horizontalSizeClass in
                 let context = context.descendant(
                     containerAttributes: context.containerAttributes,    // Preserving container context.
-                    cssAttributes: .init(classes: horizontalSizeClass.cssHorizontalClass)
+                    htmlAttributes: .init { $0.insert(classes: horizontalSizeClass.cssHorizontalClass) }
                 )
                 context.push(environment: .init { $0.horizontalSizeClass = horizontalSizeClass })
 

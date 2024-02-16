@@ -31,16 +31,16 @@ import XCTest
 
 final class KvContainerViewModifierTests : XCTestCase {
 
-    // MARK: .testBackgroundAndPaddingOrder()
+    // MARK: - .testBackgroundAndPaddingOrder()
 
     func testBackgroundAndPaddingOrder() {
         XCTAssertEqual(
-            KvTextKit.renderHTML(for: Text("1").padding(.em(2)).background(0xAABBCC as KvColor)),
+            KvTestKit.renderHTML(for: Text("1").padding(.em(2)).background(0xAABBCC as KvColor)),
             "<p style=\"background-color:#AABBCC;padding:2em\">1</p>"
         )
 
         XCTAssertEqual(
-            KvTextKit.renderHTML(for: Text("1").background(0xAABBCC as KvColor).padding(.em(2))),
+            KvTestKit.renderHTML(for: Text("1").background(0xAABBCC as KvColor).padding(.em(2))),
             "<div style=\"padding:2em\"><p style=\"background-color:#AABBCC\">1</p></div>"
         )
     }

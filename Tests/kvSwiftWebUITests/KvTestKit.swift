@@ -17,7 +17,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvTextKit.swift
+//  KvTestKit.swift
 //  kvSwiftWebUI
 //
 //  Created by Svyatoslav Popov on 23.01.2024.
@@ -30,12 +30,17 @@ import Foundation
 
 
 /// A collection of auxiliaries for testing.
-struct KvTextKit { private init() { }
+struct KvTestKit { private init() { }
 
     /// - Returns: HTML code of given view.
     static func renderHTML<V : KvView>(for view: V) -> String {
         let context = KvHtmlRepresentationContext.root(
-            html: .init(.init(), cssAsset: .init(parent: nil), rootPath: nil, navigationPath: .empty)
+            html: .init(.init(),
+                        cssAsset: .init(parent: nil),
+                        rootPath: nil,
+                        navigationPath: .empty,
+                        localizationContext: .disabled,
+                        authorsTag: nil)
         )
 
         var data = Data()

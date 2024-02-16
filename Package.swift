@@ -28,15 +28,21 @@ let swiftSettings: [SwiftSetting]? = nil
 let package = Package(
     name: "kvSwiftWebUI",
 
+    defaultLocalization: "en",
+
     platforms: [ .macOS(.v13) ],
 
     products: [ .library(name: "kvSwiftWebUI", targets: [ "kvSwiftWebUI" ]),
-                .library(name: "kvCssKit", targets: [ "kvCssKit" ]),],
+                .library(name: "kvCssKit", targets: [ "kvCssKit" ]),
+                // A library with auxiliary extensions integrating kvSwiftWebUI with kvServerKit.
+                .library(name: "kvSwiftWebUI_kvServerKit", targets: [ "kvSwiftWebUI_kvServerKit" ])
+    ],
 
     dependencies: [ .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
                     .package(url: "https://github.com/keyvariable/kvKit.swift.git", from: "4.8.0"),
-                    .package(url: "https://github.com/keyvariable/kvServerKit.swift.git", from: "0.11.0"),
-                    .package(url: "https://github.com/keyvariable/kvSIMD.swift.git", from: "1.0.2"), ],
+                    .package(url: "https://github.com/keyvariable/kvServerKit.swift.git", from: "0.12.0"),
+                    .package(url: "https://github.com/keyvariable/kvSIMD.swift.git", from: "1.0.2"),
+    ],
 
     targets: [
         .target(name: "kvCssKit",
@@ -47,12 +53,21 @@ let package = Package(
                                 .product(name: "Crypto", package: "swift-crypto"),
                                 .product(name: "kvHttpKit", package: "kvServerKit.swift"),
                                 .product(name: "kvKit", package: "kvKit.swift"),
-                                .product(name: "kvSIMD", package: "kvSIMD.swift"), ],
-                resources: [ .copy("Resources/html") ],
+                                .product(name: "kvSIMD", package: "kvSIMD.swift"),
+                ],
+                resources: [ .copy("Resources/html"),
+                             .process("Resources/Localizable.xcstrings"),
+                ],
                 swiftSettings: swiftSettings),
 
         .testTarget(name: "kvSwiftWebUITests",
                     dependencies: [ "kvSwiftWebUI" ],
+                    swiftSettings: swiftSettings),
+
+            .target(name: "kvSwiftWebUI_kvServerKit",
+                    dependencies: [ "kvSwiftWebUI",
+                                    .product(name: "kvServerKit", package: "kvServerKit.swift"),
+                    ],
                     swiftSettings: swiftSettings),
     ]
 )

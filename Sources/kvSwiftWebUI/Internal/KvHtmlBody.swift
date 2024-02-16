@@ -73,6 +73,7 @@ struct KvHtmlBodyImpl : KvHtmlBody {
 
         var environment = KvEnvironmentValues(viewConfiguration)
         environment.navigationPath = htmlContext.navigationPath
+        environment.localization = htmlContext.localizationContext
 
         return rootRepresentationProvider(.root(html: htmlContext, environment: environment))
     }
@@ -99,7 +100,7 @@ struct KvHtmlBodyImpl : KvHtmlBody {
         // MARK: : KvHtmlRenderable
 
         func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
-            context.representation(options: .noContainer) { context, cssAttributes in
+            context.representation(options: .noContainer) { context, htmlAttributes in
                 /// Finalized HTML representation is generated here to collect some view information (e.g. first background style, navigation title, etc.) and use it below.
                 let representation = KvHtmlRepresentation(of: content, in: context)
 
@@ -107,17 +108,18 @@ struct KvHtmlBodyImpl : KvHtmlBody {
 
                 let rootView = RootView(
                     backgroundColor: backgroundStyle.bottomBackgroundColor() ?? Constants.backgroundColor,
-                    content: RepresentationView(representation)
+                    content: RepresentationView(representation),
+                    authorsTag: context.html.authorsTag
                 )
 
                 let fragment = rootView.htmlRepresentation(in: context)
 
-                let extraCSS = KvViewConfiguration {
+                let extraAttributes = KvViewConfiguration {
                     if $0.modify(background: backgroundStyle) != nil { assertionFailure("Warning: body background hasn't been applied") }
                 }
-                .cssAttributes(in: context)
+                .htmlAttributes(in: context)
 
-                return .tag(.body, css: .union(cssAttributes, extraCSS), innerHTML: fragment)
+                return .tag(.body, attributes: .union(htmlAttributes, extraAttributes) ?? .empty, innerHTML: fragment)
             }
         }
 
@@ -161,6 +163,11 @@ struct KvHtmlBodyImpl : KvHtmlBody {
         let backgroundColor: KvColor
         let content: Content
 
+        let authorsTag: Text?
+
+
+        @Environment(\.localization) private var localization
+
 
         // MARK: .Constants
 
@@ -181,19 +188,43 @@ struct KvHtmlBodyImpl : KvHtmlBody {
         }
 
         private var signatureBanner: some View {
-            let text =
-            Text("Made with ")
-            + Text("kvSwiftWebUI")
-                .link(URL(string: "https://github.com/keyvariable/kvSwiftWebUI.git")!)
+            VStack(spacing: .em(0.25)) {
+                authorsTag
+                frameworkTag
+            }
+            .padding(.horizontal)
+            .padding(.vertical, Constants.signatureBannerPadding)
+            .frame(width: .vw(100))
+            .fixedSize(horizontal: false, vertical: true)
+            .font(.system(.footnote).weight(.light))
+            .foregroundStyle(backgroundColor.label.tertiary)
+            .background(backgroundColor)
+        }
 
-            return text
-                .padding(.horizontal)
-                .padding(.vertical, Constants.signatureBannerPadding)
-                .frame(width: .vw(100))
-                .fixedSize(horizontal: false, vertical: true)
-                .font(.system(.footnote).weight(.light))
-                .foregroundStyle(backgroundColor.label.tertiary)
-                .background(backgroundColor)
+
+        private var frameworkTag: Text {
+            let string = localization.string(forKey: "Made with kvSwiftWebUI",
+                                             bundle: .module,
+                                             comment: "Content of the signature banner. Note, that «kvSwiftWebUI» is attributed with link to GitHub.")
+
+            var accumulator = Text(verbatim: "")
+            var source = Substring(string)
+
+            while let range = source.firstRange(of: "kvSwiftWebUI") {
+                defer { source = source[range.upperBound...] }
+
+                if range.lowerBound != source.startIndex {
+                    accumulator += Text(verbatim: String(source[..<range.lowerBound]))
+                }
+                accumulator += Text(verbatim: String(source[range]))
+                    .link(URL(string: "https://github.com/keyvariable/kvSwiftWebUI.git")!)
+            }
+
+            if !source.isEmpty {
+                accumulator += Text(verbatim: String(source))
+            }
+
+            return accumulator
         }
 
     }
