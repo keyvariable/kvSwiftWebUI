@@ -576,7 +576,10 @@ extension KvText : KvHtmlRenderable {
                 case .joined(let block):
                     return InnerHTML(block())
                 case .localizable(let resource):
-                    innerText = context.html.localizationContext.string(resource)
+                    innerText = context.html.localizationContext.string(
+                        resource,
+                        defaultBundle: context.environmentNode?.values[keyPath: \.localizationBundle]
+                    )
                 case .text(let block):
                     return InnerHTML(block())
                 case .verbatim(let string):

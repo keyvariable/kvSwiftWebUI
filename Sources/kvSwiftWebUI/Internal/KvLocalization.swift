@@ -279,8 +279,12 @@ public class KvLocalization {
 
         // MARK: Operations
 
-        borrowing func string(_ resource: borrowing StringResource) -> String {
-            string(forKey: resource.key, defaultValue: resource.defaultValue, table: resource.table, bundle: resource.bundle)
+        /// - Parameter defaultBundle: Bundle to use when the *resource*'s bundle is `nil`.
+        borrowing func string(_ resource: borrowing StringResource, defaultBundle: Bundle? = nil) -> String {
+            string(forKey: resource.key,
+                   defaultValue: resource.defaultValue,
+                   table: resource.table,
+                   bundle: resource.bundle ?? defaultBundle)
         }
 
 
