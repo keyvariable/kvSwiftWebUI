@@ -187,7 +187,7 @@ struct KvHtmlBodyImpl : KvHtmlBody {
             }
         }
 
-        private var signatureBanner: some View {
+        private var signatureBanner: some KvView {
             VStack(spacing: .em(0.25)) {
                 authorsTag
                 frameworkTag
