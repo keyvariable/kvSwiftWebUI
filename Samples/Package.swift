@@ -62,7 +62,7 @@ let package = Package(
                             .product(name: "kvServerKit", package: "kvServerKit.swift")
             ],
             resources: [ .copy("Resources/https.pem"),
-                         .process("Resources/Localizable.xcstrings"),
+                         .process("Resources/Localized"),
             ]
         )
     ]

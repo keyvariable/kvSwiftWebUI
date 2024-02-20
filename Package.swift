@@ -58,7 +58,7 @@ let package = Package(
                                 .product(name: "Markdown", package: "swift-markdown"),
                 ],
                 resources: [ .copy("Resources/html"),
-                             .process("Resources/Localizable.xcstrings"),
+                             .process("Resources/Localized"),
                 ],
                 swiftSettings: swiftSettings),
 
