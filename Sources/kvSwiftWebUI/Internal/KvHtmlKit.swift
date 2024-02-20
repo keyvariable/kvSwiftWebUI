@@ -447,7 +447,7 @@ extension KvHtmlKit {
 
         /// By default values are stored as `String` or `NSNull`. `NSNull` is used to store attributes having omitted value.
         /// Some attributes are stored as values of dedicated type, like class is stored as `Set` of strings.
-        private var container: [Attribute : Any] = .init()
+        private var container: Container = .init()
 
 
         // MARK: Fabrics
@@ -476,6 +476,57 @@ extension KvHtmlKit {
                 result.formUnion(rhs)
             }
             return result
+        }
+
+
+        // MARK: .Container
+
+        /// An ordered dictionary.
+        private struct Container {
+
+            typealias Key = Attribute
+            typealias Value = Any
+
+
+            private var keys: [Key] = .init()
+            private var values: [Key : Value] = .init()
+
+
+            // MARK: Operations
+
+            var isEmpty: Bool { keys.isEmpty }
+
+
+            subscript(key: Key) -> Value? {
+                get { values[key] }
+                set {
+                    switch newValue {
+                    case .some(let newValue):
+                        guard values.updateValue(newValue, forKey: key) == nil
+                        else { return /*Nothing to do*/ }
+
+                        keys.append(key)
+
+                    case .none:
+                        guard values.removeValue(forKey: key) != nil
+                        else { return /*Nothing to do*/ }
+
+                        // Assuming keys are distinct.
+                        guard let index = keys.firstIndex(of: key) else { return assertionFailure("Internal inconsistency: value for unknown «\(key)» has been successfully deleted") }
+                        keys.remove(at: index)
+                    }
+                }
+            }
+
+
+            func forEach(_ body: ((key: Key, value: Value)) -> Void) {
+                keys.forEach { key in
+                    guard let value = values[key] else { return assertionFailure("Internal inconsistency: there is no value for «\(key)» key") }
+
+                    body((key, value))
+                }
+            }
+
         }
 
 

@@ -17,45 +17,28 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvContextEnvironment.swift
+//  KvLocalizationViewModifiers.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 11.02.2024.
+//  Created by Svyatoslav Popov on 17.02.2024.
 //
 
 import Foundation
 
 
 
-// MARK: - \.localization
+// MARK: Localization Related Modifiers
 
-extension KvEnvironmentValues {
+extension KvView {
 
-    private struct LocalizationKey : KvEnvironmentKey {
-
-        static var defaultValue: KvLocalization.Context? { nil }
-
-    }
-
-
-    /// Current localization context.
-    ///
-    /// Below is an example of common usage:
+    /// This modifier is a shorthand for:
     /// ```swift
-    /// struct HelloView : View {
-    ///     @Environment(\.localization) private var localization
-    ///
-    ///     var body: some View {
-    ///         let hello = localization.string(forKey: "hello!")
-    ///         Text(verbatim: hello.uppercased())
-    ///     }
-    /// }
+    /// view.environment(\.localizationBundle, bundle)
     /// ```
     ///
-    /// - Note: ``Text`` view supports localization so in most cases there is no need to access localization context.
-    public internal(set) var localization: KvLocalization.Context {
-        get { self[LocalizationKey.self]! }
-        set { self[LocalizationKey.self] = newValue }
+    /// - SeeAlso: ``KvEnvironmentValues/localizationBundle``.
+    public consuming func localizationBundle(_ bundle: Bundle?) -> some KvView {
+        environment(\.localizationBundle, bundle)
     }
 
 }

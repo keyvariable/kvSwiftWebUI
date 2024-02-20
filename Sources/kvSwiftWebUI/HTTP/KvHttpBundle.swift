@@ -125,6 +125,8 @@ public class KvHttpBundle {
         public var responseCacheSize: ResponseCacheSize?
 
         /// A bundle to use as localization source. If `nil` then `.main` bundle is used.
+        ///
+        /// - SeeAlso: ``KvEnvironmentValues/localizationBundle``.
         public var localizationBundle: Bundle?
 
         /// A text to be used as the author's tag.

@@ -121,7 +121,7 @@ extension KvView {
 
     // TODO: DOC
     @inlinable
-    public consuming func clipShape<S : Shape>(_ shape: S) -> some View { mapConfiguration {
+    public consuming func clipShape<S : Shape>(_ shape: S) -> some KvView { mapConfiguration {
         $0!.modify(clipShape: shape.clipShape)
     } }
 

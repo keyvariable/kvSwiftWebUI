@@ -64,17 +64,15 @@ struct ColorCatalogView : View {
 
     private var customColorSection: some View {
         Section1(header: Text("Custom Colors")) {
-            do {
-                let introduction = Text("There are several ways to declare custom colors.")
-                let example = (Text("The simplest one is to use HEX literals:")
-                               + .space + Text(verbatim: "let color: Color = 0x2F4F4F").font(.system(.body, design: .monospaced))
-                               + Text("."))
-                introduction
-                + .space + example
-            }
+            Text("""
+                There are several ways to declare custom colors.
+                The simplest one is to use HEX literals: `let color: Color = 0x2F4F4F`.
+                """ as Md)
 
-            Text("Try to view a custom color page having \"#RRGGBB\" HEX representation at /\(navigationPath.urlPath.joined)/\(HexColorID.prefix)RRGGBB URL.")
-            + .space + Text("For example:")
+            Text("""
+                Try to view a custom color page having \"#RRGGBB\" HEX representation at /\(navigationPath.urlPath.joined)/\(HexColorID.prefix)RRGGBB URL. \
+                For example:
+                """)
 
             do {
                 let hexColorID = HexColorID(0x2F4F4F)
@@ -107,10 +105,7 @@ struct ColorCatalogView : View {
 
         var body: some View {
             Section1(header: header) {
-                Text("Colors below are available as static properties of") + .space
-                + Text(verbatim: "Color")
-                    .font(.system(.body, design: .monospaced))
-                + .space + Text("type.")
+                Text("Colors below are available as static properties of `Color` type." as Md)
 
                 let (numberOfColumns, font): (Int, Font) = switch horizontalSizeClass {
                 case .regular: (3, .system(.body, design: .monospaced))

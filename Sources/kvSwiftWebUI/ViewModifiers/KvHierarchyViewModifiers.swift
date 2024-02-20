@@ -34,7 +34,7 @@ extension KvView {
     /// - `tag` conforms to `LosslessStringConvertible` protocol;
     /// - `tag` conforms to `RawRepresentable` and the `RawValue` is `String` or `LosslessStringConvertible`.
     @inlinable
-    public consuming func tag<T>(_ tag: T) -> some View
+    public consuming func tag<T>(_ tag: T) -> some KvView
     where T : Hashable
     {
         mapConfiguration { $0!.tag = tag }

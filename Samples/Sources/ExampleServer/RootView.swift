@@ -50,14 +50,16 @@ struct RootView : View {
             /// Page contents are organized to sections: ``Section1``, ``Section2``, ``BodySection``.
 
             BodySection {
-                Text("kvSwiftWebUI").link(Constants.kvSwiftWebUI_GitHubURL)
-                + .space + Text("is a cross-platform framework providing API to declare web-interfaces in a way very close to SwiftUI framework.")
-                + .space + Text("It allows to implement web interfaces in a declarative paradigm.")
-                + .space + Text("kvSwiftWebUI minimizes efforts to create and maintain boilerplate code allowing developer to focus on the design of the interface and the source code.")
+                Text("""
+                    [kvSwiftWebUI](\(Constants.kvSwiftWebUI_GitHubURL)) is a cross-platform framework providing API to declare web-interfaces in a way very close to SwiftUI framework.
+                    It allows to implement web interfaces in a declarative paradigm.
+                    kvSwiftWebUI minimizes efforts to create and maintain boilerplate code allowing developer to focus on the design of the interface and the source code.
+                    """ as Md)
 
-                Text("The declared interfaces have to be served. In this example the backend is served with")
-                + .space + Text(verbatim: "kvServerKit").link(Constants.kvServerKit_GitHubURL)
-                + .space + Text("framework.")
+                Text("""
+                    The declared interfaces have to be served.
+                    In this example the backend is served with [kvServerKit](\(Constants.kvServerKit_GitHubURL)) framework.
+                    """ as Md)
             }
 
             Section1(header: Text("Contents")) {
