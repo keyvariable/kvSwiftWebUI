@@ -39,6 +39,7 @@ let package = Package(
     ],
 
     dependencies: [ .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
+                    .package(url: "https://github.com/apple/swift-markdown.git", branch: "main"),
                     .package(url: "https://github.com/keyvariable/kvKit.swift.git", from: "4.8.0"),
                     .package(url: "https://github.com/keyvariable/kvServerKit.swift.git", from: "0.12.0"),
                     .package(url: "https://github.com/keyvariable/kvSIMD.swift.git", from: "1.0.2"),
@@ -54,6 +55,7 @@ let package = Package(
                                 .product(name: "kvHttpKit", package: "kvServerKit.swift"),
                                 .product(name: "kvKit", package: "kvKit.swift"),
                                 .product(name: "kvSIMD", package: "kvSIMD.swift"),
+                                .product(name: "Markdown", package: "swift-markdown"),
                 ],
                 resources: [ .copy("Resources/html"),
                              .process("Resources/Localizable.xcstrings"),

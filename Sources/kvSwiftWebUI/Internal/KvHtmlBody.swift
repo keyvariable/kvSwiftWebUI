@@ -190,7 +190,7 @@ struct KvHtmlBodyImpl : KvHtmlBody {
         private var signatureBanner: some KvView {
             VStack(spacing: .em(0.25)) {
                 authorsTag
-                frameworkTag
+                Text("Made with kvSwiftWebUI" as Md, bundle: .module)
             }
             .padding(.horizontal)
             .padding(.vertical, Constants.signatureBannerPadding)
@@ -199,32 +199,6 @@ struct KvHtmlBodyImpl : KvHtmlBody {
             .font(.system(.footnote).weight(.light))
             .foregroundStyle(backgroundColor.label.tertiary)
             .background(backgroundColor)
-        }
-
-
-        private var frameworkTag: Text {
-            let string = localization.string(forKey: "Made with kvSwiftWebUI",
-                                             bundle: .module,
-                                             comment: "Content of the signature banner. Note, that «kvSwiftWebUI» is attributed with link to GitHub.")
-
-            var accumulator = Text(verbatim: "")
-            var source = Substring(string)
-
-            while let range = source.firstRange(of: "kvSwiftWebUI") {
-                defer { source = source[range.upperBound...] }
-
-                if range.lowerBound != source.startIndex {
-                    accumulator += Text(verbatim: String(source[..<range.lowerBound]))
-                }
-                accumulator += Text(verbatim: String(source[range]))
-                    .link(URL(string: "https://github.com/keyvariable/kvSwiftWebUI.git")!)
-            }
-
-            if !source.isEmpty {
-                accumulator += Text(verbatim: String(source))
-            }
-
-            return accumulator
         }
 
     }

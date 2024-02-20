@@ -8,43 +8,43 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hergestellt auf kvSwiftWebUI"
+            "value" : "Hergestellt auf [kvSwiftWebUI](https://github.com/keyvariable/kvSwiftWebUI.git)"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Made with kvSwiftWebUI"
+            "value" : "Made with [kvSwiftWebUI](https://github.com/keyvariable/kvSwiftWebUI.git)"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hecho en kvSwiftWebUI"
+            "value" : "Hecho en [kvSwiftWebUI](https://github.com/keyvariable/kvSwiftWebUI.git)"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Réalisé sur kvSwiftWebUI"
+            "value" : "Réalisé sur [kvSwiftWebUI](https://github.com/keyvariable/kvSwiftWebUI.git)"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "kvSwiftWebUI पर बनाया गया"
+            "value" : "[kvSwiftWebUI](https://github.com/keyvariable/kvSwiftWebUI.git) पर बनाया गया"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сделано на kvSwiftWebUI"
+            "value" : "Сделано на [kvSwiftWebUI](https://github.com/keyvariable/kvSwiftWebUI.git)"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在 kvSwiftWebUI 上制作"
+            "value" : "在 [kvSwiftWebUI](https://github.com/keyvariable/kvSwiftWebUI.git) 上制作"
           }
         }
       }
