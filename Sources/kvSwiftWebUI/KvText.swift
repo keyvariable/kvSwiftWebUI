@@ -120,10 +120,10 @@ public struct KvText : Equatable {
             // MARK: Access
 
             /// - Returns: The content in given localization context.
-            func string(in context: borrowing KvLocalization.Context) -> String {
+            func string(in context: borrowing KvLocalization.Context, defaultBundle: Bundle?) -> String {
                 switch self {
                 case .localizable(let resource):
-                    context.string(resource)
+                    context.string(resource, defaultBundle: defaultBundle)
                 case .verbatim(let value):
                     value
                 }
@@ -470,7 +470,7 @@ public struct KvText : Equatable {
     /// - Returns: The receiver's content without attributes.
     ///
     /// - SeeAlso: ``escapedPlainBytes(in:)``.
-    func plainText(in context: borrowing KvLocalization.Context) -> String {
+    func plainText(in context: borrowing KvLocalization.Context, defaultBundle: Bundle? = nil) -> String {
         var string: String
 
         switch content {
@@ -479,7 +479,7 @@ public struct KvText : Equatable {
             string = "\(lhs.plainText(in: context))\(rhs.plainText(in: context))"
 
         case .string(let content, transform: let transform):
-            string = content.string(in: context)
+            string = content.string(in: context, defaultBundle: defaultBundle)
 
             switch transform {
             case .markdown:
@@ -644,7 +644,8 @@ extension KvText : KvHtmlRenderable {
                     return InnerHTML(block())
 
                 case .string(let content, transform: let transform):
-                    let string = content.string(in: context.html.localizationContext)
+                    let string = content.string(in: context.html.localizationContext,
+                                                defaultBundle: context.environmentNode?.values[keyPath: \.localizationBundle])
 
                     return switch transform {
                     case .markdown:
