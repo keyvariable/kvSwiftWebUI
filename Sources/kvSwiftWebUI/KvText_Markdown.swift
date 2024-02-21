@@ -31,30 +31,50 @@ import Markdown
 
 // MARK: Markdown
 
-public typealias Md = KvText.Md
-
-
 extension KvText {
 
-    /// Initializes an instance from a localizable [Markdown](https://www.markdownguide.org) source.
+    /// - Returns: An instance from a localized [Markdown](https://www.markdownguide.org) source.
     ///
-    /// See ``Md`` for details and examples.
+    /// - Note: Support of *Markdown* syntax is limited.
     ///
-    /// A localizable *markdown* argument doesn't have to contain a valid *Markdown* source,
-    /// but all the localizations have to be valid *Markdown* sources.
+    /// - Note: A localized *markdown* argument doesn't have to contain a valid *Markdown* source,
+    ///         but all the localizations have to be valid *Markdown* sources.
+    ///
+    /// Support of *Markdown* is provided to reduce boilerplate code when a text contains reach formatting.
+    /// For example, two expressions below produce the same result:
+    /// ```swift
+    /// Text.md("A *i* **b** [c](https://c.com)")
+    ///
+    /// Text("A")
+    /// + .space + Text("i").italic()
+    /// + .space + Text("b").fontWeight(.semibold)
+    /// + .space + Text("c").link(URL(string: "https://c.com")!)
+    /// ```
+    ///
+    /// Localization also becomes easier.
+    /// Note that in case of *Markdown* single localization unit is used in example above, formatting and URL can be localized.
+    /// In other case a sentence is split on four localization units, formatting and URL are not localized.
+    ///
+    /// Special HTML characters and explicit *Unicode* codes are supported:
+    /// ```swift
+    /// // Equal to Text("€€€")
+    /// Text.md("&#8364;&#x20AC;&euro;")
+    /// ```
+    ///
+    /// - SeeAlso: ``md(verbatim:)``.
     @inlinable
-    public init(_ markdown: Md, tableName: String? = nil, bundle: Bundle? = nil, comment: StaticString? = nil) {
-        self.init(content: .string(.localizable(.init(key: markdown.rawValue, table: tableName, bundle: bundle)),
-                                   transform: .markdown))
+    public static func md(_ markdown: String, tableName: String? = nil, bundle: Bundle? = nil, comment: StaticString? = nil) -> KvText {
+        .init(content: .string(.localizable(.init(key: markdown, table: tableName, bundle: bundle)),
+                               transform: .markdown))
     }
 
 
-    /// Initializes an instance from a non-localizable [Markdown](https://www.markdownguide.org) source.
+    /// - Returns: An instance from a non-localized [Markdown](https://www.markdownguide.org) source.
     ///
-    /// See ``Md`` for details and examples.
+    /// See ``md(_:tableName:bundle:comment:)`` for details and examples.
     @inlinable
-    public init(verbatim markdown: Md) {
-        self.init(content: .string(.verbatim(markdown.rawValue), transform: .markdown))
+    public static func md(verbatim markdown: String) -> KvText {
+        .init(content: .string(.verbatim(markdown), transform: .markdown))
     }
 
 
@@ -62,45 +82,13 @@ extension KvText {
     // MARK: .Md
 
     // - NOTE: It's not called `Markdown` to prevent collisions with the Markdown module.
-    /// A lightweight container indicating that a string contains a [Markdown](https://www.markdownguide.org) source.
-    ///
-    /// - Note: Support of *Markdown* syntax is limited.
-    ///
-    /// ``Md`` is designated to reduce boilerplate code when a text contains reach formatting.
-    /// For example, two expressions below produce the same result:
-    /// ```swift
-    /// Text("A *i* **b** [c](https://c.com)" as Md)
-    ///
-    /// Text("A ")
-    /// + Text("i").italic()
-    /// + .space + Text("b").fontWeight(.semibold)
-    /// + .space + Text("c").link(URL(string: "https://c.com")!)
-    /// ```
-    ///
-    /// ``Md`` supports special HTML characters and explicit *Unicode* codes:
-    /// ```swift
-    /// // Equal to Text("€€€")
-    /// Text("&#8364;&#x20AC;&euro;" as Md)
-    /// ```
-    ///
-    /// Also ``Md`` is useful for localized text when formatting depends on locale.
-    public struct Md : ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
+    struct Md {
 
-        public let rawValue: String
+        let rawValue: String
 
 
 
-        @inlinable
-        public init(_ string: String) { self.rawValue = string }
-
-
-
-        // MARK: : ExpressibleByStringLiteral
-
-        @inlinable
-        public init(stringLiteral value: StringLiteralType) {
-            self.init(value)
-        }
+        init(_ string: String) { self.rawValue = string }
 
 
 
@@ -194,7 +182,7 @@ extension KvText {
                 return accumulator.text
             }
 
-            
+
             // MARK: : MarkupWalker
 
             mutating func defaultVisit(_ markup: Markup) {
@@ -337,6 +325,47 @@ extension KvText {
 
         }
 
+    }
+
+}
+
+
+
+// MARK: Legacy
+
+// TODO: Delete in 0.7.0
+@available(*, deprecated, message: "Use KvText.md fabrics instead")
+public struct Md : ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
+
+    let rawValue: String
+
+
+    init(_ string: String) { self.rawValue = string }
+
+
+
+    // MARK: : ExpressibleByStringLiteral
+
+    public init(stringLiteral value: StringLiteralType) {
+        self.init(value)
+    }
+
+}
+
+
+extension KvText {
+
+    // TODO: Delete in 0.7.0
+    @available(*, unavailable, renamed: "KvText.md(_:tableName:bundle:comment:)")
+    public init(_ markdown: kvSwiftWebUI.Md, tableName: String? = nil, bundle: Bundle? = nil, comment: StaticString? = nil) {
+        self = KvText.md(markdown.rawValue, tableName: tableName, bundle: bundle, comment: comment)
+    }
+
+
+    // TODO: Delete in 0.7.0
+    @available(*, unavailable, renamed: "KvText.md(verbatim:)")
+    public init(verbatim markdown: kvSwiftWebUI.Md) {
+        self = KvText.md(verbatim: markdown.rawValue)
     }
 
 }

@@ -190,7 +190,7 @@ struct KvHtmlBodyImpl : KvHtmlBody {
         private var signatureBanner: some KvView {
             VStack(spacing: .em(0.25)) {
                 authorsTag
-                Text("Made with kvSwiftWebUI" as Md, bundle: .module)
+                Text.md("Made with kvSwiftWebUI", bundle: .module)
             }
             .padding(.horizontal)
             .padding(.vertical, Constants.signatureBannerPadding)

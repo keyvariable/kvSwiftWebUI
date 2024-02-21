@@ -54,7 +54,7 @@ final class KvTextTests : XCTestCase {
     func testMarkdownText() {
 
         func Assert(_ input: String, expected: Text) {
-            XCTAssertEqual(KvTestKit.renderHTML(for: Text(Md(input))), KvTestKit.renderHTML(for: expected), "input: \(input), expected: \(expected)")
+            XCTAssertEqual(KvTestKit.renderHTML(for: Text.md(.init(input))), KvTestKit.renderHTML(for: expected), "input: \(input), expected: \(expected)")
         }
 
         // Emphasis, strong, links
