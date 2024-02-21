@@ -276,7 +276,7 @@ struct BasicsView : View {
 
                 Text("2") + (Text("3") + Text("2").superscript + Text("+1")).superscript + Text(" = 2") + Text("10").superscript + Text(" = 1024")
 
-                Text("[Markdown](https://www.markdownguide.org): **bold**, *italic*, <sub>subscript</sub>, <sup>superscript</sup>, `source_code`." as Md)
+                Text.md("[Markdown](https://www.markdownguide.org): **bold**, *italic*, <sub>subscript</sub>, <sup>superscript</sup>, `source_code`.")
             }
 
             Section2(header: Text("Text Case")) {
