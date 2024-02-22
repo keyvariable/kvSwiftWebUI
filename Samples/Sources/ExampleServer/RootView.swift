@@ -50,13 +50,18 @@ struct RootView : View {
             /// Page contents are organized to sections: ``Section1``, ``Section2``, ``BodySection``.
 
             BodySection {
-                Text.md("""
+                /// `Text` provides limited support of [Markdown](https://www.markdownguide.org ).
+                /// `Text` automatically looks up for supported *Markdown* expressions in localized values.
+                ///
+                /// Some expressions (e.g. HTML special characters) are ignored by default.
+                /// Use `Text.md(_:tableName:bundle:comment:)` fabric to force *Markdown* processing.
+                Text("""
                     [kvSwiftWebUI](\(Constants.kvSwiftWebUI_GitHubURL)) is a cross-platform framework providing API to declare web-interfaces in a way very close to SwiftUI framework.
                     It allows to implement web interfaces in a declarative paradigm.
                     kvSwiftWebUI minimizes efforts to create and maintain boilerplate code allowing developer to focus on the design of the interface and the source code.
                     """)
 
-                Text.md("""
+                Text("""
                     The declared interfaces have to be served.
                     In this example the backend is served with [kvServerKit](\(Constants.kvServerKit_GitHubURL)) framework.
                     """)

@@ -64,7 +64,7 @@ struct ColorCatalogView : View {
 
     private var customColorSection: some View {
         Section1(header: Text("Custom Colors")) {
-            Text.md("""
+            Text("""
                 There are several ways to declare custom colors.
                 The simplest one is to use HEX literals: `let color: Color = 0x2F4F4F`.
                 """)
@@ -105,7 +105,7 @@ struct ColorCatalogView : View {
 
         var body: some View {
             Section1(header: header) {
-                Text.md("Colors below are available as static properties of `Color` type.")
+                Text("Colors below are available as static properties of `Color` type.")
 
                 let (numberOfColumns, font): (Int, Font) = switch horizontalSizeClass {
                 case .regular: (3, .system(.body, design: .monospaced))

@@ -68,27 +68,47 @@ public struct KvText : Equatable {
 
 
     // TODO: DOC
-    @inlinable
+    @_disfavoredOverload
     public init<S>(_ content: S) where S : StringProtocol {
-        self.init(content: .localizable(.init(key: String(content))))
+        self.init(verbatim: String(content))
     }
 
 
     // TODO: DOC
+    /// Initializes an instance with a localized string key.
+    /// 
+    /// ## String Interpolations
+    ///
+    /// ``KvLocalizedStringKey`` supports initialization from string interpolation literals.
+    /// For example:
+    /// ```swift
+    /// // Localization key: "Visit %@".
+    /// Text("Visit \(url)")
+    /// ```
+    ///
+    /// See ``KvLocalizedStringKey`` for details and examples.
+    ///
+    /// ## Markdown
+    ///
+    /// This method provides limited support of [Markdown](https://www.markdownguide.org ).
+    /// If the localized value doesn't contain supported *Markdown* expressions then the value is used as is.
+    ///
+    /// Some expressions (e.g. HTML special characters) are ignored by default.
+    /// Use ``KvText/md(_:tableName:bundle:comment:)`` fabric to force *Markdown* processing.
+    ///
+    /// For example, two expressions below produce the same result:
+    /// ```swift
+    /// Text("A *i* **b** [c](https://c.com)")
+    ///
+    /// Text("A")
+    /// + .space + Text("i").italic()
+    /// + .space + Text("b").fontWeight(.semibold)
+    /// + .space + Text("c").link(URL(string: "https://c.com")!)
+    /// ```
     @inlinable
     public init(_ key: KvLocalizedStringKey, tableName: String? = nil, bundle: Bundle? = nil, comment: StaticString? = nil) {
-        self.init(content: .localizable(.init(key: key.content, table: tableName, bundle: bundle)))
+        self.init(content: .string(.localizable(.init(key: key, table: tableName, bundle: bundle)), transform: .auto))
     }
-
-
-    #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
-    // TODO: DOC
-    @available(macOS 13, iOS 16, tvOS 16, watchOS 9, *)
-    @inlinable
-    public init(_ resource: LocalizedStringResource) {
-        self.init(verbatim: String(localized: resource))
-    }
-    #endif // os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 
 
 
@@ -120,10 +140,10 @@ public struct KvText : Equatable {
             // MARK: Access
 
             /// - Returns: The content in given localization context.
-            func string(in context: borrowing KvLocalization.Context) -> String {
+            func string(in context: borrowing KvLocalization.Context, defaultBundle: Bundle?) -> String {
                 switch self {
                 case .localizable(let resource):
-                    context.string(resource)
+                    context.string(resource, defaultBundle: defaultBundle)
                 case .verbatim(let value):
                     value
                 }
@@ -136,6 +156,7 @@ public struct KvText : Equatable {
 
         @usableFromInline
         enum Transform : Equatable {
+            case auto
             case markdown
         }
 
@@ -470,7 +491,7 @@ public struct KvText : Equatable {
     /// - Returns: The receiver's content without attributes.
     ///
     /// - SeeAlso: ``escapedPlainBytes(in:)``.
-    func plainText(in context: borrowing KvLocalization.Context) -> String {
+    func plainText(in context: borrowing KvLocalization.Context, defaultBundle: Bundle? = nil) -> String {
         var string: String
 
         switch content {
@@ -479,13 +500,19 @@ public struct KvText : Equatable {
             string = "\(lhs.plainText(in: context))\(rhs.plainText(in: context))"
 
         case .string(let content, transform: let transform):
-            string = content.string(in: context)
+            string = content.string(in: context, defaultBundle: defaultBundle)
 
-            switch transform {
+            let text: KvText? = switch transform {
+            case .auto:
+                Md(string).text(options: .requireSupportedMarkup)
             case .markdown:
-                string = Md(string).text().plainText(in: context)
+                Md(string).text()
             case .none:
-                break
+                nil
+            }
+
+            if let text {
+                string = text.plainText(in: context)
             }
 
         case .text(let block):
@@ -636,7 +663,45 @@ extension KvText : KvView { public var body: KvNeverView { Body() } }
 extension KvText : KvHtmlRenderable {
 
     func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
-        context.representation(htmlAttributes: attributes.htmlAttributes(in: context.html)) { context, htmlAttributes in
+        /// Avoiding redundant wrappers in some cases.
+        var candidate = self
+
+        while candidate.attributes.isEmpty {
+            switch candidate.content {
+            case .joined(_):
+                return KvText.renderHTML(for: candidate, in: context)
+
+            case .string(let content, transform: let transform):
+                let string = content.string(in: context.html.localizationContext,
+                                            defaultBundle: context.environmentNode?.values[keyPath: \.localizationBundle])
+
+                let text: KvText? = switch transform {
+                case .auto:
+                    Md(string).text(options: .requireSupportedMarkup)
+                case .markdown:
+                    Md(string).text()
+                case .none:
+                    nil
+                }
+
+                switch text {
+                case .some(let text):
+                    candidate = text
+                case .none:
+                    return KvText.renderHTML(for: KvText(verbatim: string), in: context)
+                }
+
+            case .text(let block):
+                candidate = block()
+            }
+        }
+
+        return KvText.renderHTML(for: candidate, in: context)
+    }
+
+
+    private static func renderHTML(for text: KvText, in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
+        context.representation(htmlAttributes: text.attributes.htmlAttributes(in: context.html)) { context, htmlAttributes in
 
             func ContentFragment(_ content: Content) -> KvHtmlRepresentation.Fragment {
                 switch content {
@@ -644,11 +709,21 @@ extension KvText : KvHtmlRenderable {
                     return InnerHTML(block())
 
                 case .string(let content, transform: let transform):
-                    let string = content.string(in: context.html.localizationContext)
+                    let string = content.string(in: context.html.localizationContext,
+                                                defaultBundle: context.environmentNode?.values[keyPath: \.localizationBundle])
 
-                    return switch transform {
+                    let text: KvText? = switch transform {
+                    case .auto:
+                        Md(string).text(options: .requireSupportedMarkup)
                     case .markdown:
-                        ContentFragment(.text(Md(string).text))
+                        Md(string).text()
+                    case .none:
+                        nil
+                    }
+
+                    return switch text {
+                    case .some(let text):
+                        ContentFragment(.text { text })
                     case .none:
                         .init(KvHtmlKit.Escaping.innerText(string))
                     }
@@ -678,13 +753,13 @@ extension KvText : KvHtmlRenderable {
             }
 
 
-            let innerFragment = ContentFragment(content)
-            let textStyle = context.environmentNode?.values.font?.textStyle ?? attributes.font??.textStyle
+            let innerFragment = ContentFragment(text.content)
+            let textStyle = context.environmentNode?.values.font?.textStyle ?? text.attributes.font??.textStyle
 
             return .tag(
                 Self.tag(for: textStyle),
                 attributes: htmlAttributes ?? .empty,
-                innerHTML: attributes.wrapping(innerFragment)
+                innerHTML: text.attributes.wrapping(innerFragment)
             )
         }
     }
@@ -744,5 +819,23 @@ extension KvText {
     /// Useful as suggested line break in long words. For example it can be inserted between components in long URLs.
     @inlinable
     public static var zwsp: Self { .init("\u{200B}") }
+
+}
+
+
+
+// MARK: Legacy
+
+extension KvText {
+
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+    // TODO: Delete in 0.7.0
+    @available(macOS 13, iOS 16, tvOS 16, watchOS 9, *)
+    @available(*, unavailable, message: "Static localized string resources are not allowed due to localization is dymanic")
+    @inlinable
+    public init(_ resource: LocalizedStringResource) {
+        self.init(verbatim: String(localized: resource))
+    }
+#endif // os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 
 }

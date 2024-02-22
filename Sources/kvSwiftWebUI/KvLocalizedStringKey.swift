@@ -23,33 +23,288 @@
 //  Created by Svyatoslav Popov on 24.10.2023.
 //
 
+import Foundation
+
+
+
 public typealias LocalizedStringKey = KvLocalizedStringKey
 
 
 
 // TODO: DOC
-// TODO: Ensure initialization via StringInterpolation works
-public struct KvLocalizedStringKey : Equatable, ExpressibleByStringLiteral {
+/// This type is designated to process strings as the localization keys.
+///
+/// ## String Interpolations
+///
+/// `KvLocalizedStringKey` supports initialization from string interpolation literals.
+/// The placeholders are converted to format specifiers, compatible with [`String.init(format:arguments:)`](https://developer.apple.com/documentation/swift/string/init(format:arguments:) ).
+///
+/// For example:
+/// ```swift
+/// // Localization key: "name: %@, age: %lld, height: %f meters".
+/// Text("name: \("Ben"), age: \(27), height: \(1.75) meters")
+///
+/// // Localization key: "Current timestamp: %@".
+/// Text("Current timestamp: \(Date())")
+/// ```
+///
+/// See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
+public struct KvLocalizedStringKey : Equatable, ExpressibleByStringInterpolation {
 
     @usableFromInline
-    let content: String
+    let value: Value
 
 
     @inlinable
-    public init(_ content: String) { self.content = content }
+    public init(_ value: String) { self.value = .final(value) }
+
+
+    @usableFromInline
+    init<S : StringProtocol>(_ value: S) {
+        self.init(String(value))
+    }
 
 
 
-    // MARK: : ExpressibleByStringLiteral
+    // MARK: .Value
 
-    @inlinable
-    public init(stringLiteral value: String) { self.content = value }
+    @usableFromInline
+    enum Value : Equatable {
+
+        case final(String)
+        case formatted(format: String, arguments: [CVarArg])
+
+        
+        // MARK: : Equatable
+
+        @usableFromInline
+        static func ==(lhs: Value, rhs: Value) -> Bool {
+            switch lhs {
+            case .final(let value):
+                guard case .final(value) = rhs else { return false }
+            case .formatted(format: let format, arguments: _):
+                guard case .formatted(format: format, arguments: _) = rhs else { return false }
+            }
+            return true
+        }
+
+    }
 
 
 
     // MARK: : Equatable
 
     @inlinable
-    public static func ==(lhs: Self, rhs: Self) -> Bool { lhs.content == rhs.content }
+    public static func ==(lhs: Self, rhs: Self) -> Bool { lhs.value == rhs.value }
+
+
+
+    // MARK: : ExpressibleByStringInterpolation
+
+    @inlinable
+    public init(stringLiteral value: String) { self.init(value) }
+
+
+    @inlinable
+    public init(stringInterpolation: StringInterpolation) {
+        self.value = .formatted(format: stringInterpolation.format, arguments: stringInterpolation.arguments)
+    }
+
+
+
+    // MARK: .StringInterpolation
+
+    public struct StringInterpolation : StringInterpolationProtocol {
+
+        @usableFromInline
+        var format: String = .init()
+        @usableFromInline
+        var arguments: [any CVarArg] = .init()
+
+
+        // MARK: .Constants
+
+        @usableFromInline
+        struct Constants {
+
+            @usableFromInline
+            static var formatInt: String {
+#if arch(x86_64) || arch(arm64)
+            "%lld"
+#elseif arch(i386) || arch(arm)
+            "%d"
+#else
+            assertionFailure("Unsupported architecture")
+            return "%lld"
+#endif
+            }
+
+            @usableFromInline
+            static var formatUInt: String {
+#if arch(x86_64) || arch(arm64)
+            "%llu"
+#elseif arch(i386) || arch(arm)
+            "%u"
+#else
+            assertionFailure("Unsupported architecture")
+            return "%llu"
+#endif
+            }
+
+        }
+
+
+        // MARK: : StringInterpolationProtocol
+
+        @inlinable
+        public init(literalCapacity: Int, interpolationCount: Int) {
+            // - NOTE: Capacity of `format` is not reserved due to number of percent character is unknown.
+
+            if interpolationCount > 0 {
+                arguments.reserveCapacity(interpolationCount)
+            }
+        }
+
+
+        @inlinable
+        public mutating func appendLiteral(_ literal: StringLiteralType) {
+            // Escaping %
+            var substring = Substring(literal)
+            while let index = substring.firstIndex(of: "%") {
+                format.append(contentsOf: substring[..<index])
+                format.append("%")
+
+                substring = substring[index...]
+            }
+            format.append(contentsOf: substring)
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation(_ value: CVarArg, format: String) {
+            self.format.append(format)
+            arguments.append(value)
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation(_ string: String) {
+            appendInterpolation(string, format: "%@")
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation<S : StringProtocol>(_ string: S) {
+            appendInterpolation(String(string))
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation(_ character: Character) {
+            appendInterpolation(String(character))
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation(_ number: Int) {
+            appendInterpolation(number, format: Constants.formatInt)
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation(_ number: UInt) {
+            appendInterpolation(number, format: Constants.formatUInt)
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation(_ number: Int64) {
+            appendInterpolation(number, format: "%lld")
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation(_ number: UInt64) {
+            appendInterpolation(number, format: "%llu")
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation(_ number: Int32) {
+            appendInterpolation(number, format: "%d")
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation(_ number: UInt32) {
+            appendInterpolation(number, format: "%u")
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation(_ number: Int16) {
+            appendInterpolation(numericCast(number) as Int32)
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation(_ number: UInt16) {
+            appendInterpolation(numericCast(number) as UInt32)
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation(_ number: Int8) {
+            appendInterpolation(numericCast(number) as Int32)
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation(_ number: UInt8) {
+            appendInterpolation(numericCast(number) as UInt32)
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation<T>(_ number: T)
+        where T : BinaryInteger & SignedInteger
+        {
+            appendInterpolation(numericCast(number) as Int)
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation<T>(_ number: T)
+        where T : BinaryInteger & UnsignedInteger
+        {
+            appendInterpolation(numericCast(number) as UInt)
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation(_ number: Double) {
+            appendInterpolation(number, format: "%f")
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation(_ number: Float) {
+            appendInterpolation(Double(number))
+        }
+
+
+        @inlinable
+        public mutating func appendInterpolation<T : BinaryFloatingPoint>(_ number: T) {
+            appendInterpolation(Double(number))
+        }
+
+
+        /// Shorthand for `appendInterpolation(String(describing: value))`.
+        @inlinable
+        public mutating func appendInterpolation<T : CustomStringConvertible>(_ value: T) {
+            appendInterpolation(String(describing: value))
+        }
+
+    }
 
 }
