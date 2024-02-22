@@ -108,11 +108,8 @@ extension KvText {
 
         struct Options : OptionSet {
 
-            /// The raw value is used if the parse result is unavailable.
-            static let rawValueByDefault = Options(rawValue: 1 << 0)
-
             /// When passed, parser discards the result if there is no supported markup encountered.
-            static let requireSupportedMarkup = Options(rawValue: 1 << 1)
+            static let requireSupportedMarkup = Options(rawValue: 1 << 0)
 
 
             let rawValue: UInt8
@@ -124,7 +121,7 @@ extension KvText {
         // MARK: Operations
 
         /// - Returns: Representation of the receiver as a ``KvText`` instance.
-        func text(options: Options = [ ]) -> Text {
+        func text(options: Options = [ ]) -> Text? {
             let document = Document(parsing: rawValue)
             var accumulator = TextAccumulator()
 
@@ -135,7 +132,7 @@ extension KvText {
             guard let text = result.text,
                   !options.contains(.requireSupportedMarkup) || result.hasAttributes
             else {
-                return !options.isDisjoint(with: [ .requireSupportedMarkup, .rawValueByDefault ]) ? Text(verbatim: rawValue) : .empty
+                return nil
             }
 
             return text

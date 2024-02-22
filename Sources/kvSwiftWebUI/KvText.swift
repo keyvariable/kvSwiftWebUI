@@ -502,17 +502,17 @@ public struct KvText : Equatable {
         case .string(let content, transform: let transform):
             string = content.string(in: context, defaultBundle: defaultBundle)
 
-            switch transform {
+            let text: KvText? = switch transform {
             case .auto:
-                string = Md(string)
-                    .text(options: [ .requireSupportedMarkup, .rawValueByDefault ])
-                    .plainText(in: context)
+                Md(string).text(options: .requireSupportedMarkup)
             case .markdown:
-                string = Md(string)
-                    .text(options: .rawValueByDefault)
-                    .plainText(in: context)
+                Md(string).text()
             case .none:
-                break
+                nil
+            }
+
+            if let text {
+                string = text.plainText(in: context)
             }
 
         case .text(let block):
@@ -663,7 +663,45 @@ extension KvText : KvView { public var body: KvNeverView { Body() } }
 extension KvText : KvHtmlRenderable {
 
     func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
-        context.representation(htmlAttributes: attributes.htmlAttributes(in: context.html)) { context, htmlAttributes in
+        /// Avoiding redundant wrappers in some cases.
+        var candidate = self
+
+        while candidate.attributes.isEmpty {
+            switch candidate.content {
+            case .joined(_):
+                return KvText.renderHTML(for: candidate, in: context)
+
+            case .string(let content, transform: let transform):
+                let string = content.string(in: context.html.localizationContext,
+                                            defaultBundle: context.environmentNode?.values[keyPath: \.localizationBundle])
+
+                let text: KvText? = switch transform {
+                case .auto:
+                    Md(string).text(options: .requireSupportedMarkup)
+                case .markdown:
+                    Md(string).text()
+                case .none:
+                    nil
+                }
+
+                switch text {
+                case .some(let text):
+                    candidate = text
+                case .none:
+                    return KvText.renderHTML(for: KvText(verbatim: string), in: context)
+                }
+
+            case .text(let block):
+                candidate = block()
+            }
+        }
+
+        return KvText.renderHTML(for: candidate, in: context)
+    }
+
+
+    private static func renderHTML(for text: KvText, in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
+        context.representation(htmlAttributes: text.attributes.htmlAttributes(in: context.html)) { context, htmlAttributes in
 
             func ContentFragment(_ content: Content) -> KvHtmlRepresentation.Fragment {
                 switch content {
@@ -674,11 +712,18 @@ extension KvText : KvHtmlRenderable {
                     let string = content.string(in: context.html.localizationContext,
                                                 defaultBundle: context.environmentNode?.values[keyPath: \.localizationBundle])
 
-                    return switch transform {
+                    let text: KvText? = switch transform {
                     case .auto:
-                        ContentFragment(.text { Md(string).text(options: [ .requireSupportedMarkup, .rawValueByDefault ]) })
+                        Md(string).text(options: .requireSupportedMarkup)
                     case .markdown:
-                        ContentFragment(.text { Md(string).text(options: .rawValueByDefault) })
+                        Md(string).text()
+                    case .none:
+                        nil
+                    }
+
+                    return switch text {
+                    case .some(let text):
+                        ContentFragment(.text { text })
                     case .none:
                         .init(KvHtmlKit.Escaping.innerText(string))
                     }
@@ -708,13 +753,13 @@ extension KvText : KvHtmlRenderable {
             }
 
 
-            let innerFragment = ContentFragment(content)
-            let textStyle = context.environmentNode?.values.font?.textStyle ?? attributes.font??.textStyle
+            let innerFragment = ContentFragment(text.content)
+            let textStyle = context.environmentNode?.values.font?.textStyle ?? text.attributes.font??.textStyle
 
             return .tag(
                 Self.tag(for: textStyle),
                 attributes: htmlAttributes ?? .empty,
-                innerHTML: attributes.wrapping(innerFragment)
+                innerHTML: text.attributes.wrapping(innerFragment)
             )
         }
     }
