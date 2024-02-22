@@ -63,8 +63,18 @@ extension KvText {
     ///
     /// - SeeAlso: ``md(verbatim:)``.
     @inlinable
-    public static func md(_ markdown: String, tableName: String? = nil, bundle: Bundle? = nil, comment: StaticString? = nil) -> KvText {
+    public static func md(_ markdown: KvLocalizedStringKey, tableName: String? = nil, bundle: Bundle? = nil, comment: StaticString? = nil) -> KvText {
         .init(content: .string(.localizable(.init(key: markdown, table: tableName, bundle: bundle)),
+                               transform: .markdown))
+    }
+
+
+    // TODO: DOC
+    @inlinable
+    public static func md<S>(_ content: S) -> KvText
+    where S : StringProtocol
+    {
+        .init(content: .string(.localizable(.init(key: .init(content))),
                                transform: .markdown))
     }
 
@@ -358,7 +368,7 @@ extension KvText {
     // TODO: Delete in 0.7.0
     @available(*, unavailable, renamed: "KvText.md(_:tableName:bundle:comment:)")
     public init(_ markdown: kvSwiftWebUI.Md, tableName: String? = nil, bundle: Bundle? = nil, comment: StaticString? = nil) {
-        self = KvText.md(markdown.rawValue, tableName: tableName, bundle: bundle, comment: comment)
+        self = KvText.md(.init(markdown.rawValue), tableName: tableName, bundle: bundle, comment: comment)
     }
 
 

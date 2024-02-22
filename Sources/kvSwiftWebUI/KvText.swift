@@ -75,9 +75,21 @@ public struct KvText : Equatable {
 
 
     // TODO: DOC
+    /// Initializes an instance with a localized string key.
+    /// 
+    /// ## String Interpolations
+    ///
+    /// ``KvLocalizedStringKey`` supports initialization from string interpolation literals.
+    /// For example:
+    /// ```swift
+    /// // Localization key: "Visit %@".
+    /// Text("Visit \(url)")
+    /// ```
+    ///
+    /// See ``KvLocalizedStringKey`` for details and examples.
     @inlinable
     public init(_ key: KvLocalizedStringKey, tableName: String? = nil, bundle: Bundle? = nil, comment: StaticString? = nil) {
-        self.init(content: .localizable(.init(key: key.content, table: tableName, bundle: bundle)))
+        self.init(content: .localizable(.init(key: key, table: tableName, bundle: bundle)))
     }
 
 

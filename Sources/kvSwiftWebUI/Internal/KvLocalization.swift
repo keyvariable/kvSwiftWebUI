@@ -300,14 +300,22 @@ public class KvLocalization {
         /// 4. *key*.
         ///
         /// See documentation of ``Context`` for examples.
-        public borrowing func string(forKey key: String,
+        public borrowing func string(forKey key: KvLocalizedStringKey,
                                      defaultValue: String? = nil,
                                      table: String? = nil,
                                      bundle: Bundle? = nil,
                                      comment: StaticString? = nil
         ) -> String {
-            resolved(bundle ?? self.bundle)
-                .localizedString(forKey: key, value: defaultValue, table: table)
+            let bundle = resolved(bundle ?? self.bundle)
+
+            switch key.value {
+            case .final(let string):
+                return bundle.localizedString(forKey: string, value: defaultValue, table: table)
+
+            case .formatted(let format, let arguments):
+                return .init(format: bundle.localizedString(forKey: format, value: defaultValue, table: table),
+                             arguments: arguments)
+            }
         }
 
 
@@ -355,7 +363,7 @@ public class KvLocalization {
     @usableFromInline
     struct StringResource : Equatable {
 
-        var key: String
+        var key: KvLocalizedStringKey
         var defaultValue: String?
 
         var table: String?
@@ -363,7 +371,7 @@ public class KvLocalization {
 
 
         @usableFromInline
-        init(key: String, defaultValue: String? = nil, table: String? = nil, bundle: Bundle? = nil) {
+        init(key: KvLocalizedStringKey, defaultValue: String? = nil, table: String? = nil, bundle: Bundle? = nil) {
             self.key = key
             self.defaultValue = defaultValue
             self.table = table
