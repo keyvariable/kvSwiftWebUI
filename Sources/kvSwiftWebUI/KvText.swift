@@ -68,9 +68,9 @@ public struct KvText : Equatable {
 
 
     // TODO: DOC
-    @inlinable
+    @_disfavoredOverload
     public init<S>(_ content: S) where S : StringProtocol {
-        self.init(content: .localizable(.init(key: String(content))))
+        self.init(verbatim: String(content))
     }
 
 
