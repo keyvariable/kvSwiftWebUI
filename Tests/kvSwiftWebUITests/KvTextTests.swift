@@ -31,6 +31,30 @@ import XCTest
 
 final class KvTextTests : XCTestCase {
 
+    // MARK: - .testInitByLocalized()
+
+    func testInitByLocalized() {
+
+        func Assert(_ input: String, expected: Text) {
+            XCTAssertEqual(KvTestKit.renderHTML(for: Text(KvLocalizedStringKey(input))), KvTestKit.renderHTML(for: expected), "input: \(input), expected: \(expected)")
+        }
+
+        // Emphasis, strong, links, normalized whitespace
+        Assert("A *i* **b**\n[c](https://c.com)",
+               expected: Text("A ") + Text("i").italic() + .space + Text("b").fontWeight(.semibold) + .space + Text("c").link(URL(string: "https://c.com")!))
+        // Superscripts and subscripts
+        Assert("v<sub>x</sub> = 3<sup>0.5</sup>",
+               expected: Text("v") + Text("x").subscript + Text(" = 3") + Text("0.5").superscript)
+
+        // String without Markdown
+        Assert("A\nB\n\nC", expected: Text(verbatim: "A\nB\n\nC"))
+
+        // Unsupported markup
+        Assert("# H1\n\np1\n\n## H2\n\n- li1\n- li2\n", expected: Text("# H1\n\np1\n\n## H2\n\n- li1\n- li2\n"))
+    }
+
+
+
     // MARK: - .testPlainText()
 
     func testPlainText() {
@@ -49,12 +73,13 @@ final class KvTextTests : XCTestCase {
 
 
 
-    // MARK: - .testMarkdownText()
+    // MARK: - .testFabricMd()
 
-    func testMarkdownText() {
+    func testFabricMd() {
 
         func Assert(_ input: String, expected: Text) {
-            XCTAssertEqual(KvTestKit.renderHTML(for: Text.md(.init(input))), KvTestKit.renderHTML(for: expected), "input: \(input), expected: \(expected)")
+            let result = Text.md(.init(input))
+            XCTAssertEqual(KvTestKit.renderHTML(for: result), KvTestKit.renderHTML(for: expected), "input: \(input), expected: \(expected)")
         }
 
         // Emphasis, strong, links

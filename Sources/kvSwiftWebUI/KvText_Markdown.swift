@@ -40,6 +40,8 @@ extension KvText {
     /// - Note: A localized *markdown* argument doesn't have to contain a valid *Markdown* source,
     ///         but all the localizations have to be valid *Markdown* sources.
     ///
+    /// - Note: Automatic detection of supported *Markdown* is performed in ``init(_:tableName:bundle:comment:)`` initializer.
+    ///
     /// Support of *Markdown* is provided to reduce boilerplate code when a text contains reach formatting.
     /// For example, two expressions below produce the same result:
     /// ```swift
@@ -102,16 +104,41 @@ extension KvText {
 
 
 
+        // MARK: .Options
+
+        struct Options : OptionSet {
+
+            /// The raw value is used if the parse result is unavailable.
+            static let rawValueByDefault = Options(rawValue: 1 << 0)
+
+            /// When passed, parser discards the result if there is no supported markup encountered.
+            static let requireSupportedMarkup = Options(rawValue: 1 << 1)
+
+
+            let rawValue: UInt8
+
+        }
+
+
+
         // MARK: Operations
 
         /// - Returns: Representation of the receiver as a ``KvText`` instance.
-        func text() -> Text {
+        func text(options: Options = [ ]) -> Text {
             let document = Document(parsing: rawValue)
             var accumulator = TextAccumulator()
 
             accumulator.visit(document)
 
-            return accumulator.finalize() ?? .empty
+            let result = accumulator.finalize()
+
+            guard let text = result.text,
+                  !options.contains(.requireSupportedMarkup) || result.hasAttributes
+            else {
+                return !options.isDisjoint(with: [ .requireSupportedMarkup, .rawValueByDefault ]) ? Text(verbatim: rawValue) : .empty
+            }
+
+            return text
         }
 
 
@@ -121,6 +148,18 @@ extension KvText {
         private struct TextAccumulator : MarkupWalker {
 
             private var accumulator: Accumulator = .init()
+
+
+            // MARK: Operations
+
+            consuming func finalize() -> (text: KvText?, hasAttributes: Bool) {
+                while accumulator.parent != nil {
+                    popAttribute()
+                }
+                assert(accumulator.parent == nil)
+
+                return (accumulator.text, accumulator.hasAttributes)
+            }
 
 
             // MARK: .Accumulator
@@ -134,6 +173,12 @@ extension KvText {
 
                 var text: KvText? {
                     switch attribute {
+                    case .italic:
+                        _text?.italic()
+                    case .link(let url):
+                        _text?.link(url)
+                    case .strong:
+                        _text?.fontWeight(.semibold)
                     case .subscript:
                         _text?.subscript
                     case .superscript:
@@ -142,17 +187,20 @@ extension KvText {
                         _text
                     }
                 }
+                private(set) var hasAttributes: Bool
 
 
                 init() {
                     self.parent = nil
                     self.attribute = nil
+                    self.hasAttributes = false
                 }
 
 
                 private init(parent: consuming Accumulator, attribute: Attribute?) {
                     self.parent = parent
                     self.attribute = attribute
+                    self.hasAttributes = attribute != nil
                 }
 
 
@@ -161,7 +209,10 @@ extension KvText {
 
                 // MARK: .Attribute
 
-                enum Attribute {
+                enum Attribute : Equatable {
+                    case italic
+                    case link(URL)
+                    case strong
                     case `subscript`
                     case superscript
                 }
@@ -169,27 +220,31 @@ extension KvText {
 
                 // MARK: Operations
 
-                consuming func descendant(attribute: Attribute? = nil) -> Accumulator {
+                consuming func descendant(attribute: Attribute) -> Accumulator {
                     .init(parent: self, attribute: attribute)
                 }
 
 
-                func append(_ text: KvText) {
+                func append(_ string: String, attributes: KvText.Attributes) {
+                    guard !string.isEmpty else { return }
+
+                    append(KvText(content: .verbatim(string), attributes: attributes),
+                           hasAttributes: !attributes.isEmpty)
+                }
+
+
+                func append(_ accumulator: Accumulator) {
+                    guard let text = accumulator.text else { return }
+
+                    append(text, hasAttributes: accumulator.hasAttributes)
+                }
+
+
+                private func append(_ text: KvText, hasAttributes: Bool) {
                     _text = _text != nil ? (_text! + text) : text
+                    self.hasAttributes = self.hasAttributes || hasAttributes
                 }
 
-            }
-
-
-            // MARK: Operations
-
-            consuming func finalize() -> KvText? {
-                while accumulator.parent != nil {
-                    popAttribute()
-                }
-                assert(accumulator.parent == nil)
-
-                return accumulator.text
             }
 
 
@@ -203,51 +258,43 @@ extension KvText {
                 case true:
                     guard let plainText = (markup as? PlainTextConvertibleMarkup)?.plainText else { return }
 
-                    accumulator.append(KvText(verbatim: plainText))
+                    accumulator.append(plainText, attributes: .empty)
                 }
             }
 
 
             mutating func visitEmphasis(_ emphasis: Emphasis) {
-                pushAttribute()
+                pushAttribute(.italic)
                 processChildren(of: emphasis)
-                popAttribute {
-                    $0.italic()
-                }
+                popAttribute()
             }
 
 
             mutating func visitLink(_ link: Markdown.Link) {
                 let destination = link.destination
-                let url = destination.flatMap(URL.init(string:))
 
-                switch link.isAutolink {
-                case false:
-                    pushAttribute()
+                switch (link.isAutolink, destination.flatMap(URL.init(string:))) {
+                case (false, .some(let url)):
+                    pushAttribute(.link(url))
                     processChildren(of: link)
-                    popAttribute {
-                        switch url {
-                        case .some(let url):
-                            $0.link(url)
-                        case .none:
-                            $0
-                        }
-                    }
+                    popAttribute()
 
-                case true:
-                    guard let url else { return }
+                case (false, .none):
+                    processChildren(of: link)
 
-                    accumulator.append(KvText(verbatim: destination!).link(url))
+                case (true, .some(let url)):
+                    accumulator.append(destination!, attributes: .init { $0.linkURL = url })
+
+                case (true, .none):
+                    break
                 }
             }
 
 
             mutating func visitStrong(_ strong: Strong) {
-                pushAttribute()
+                pushAttribute(.strong)
                 processChildren(of: strong)
-                popAttribute {
-                    $0.fontWeight(.semibold)
-                }
+                popAttribute()
             }
 
 
@@ -266,7 +313,7 @@ extension KvText {
                 case "<sup>":
                     pushAttribute(.superscript)
                 default:
-                    accumulator.append(KvText(verbatim: tag))
+                    accumulator.append(tag, attributes: .empty)
                 }
             }
 
@@ -290,23 +337,19 @@ extension KvText {
 
             // MARK: Auxiliaries
 
-            private mutating func pushAttribute(_ attribute: Accumulator.Attribute? = nil) {
+            private mutating func pushAttribute(_ attribute: Accumulator.Attribute) {
                 accumulator = accumulator.descendant(attribute: attribute)
             }
 
 
             /// - Parameter transform: A block to called for text produced in the popped context.
-            private mutating func popAttribute(transform: (consuming KvText) -> KvText = { $0 }) {
+            private mutating func popAttribute() {
                 guard let parent = accumulator.parent
                 else { return assertionFailure("Attempt to pop root accumulator") }
 
-                let text = accumulator.text
+                parent.append(accumulator)
 
                 accumulator = parent
-
-                guard let text else { return }
-
-                accumulator.append(transform(text))
             }
 
 
@@ -321,7 +364,7 @@ extension KvText {
 
                 while let next = iterator.next() {
                     if next is BlockMarkup {
-                        accumulator.append(.newLine)
+                        accumulator.append("\n", attributes: .empty)
                     }
 
                     self.visit(next)
@@ -330,7 +373,7 @@ extension KvText {
 
 
             private mutating func insertSourceCode(_ sourceCode: String) {
-                accumulator.append(KvText(verbatim: sourceCode).font(.system(.body, design: .monospaced)))
+                accumulator.append(sourceCode, attributes: .init { $0.font = .system(.body, design: .monospaced) })
             }
 
         }

@@ -87,9 +87,27 @@ public struct KvText : Equatable {
     /// ```
     ///
     /// See ``KvLocalizedStringKey`` for details and examples.
+    ///
+    /// ## Markdown
+    ///
+    /// This method provides limited support of [Markdown](https://www.markdownguide.org ).
+    /// If the localized value doesn't contain supported *Markdown* expressions then the value is used as is.
+    ///
+    /// Some expressions (e.g. HTML special characters) are ignored by default.
+    /// Use ``KvText/md(_:tableName:bundle:comment:)`` fabric to force *Markdown* processing.
+    ///
+    /// For example, two expressions below produce the same result:
+    /// ```swift
+    /// Text("A *i* **b** [c](https://c.com)")
+    ///
+    /// Text("A")
+    /// + .space + Text("i").italic()
+    /// + .space + Text("b").fontWeight(.semibold)
+    /// + .space + Text("c").link(URL(string: "https://c.com")!)
+    /// ```
     @inlinable
     public init(_ key: KvLocalizedStringKey, tableName: String? = nil, bundle: Bundle? = nil, comment: StaticString? = nil) {
-        self.init(content: .localizable(.init(key: key, table: tableName, bundle: bundle)))
+        self.init(content: .string(.localizable(.init(key: key, table: tableName, bundle: bundle)), transform: .auto))
     }
 
 
@@ -138,6 +156,7 @@ public struct KvText : Equatable {
 
         @usableFromInline
         enum Transform : Equatable {
+            case auto
             case markdown
         }
 
@@ -484,8 +503,14 @@ public struct KvText : Equatable {
             string = content.string(in: context, defaultBundle: defaultBundle)
 
             switch transform {
+            case .auto:
+                string = Md(string)
+                    .text(options: [ .requireSupportedMarkup, .rawValueByDefault ])
+                    .plainText(in: context)
             case .markdown:
-                string = Md(string).text().plainText(in: context)
+                string = Md(string)
+                    .text(options: .rawValueByDefault)
+                    .plainText(in: context)
             case .none:
                 break
             }
@@ -650,8 +675,10 @@ extension KvText : KvHtmlRenderable {
                                                 defaultBundle: context.environmentNode?.values[keyPath: \.localizationBundle])
 
                     return switch transform {
+                    case .auto:
+                        ContentFragment(.text { Md(string).text(options: [ .requireSupportedMarkup, .rawValueByDefault ]) })
                     case .markdown:
-                        ContentFragment(.text(Md(string).text))
+                        ContentFragment(.text { Md(string).text(options: .rawValueByDefault) })
                     case .none:
                         .init(KvHtmlKit.Escaping.innerText(string))
                     }
