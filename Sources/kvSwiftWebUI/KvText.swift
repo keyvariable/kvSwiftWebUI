@@ -81,16 +81,6 @@ public struct KvText : Equatable {
     }
 
 
-    #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
-    // TODO: DOC
-    @available(macOS 13, iOS 16, tvOS 16, watchOS 9, *)
-    @inlinable
-    public init(_ resource: LocalizedStringResource) {
-        self.init(verbatim: String(localized: resource))
-    }
-    #endif // os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
-
-
 
     // MARK: .Content
 
@@ -745,5 +735,23 @@ extension KvText {
     /// Useful as suggested line break in long words. For example it can be inserted between components in long URLs.
     @inlinable
     public static var zwsp: Self { .init("\u{200B}") }
+
+}
+
+
+
+// MARK: Legacy
+
+extension KvText {
+
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+    // TODO: Delete in 0.7.0
+    @available(macOS 13, iOS 16, tvOS 16, watchOS 9, *)
+    @available(*, unavailable, message: "Static localized string resources are not allowed due to localization is dymanic")
+    @inlinable
+    public init(_ resource: LocalizedStringResource) {
+        self.init(verbatim: String(localized: resource))
+    }
+#endif // os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 
 }
