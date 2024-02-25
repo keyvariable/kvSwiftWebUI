@@ -35,8 +35,8 @@ final class KvTextTests : XCTestCase {
 
     func testInitByLocalized() {
 
-        func Assert(_ input: String, expected: Text) {
-            XCTAssertEqual(KvTestKit.renderHTML(for: Text(KvLocalizedStringKey(input))), KvTestKit.renderHTML(for: expected), "input: \(input), expected: \(expected)")
+        func Assert(_ input: KvLocalizedStringKey, expected: Text) {
+            XCTAssertEqual(KvTestKit.renderHTML(for: Text(input)), KvTestKit.renderHTML(for: expected), "input: \(input), expected: \(expected)")
         }
 
         // Emphasis, strong, links, normalized whitespace
@@ -51,6 +51,10 @@ final class KvTextTests : XCTestCase {
 
         // Unsupported markup
         Assert("# H1\n\np1\n\n## H2\n\n- li1\n- li2\n", expected: Text("# H1\n\np1\n\n## H2\n\n- li1\n- li2\n"))
+
+        // Aguments of `KvText` type.
+        Assert("Text: \(Text("text"))", expected: Text("Text: text"))
+        Assert("Text: *\(Text("**b**, i"))*", expected: Text("Text: ") + (Text("b").fontWeight(.semibold) + Text(", i")).italic())
     }
 
 

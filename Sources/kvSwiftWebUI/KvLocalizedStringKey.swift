@@ -72,7 +72,7 @@ public struct KvLocalizedStringKey : Equatable, ExpressibleByStringInterpolation
     enum Value : Equatable {
 
         case final(String)
-        case formatted(format: String, arguments: [CVarArg])
+        case formatted(format: String, arguments: [StringInterpolation.Argument])
 
         
         // MARK: : Equatable
@@ -119,7 +119,28 @@ public struct KvLocalizedStringKey : Equatable, ExpressibleByStringInterpolation
         @usableFromInline
         var format: String = .init()
         @usableFromInline
-        var arguments: [any CVarArg] = .init()
+        var arguments: [Argument] = .init()
+
+
+        // MARK: .Argument
+
+        @usableFromInline
+        enum Argument {
+
+            case cVarArg(CVarArg, format: String)
+            case text(KvText)
+
+            
+            // MARK: Operations
+
+            var format: String {
+                switch self {
+                case .cVarArg(_, format: let format): format
+                case .text(_): "%@"
+                }
+            }
+
+        }
 
 
         // MARK: .Constants
@@ -180,16 +201,22 @@ public struct KvLocalizedStringKey : Equatable, ExpressibleByStringInterpolation
         }
 
 
+        @usableFromInline
+        mutating func appendArgument(_ argument: Argument) {
+            format.append(argument.format)
+            arguments.append(argument)
+        }
+
+
         @inlinable
         public mutating func appendInterpolation(_ value: CVarArg, format: String) {
-            self.format.append(format)
-            arguments.append(value)
+            appendArgument(.cVarArg(value, format: format))
         }
 
 
         @inlinable
         public mutating func appendInterpolation(_ string: String) {
-            appendInterpolation(string, format: "%@")
+            appendArgument(.cVarArg(string, format: "%@"))
         }
 
 
@@ -206,38 +233,44 @@ public struct KvLocalizedStringKey : Equatable, ExpressibleByStringInterpolation
 
 
         @inlinable
+        public mutating func appendInterpolation<T : CustomStringConvertible>(_ value: T) {
+            appendInterpolation(String(describing: value))
+        }
+
+
+        @inlinable
         public mutating func appendInterpolation(_ number: Int) {
-            appendInterpolation(number, format: Constants.formatInt)
+            appendArgument(.cVarArg(number, format: Constants.formatInt))
         }
 
 
         @inlinable
         public mutating func appendInterpolation(_ number: UInt) {
-            appendInterpolation(number, format: Constants.formatUInt)
+            appendArgument(.cVarArg(number, format: Constants.formatUInt))
         }
 
 
         @inlinable
         public mutating func appendInterpolation(_ number: Int64) {
-            appendInterpolation(number, format: "%lld")
+            appendArgument(.cVarArg(number, format: "%lld"))
         }
 
 
         @inlinable
         public mutating func appendInterpolation(_ number: UInt64) {
-            appendInterpolation(number, format: "%llu")
+            appendArgument(.cVarArg(number, format: "%llu"))
         }
 
 
         @inlinable
         public mutating func appendInterpolation(_ number: Int32) {
-            appendInterpolation(number, format: "%d")
+            appendArgument(.cVarArg(number, format: "%d"))
         }
 
 
         @inlinable
         public mutating func appendInterpolation(_ number: UInt32) {
-            appendInterpolation(number, format: "%u")
+            appendArgument(.cVarArg(number, format: "%u"))
         }
 
 
@@ -282,27 +315,32 @@ public struct KvLocalizedStringKey : Equatable, ExpressibleByStringInterpolation
 
 
         @inlinable
+        public mutating func appendInterpolation(_ number: Float80) {
+            appendArgument(.cVarArg(number, format: "%Lf"))
+        }
+
+
+        @inlinable
         public mutating func appendInterpolation(_ number: Double) {
-            appendInterpolation(number, format: "%f")
+            appendArgument(.cVarArg(number, format: "%f"))
         }
 
 
         @inlinable
         public mutating func appendInterpolation(_ number: Float) {
-            appendInterpolation(Double(number))
+            appendArgument(.cVarArg(Double(number), format: "%f"))
         }
 
 
         @inlinable
         public mutating func appendInterpolation<T : BinaryFloatingPoint>(_ number: T) {
-            appendInterpolation(Double(number))
+            appendArgument(.cVarArg(Double(number), format: "%f"))
         }
 
 
-        /// Shorthand for `appendInterpolation(String(describing: value))`.
         @inlinable
-        public mutating func appendInterpolation<T : CustomStringConvertible>(_ value: T) {
-            appendInterpolation(String(describing: value))
+        public mutating func appendInterpolation(_ text: KvText) {
+            appendArgument(.text(text))
         }
 
     }

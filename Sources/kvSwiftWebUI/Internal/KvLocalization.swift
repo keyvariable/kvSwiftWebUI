@@ -279,12 +279,45 @@ public class KvLocalization {
 
         // MARK: Operations
 
+        struct Options : OptionSet {
+
+            /// If specified then arguments of type ``KvText`` are replaced with `"%n$T"`.
+            static let textPlaceholders = Self(rawValue: 1 << 0)
+
+            let rawValue: UInt
+
+        }
+
+
         /// - Parameter defaultBundle: Bundle to use when the *resource*'s bundle is `nil`.
-        borrowing func string(_ resource: borrowing StringResource, defaultBundle: Bundle? = nil) -> String {
-            string(forKey: resource.key,
-                   defaultValue: resource.defaultValue,
-                   table: resource.table,
-                   bundle: resource.bundle ?? defaultBundle)
+        borrowing func string(_ resource: borrowing StringResource, defaultBundle: Bundle? = nil, options: Options = [ ]) -> String {
+
+            func Localized(_ key: String) -> String {
+                string(forKey: key,
+                       defaultValue: resource.defaultValue,
+                       table: resource.table,
+                       bundle: resource.bundle ?? defaultBundle)
+            }
+
+
+            switch resource.key.value {
+            case .final(let key):
+                return Localized(key)
+
+            case .formatted(let format, let arguments):
+                let format = Localized(format)
+
+                return .init(format: Localized(format), arguments: arguments.enumerated().map { (offset, value) in
+                    switch value {
+                    case .cVarArg(let value, format: _):
+                        value
+                    case .text(let text): 
+                        !options.contains(.textPlaceholders)
+                        ? text.plainText(in: self, defaultBundle: defaultBundle)
+                        : "%\(offset + 1)$T"
+                    }
+                })
+            }
         }
 
 
@@ -300,7 +333,7 @@ public class KvLocalization {
         /// 4. *key*.
         ///
         /// See documentation of ``Context`` for examples.
-        public borrowing func string(forKey key: KvLocalizedStringKey,
+        public borrowing func string(forKey key: String,
                                      defaultValue: String? = nil,
                                      table: String? = nil,
                                      bundle: Bundle? = nil,
@@ -308,14 +341,7 @@ public class KvLocalization {
         ) -> String {
             let bundle = resolved(bundle ?? self.bundle)
 
-            switch key.value {
-            case .final(let string):
-                return bundle.localizedString(forKey: string, value: defaultValue, table: table)
-
-            case .formatted(let format, let arguments):
-                return .init(format: bundle.localizedString(forKey: format, value: defaultValue, table: table),
-                             arguments: arguments)
-            }
+            return bundle.localizedString(forKey: key, value: defaultValue, table: table)
         }
 
 

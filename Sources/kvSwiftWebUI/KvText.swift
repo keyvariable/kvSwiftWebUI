@@ -32,6 +32,7 @@ public typealias Text = KvText
 
 
 // TODO: DOC
+// TODO: Review and optimize automatic Markdown detection and KvText substitution in localized string interpolations.
 public struct KvText : Equatable {
 
     @usableFromInline
@@ -111,6 +112,39 @@ public struct KvText : Equatable {
     }
 
 
+    /// Replaces `"%n$@"` specifiers with `KvText` instances from *attributes*
+    init(format: String, arguments: [KvLocalizedStringKey.StringInterpolation.Argument], attributes: Attributes = .empty) {
+        var rest = Substring(format)
+
+        self.init()
+
+        while let match = rest.firstMatch(of: #/%(?<index>\d+)\$T/#) {
+            defer { rest = rest[match.range.upperBound...] }
+
+            if match.range.lowerBound != rest.startIndex {
+                self += KvText(rest[..<match.range.lowerBound])
+            }
+
+            let text = Int(match.output.index).flatMap { index -> KvText? in
+                // As stated in pringf standard, explicit indices start from 1.
+                switch arguments[index - 1] {
+                case .cVarArg(_, format: _):
+                    assertionFailure("Internal inconsistency: \"%n$T\" format specifiers are allowed for KvText arguments only")
+                    return nil
+                case .text(let text):
+                    return text
+                }
+            }
+
+            self += text ?? KvText(rest[match.range])
+        }
+
+        if !rest.isEmpty {
+            self += KvText(rest)
+        }
+    }
+
+
 
     // MARK: .Content
 
@@ -137,13 +171,28 @@ public struct KvText : Equatable {
             case verbatim(String)
 
 
-            // MARK: Access
+            // MARK: Operations
 
-            /// - Returns: The content in given localization context.
-            func string(in context: borrowing KvLocalization.Context, defaultBundle: Bundle?) -> String {
+            var arguments: [KvLocalizedStringKey.StringInterpolation.Argument] {
                 switch self {
                 case .localizable(let resource):
-                    context.string(resource, defaultBundle: defaultBundle)
+                    switch resource.key.value {
+                    case .final(_):
+                        [ ]
+                    case .formatted(format: _, arguments: let arguments):
+                        arguments
+                    }
+                case .verbatim(_):
+                    [ ]
+                }
+            }
+
+
+            /// - Returns: The content in given localization context.
+            func string(in context: borrowing KvLocalization.Context, defaultBundle: Bundle?, options: KvLocalization.Context.Options) -> String {
+                switch self {
+                case .localizable(let resource):
+                    context.string(resource, defaultBundle: defaultBundle, options: options)
                 case .verbatim(let value):
                     value
                 }
@@ -156,8 +205,24 @@ public struct KvText : Equatable {
 
         @usableFromInline
         enum Transform : Equatable {
+
             case auto
             case markdown
+
+
+            // MARK: Operations
+
+            func apply(to string: String, arguments: [KvLocalizedStringKey.StringInterpolation.Argument]) -> KvText? {
+                let md = Md(string)
+
+                return switch self {
+                case .auto:
+                    md.text(arguments: arguments, options: .requireSupportedMarkup)
+                case .markdown:
+                    md.text(arguments: arguments)
+                }
+            }
+
         }
 
 
@@ -500,18 +565,9 @@ public struct KvText : Equatable {
             string = "\(lhs.plainText(in: context))\(rhs.plainText(in: context))"
 
         case .string(let content, transform: let transform):
-            string = content.string(in: context, defaultBundle: defaultBundle)
+            string = content.string(in: context, defaultBundle: defaultBundle, options: [ ])
 
-            let text: KvText? = switch transform {
-            case .auto:
-                Md(string).text(options: .requireSupportedMarkup)
-            case .markdown:
-                Md(string).text()
-            case .none:
-                nil
-            }
-
-            if let text {
+            if let text = transform?.apply(to: string, arguments: content.arguments) {
                 string = text.plainText(in: context)
             }
 
@@ -673,22 +729,15 @@ extension KvText : KvHtmlRenderable {
 
             case .string(let content, transform: let transform):
                 let string = content.string(in: context.html.localizationContext,
-                                            defaultBundle: context.environmentNode?.values[keyPath: \.localizationBundle])
+                                            defaultBundle: context.environmentNode?.values[keyPath: \.localizationBundle],
+                                            options: .textPlaceholders)
+                let arguments = content.arguments
 
-                let text: KvText? = switch transform {
-                case .auto:
-                    Md(string).text(options: .requireSupportedMarkup)
-                case .markdown:
-                    Md(string).text()
-                case .none:
-                    nil
-                }
-
-                switch text {
+                switch transform?.apply(to: string, arguments: arguments) {
                 case .some(let text):
                     candidate = text
                 case .none:
-                    return KvText.renderHTML(for: KvText(verbatim: string), in: context)
+                    return KvText.renderHTML(for: KvText(format: string, arguments: arguments), in: context)
                 }
 
             case .text(let block):
@@ -710,20 +759,15 @@ extension KvText : KvHtmlRenderable {
 
                 case .string(let content, transform: let transform):
                     let string = content.string(in: context.html.localizationContext,
-                                                defaultBundle: context.environmentNode?.values[keyPath: \.localizationBundle])
+                                                defaultBundle: context.environmentNode?.values[keyPath: \.localizationBundle],
+                                                options: .textPlaceholders)
 
-                    let text: KvText? = switch transform {
-                    case .auto:
-                        Md(string).text(options: .requireSupportedMarkup)
-                    case .markdown:
-                        Md(string).text()
-                    case .none:
-                        nil
-                    }
-
-                    return switch text {
-                    case .some(let text):
-                        ContentFragment(.text { text })
+                    return switch transform {
+                    case .some(let transform):
+                        ContentFragment(.text {
+                            transform.apply(to: string, arguments: content.arguments)
+                            ?? KvText(format: string, arguments: content.arguments)
+                        })
                     case .none:
                         .init(KvHtmlKit.Escaping.innerText(string))
                     }
