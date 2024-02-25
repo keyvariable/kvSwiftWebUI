@@ -381,12 +381,17 @@ class KvHtmlRepresentationContext {
 
     // MARK: Fabrics
 
-    static func root(html: KvHtmlContext, environment: KvEnvironmentValues? = nil) -> KvHtmlRepresentationContext {
-        .init(html: html,
-              environmentNode: environment.map(EnvironmentNode.init(_:)),
-              containerAttributes: nil,
-              viewConfiguration: environment?.viewConfiguration,
-              htmlAttributes: nil)
+    static func root(html: KvHtmlContext, viewConfiguration: KvViewConfiguration? = nil) -> KvHtmlRepresentationContext {
+        var environment: KvEnvironmentValues = .init(viewConfiguration)
+
+        environment.navigationPath = html.navigationPath
+        environment.localization = html.localizationContext
+
+        return .init(html: html,
+                     environmentNode: EnvironmentNode(environment),
+                     containerAttributes: nil,
+                     viewConfiguration: viewConfiguration,
+                     htmlAttributes: nil)
     }
 
 
