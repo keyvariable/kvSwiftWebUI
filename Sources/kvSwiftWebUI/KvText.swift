@@ -189,10 +189,10 @@ public struct KvText : Equatable {
 
 
             /// - Returns: The content in given localization context.
-            func string(in context: borrowing KvLocalization.Context, defaultBundle: Bundle?, options: KvLocalization.Context.Options) -> String {
+            func string(in context: borrowing KvLocalization.Context, options: KvLocalization.Context.Options) -> String {
                 switch self {
                 case .localizable(let resource):
-                    context.string(resource, defaultBundle: defaultBundle, options: options)
+                    context.string(resource, options: options)
                 case .verbatim(let value):
                     value
                 }
@@ -556,7 +556,7 @@ public struct KvText : Equatable {
     /// - Returns: The receiver's content without attributes.
     ///
     /// - SeeAlso: ``escapedPlainBytes(in:)``.
-    func plainText(in context: borrowing KvLocalization.Context, defaultBundle: Bundle? = nil) -> String {
+    func plainText(in context: borrowing KvLocalization.Context) -> String {
         var string: String
 
         switch content {
@@ -565,7 +565,7 @@ public struct KvText : Equatable {
             string = "\(lhs.plainText(in: context))\(rhs.plainText(in: context))"
 
         case .string(let content, transform: let transform):
-            string = content.string(in: context, defaultBundle: defaultBundle, options: [ ])
+            string = content.string(in: context, options: [ ])
 
             if let text = transform?.apply(to: string, arguments: content.arguments) {
                 string = text.plainText(in: context)
@@ -728,8 +728,7 @@ extension KvText : KvHtmlRenderable {
                 return KvText.renderHTML(for: candidate, in: context)
 
             case .string(let content, transform: let transform):
-                let string = content.string(in: context.html.localizationContext,
-                                            defaultBundle: context.environmentNode?.values[keyPath: \.localizationBundle],
+                let string = content.string(in: context.localizationContext,
                                             options: .textPlaceholders)
                 let arguments = content.arguments
 
@@ -758,9 +757,7 @@ extension KvText : KvHtmlRenderable {
                     return InnerHTML(block())
 
                 case .string(let content, transform: let transform):
-                    let string = content.string(in: context.html.localizationContext,
-                                                defaultBundle: context.environmentNode?.values[keyPath: \.localizationBundle],
-                                                options: .textPlaceholders)
+                    let string = content.string(in: context.localizationContext, options: .textPlaceholders)
 
                     return switch transform {
                     case .some(let transform):

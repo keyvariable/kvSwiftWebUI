@@ -518,6 +518,13 @@ class KvHtmlRepresentationContext {
 
     // MARK: Operations
 
+    /// Current localization context.
+    var localizationContext: KvLocalization.Context {
+        environmentNode?.values.localization ?? html.localizationContext
+    }
+
+
+
     func representation(
         containerAttributes: ContainerAttributes? = nil,
         htmlAttributes: KvHtmlKit.Attributes? = nil,
