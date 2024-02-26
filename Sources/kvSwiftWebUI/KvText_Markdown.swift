@@ -72,6 +72,7 @@ extension KvText {
 
 
     // TODO: DOC
+    @_disfavoredOverload
     @inlinable
     public static func md<S>(_ content: S) -> KvText
     where S : StringProtocol
