@@ -35,26 +35,26 @@ final class KvTextTests : XCTestCase {
 
     func testInitByLocalized() {
 
-        func Assert(_ input: KvLocalizedStringKey, expected: Text) {
-            XCTAssertEqual(KvTestKit.renderHTML(for: Text(input)), KvTestKit.renderHTML(for: expected), "input: \(input), expected: \(expected)")
+        func Assert(_ input: KvLocalizedStringKey, expected: KvText) {
+            XCTAssertEqual(KvTestKit.renderHTML(for: KvText(input)), KvTestKit.renderHTML(for: expected), "input: \(input), expected: \(expected)")
         }
 
         // Emphasis, strong, links, normalized whitespace
         Assert("A *i* **b**\n[c](https://c.com)",
-               expected: Text("A ") + Text("i").italic() + .space + Text("b").fontWeight(.semibold) + .space + Text("c").link(URL(string: "https://c.com")!))
+               expected: KvText("A ") + KvText("i").italic() + .space + KvText("b").fontWeight(.semibold) + .space + KvText("c").link(URL(string: "https://c.com")!))
         // Superscripts and subscripts
         Assert("v<sub>x</sub> = 3<sup>0.5</sup>",
-               expected: Text("v") + Text("x").subscript + Text(" = 3") + Text("0.5").superscript)
+               expected: KvText("v") + KvText("x").subscript + KvText(" = 3") + KvText("0.5").superscript)
 
         // String without Markdown
-        Assert("A\nB\n\nC", expected: Text(verbatim: "A\nB\n\nC"))
+        Assert("A\nB\n\nC", expected: KvText(verbatim: "A\nB\n\nC"))
 
         // Unsupported markup
-        Assert("# H1\n\np1\n\n## H2\n\n- li1\n- li2\n", expected: Text("# H1\n\np1\n\n## H2\n\n- li1\n- li2\n"))
+        Assert("# H1\n\np1\n\n## H2\n\n- li1\n- li2\n", expected: KvText("# H1\n\np1\n\n## H2\n\n- li1\n- li2\n"))
 
         // Aguments of `KvText` type.
-        Assert("Text: \(Text("text"))", expected: Text("Text: text"))
-        Assert("Text: *\(Text("**b**, i"))*", expected: Text("Text: ") + (Text("b").fontWeight(.semibold) + Text(", i")).italic())
+        Assert("Text: \(KvText("text"))", expected: KvText("Text: text"))
+        Assert("Text: *\(KvText("**b**, i"))*", expected: KvText("Text: ") + (KvText("b").fontWeight(.semibold) + KvText(", i")).italic())
     }
 
 
@@ -63,15 +63,15 @@ final class KvTextTests : XCTestCase {
 
     func testPlainText() {
 
-        func Assert(_ input: Text, expected: String) {
+        func Assert(_ input: KvText, expected: String) {
             XCTAssertEqual(input.plainText(in: .disabled), expected, "input: \(input); expected: \(expected)")
         }
 
         // Emphasis, strong, links
-        Assert(Text("A ") + Text("i").italic() + .space + Text("b").fontWeight(.semibold) + .space + Text("c").link(URL(string: "https://c.com")!),
+        Assert(KvText("A ") + KvText("i").italic() + .space + KvText("b").fontWeight(.semibold) + .space + KvText("c").link(URL(string: "https://c.com")!),
                expected: "A i b c")
         // Superscripts and subscripts
-        Assert(Text("v") + Text("x").subscript + Text(" = 3") + Text("0.5").superscript,
+        Assert(KvText("v") + KvText("x").subscript + KvText(" = 3") + KvText("0.5").superscript,
                expected: "v_(x) = 3^(0.5)")
     }
 
@@ -81,32 +81,32 @@ final class KvTextTests : XCTestCase {
 
     func testFabricMd() {
 
-        func Assert(_ input: String, expected: Text) {
-            let result = Text.md(.init(input))
+        func Assert(_ input: String, expected: KvText) {
+            let result = KvText.md(.init(input))
             XCTAssertEqual(KvTestKit.renderHTML(for: result), KvTestKit.renderHTML(for: expected), "input: \(input), expected: \(expected)")
         }
 
         // Emphasis, strong, links
         Assert("A *i* **b** [c](https://c.com)",
-               expected: Text("A ") + Text("i").italic() + .space + Text("b").fontWeight(.semibold) + .space + Text("c").link(URL(string: "https://c.com")!))
+               expected: KvText("A ") + KvText("i").italic() + .space + KvText("b").fontWeight(.semibold) + .space + KvText("c").link(URL(string: "https://c.com")!))
         // Line breaks and paragraphs
         Assert("A\nB\n\nC",
-               expected: Text("A B\nC"))
+               expected: KvText("A B\nC"))
         // Superscripts and subscripts
         Assert("v<sub>x</sub> = 3<sup>0.5</sup>",
-               expected: Text("v") + Text("x").subscript + Text(" = 3") + Text("0.5").superscript)
+               expected: KvText("v") + KvText("x").subscript + KvText(" = 3") + KvText("0.5").superscript)
         // Headings, lists
         Assert("# H1\n\np1\n\n## H2\n\n- li1\n- li2\n",
-               expected: Text("H1\np1\nH2\nli1\nli2"))
+               expected: KvText("H1\np1\nH2\nli1\nli2"))
         // Character codes
         Assert("&#8364;&#x20AC;&euro;",
-               expected: Text("€€€"))
+               expected: KvText("€€€"))
         // Source code
         Assert("Inline `code`\n\n```swift\nlet a = \"a\"\n```",
-               expected: Text("Inline ") + Text("code").font(.system(.body, design: .monospaced)) + Text("\n") + Text("let a = \"a\"").font(.system(.body, design: .monospaced)))
+               expected: KvText("Inline ") + KvText("code").font(.system(.body, design: .monospaced)) + KvText("\n") + KvText("let a = \"a\"").font(.system(.body, design: .monospaced)))
         // Nested markup
         Assert("*[Italic **bold** link](https://c.com)*",
-               expected: (Text("Italic ") + Text("bold").fontWeight(.semibold) + Text(" link")).link(URL(string: "https://c.com")!).italic())
+               expected: (KvText("Italic ") + KvText("bold").fontWeight(.semibold) + KvText(" link")).link(URL(string: "https://c.com")!).italic())
     }
 
 }
