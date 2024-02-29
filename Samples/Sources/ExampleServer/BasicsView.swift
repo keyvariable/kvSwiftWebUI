@@ -185,7 +185,8 @@ struct BasicsView : View {
                     }
                     GridRow {
                         ForEach(0..<4) { _ in
-                            Color.separator.frame(maxWidth: .infinity, idealHeight: 4)
+                            Color.separator
+                                .frame(maxWidth: .infinity, idealHeight: 4)
                         }
                     }
                     GridRow(alignment: .bottom) {
@@ -198,8 +199,10 @@ struct BasicsView : View {
                         Text(">")
                             .gridColumnAlignment(.trailing)
                     }
-                    Color.separator.frame(maxWidth: .infinity, idealHeight: 6)
+                    Color.separator
+                        .frame(maxWidth: .infinity, idealHeight: 6)
                     GridRow {
+                        Color.clear
                         Text("Lorem")
                         Text("Ipsum")
                     }
