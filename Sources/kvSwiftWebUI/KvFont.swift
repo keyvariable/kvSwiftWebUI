@@ -36,16 +36,16 @@ public typealias Font = KvFont
 // TODO: DOC
 public struct KvFont : Equatable {
 
-    let family: Family
-    let size: KvCssLength
+    var family: Family
+    var size: KvCssLength
 
-    let textStyle: TextStyle
-
-    @usableFromInline
-    private(set) var weight: Weight
+    var textStyle: TextStyle
 
     @usableFromInline
-    private(set) var options: Options = [ ]
+    var weight: Weight
+
+    @usableFromInline
+    var options: Options = [ ]
 
     @usableFromInline
     private(set) var leading: Leading? = nil

@@ -103,7 +103,7 @@ final class KvTextTests : XCTestCase {
                expected: KvText("€€€"))
         // Source code
         Assert("Inline `code`\n\n```swift\nlet a = \"a\"\n```",
-               expected: KvText("Inline ") + KvText("code").font(.system(.body, design: .monospaced)) + KvText("\n") + KvText("let a = \"a\"").font(.system(.body, design: .monospaced)))
+               expected: KvText("Inline ") + KvText("code").fontDesign(.monospaced) + KvText("\n") + KvText("let a = \"a\"").fontDesign(.monospaced))
         // Nested markup
         Assert("*[Italic **bold** link](https://c.com)*",
                expected: (KvText("Italic ") + KvText("bold").fontWeight(.semibold) + KvText(" link")).link(URL(string: "https://c.com")!).italic())

@@ -36,6 +36,8 @@ public struct KvAnyShapeStyle : KvShapeStyle {
     let cssBackgroundStyle: CssStyleProvider
     let cssForegroundStyle: CssStyleProvider
 
+    /// - Returns: The receiver reduced to a single color to be used as foreground if possible.
+    let foregroundColor: () -> KvColor?
     /// - Returns: The receiver reduced to a single color to be used as background if possible.
     let backgroundColor: () -> KvColor?
     /// - Returns: The receiver reduced to a single color to be used as background if possible. E.g. it matches bottom color of gradient.

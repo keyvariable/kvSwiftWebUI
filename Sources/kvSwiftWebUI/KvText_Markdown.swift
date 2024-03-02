@@ -387,7 +387,7 @@ extension KvText {
 
 
             private mutating func insertSourceCode(_ sourceCode: String) {
-                accumulator.append(sourceCode, attributes: .init { $0.font = .system(.body, design: .monospaced) })
+                accumulator.append(sourceCode, attributes: .init { $0.fontDesign = .monospaced })
             }
 
         }

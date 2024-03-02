@@ -124,6 +124,7 @@ public struct KvColor : KvShapeStyle, Hashable, ExpressibleByIntegerLiteral {
             cssForegroundStyle: { context, property in
                 "\(property ?? "color"):\(cssExpression(in: context))"
             },
+            foregroundColor: { self },
             backgroundColor: { self },
             bottomBackgroundColor: { self }
         )
