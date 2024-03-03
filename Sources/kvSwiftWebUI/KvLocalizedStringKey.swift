@@ -37,7 +37,6 @@ public typealias LocalizedStringKey = KvLocalizedStringKey
 /// ## String Interpolations
 ///
 /// `KvLocalizedStringKey` supports initialization from string interpolation literals.
-/// The placeholders are converted to format specifiers, compatible with [`String.init(format:arguments:)`](https://developer.apple.com/documentation/swift/string/init(format:arguments:) ).
 ///
 /// For example:
 /// ```swift
@@ -238,103 +237,177 @@ public struct KvLocalizedStringKey : Equatable, ExpressibleByStringInterpolation
         }
 
 
+        /// - Parameter format: An optional format specifier to be used in the resulting format string.
+        ///     By default `"%lld"` or `"%d"` is used whether architecture is a 64-bit one.
+        ///
+        /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
+        ///     See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
         @inlinable
-        public mutating func appendInterpolation(_ number: Int) {
-            appendArgument(.cVarArg(number, format: Constants.formatInt))
+        public mutating func appendInterpolation(_ number: Int, format: String? = nil) {
+            appendArgument(.cVarArg(number, format: format ?? Constants.formatInt))
         }
 
 
+        /// - Parameter format: An optional format specifier to be used in the resulting format string.
+        ///     By default `"%llu"` or `"%d"` is used whether architecture is a 64-bit one.
+        ///
+        /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
+        ///     See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
         @inlinable
-        public mutating func appendInterpolation(_ number: UInt) {
-            appendArgument(.cVarArg(number, format: Constants.formatUInt))
+        public mutating func appendInterpolation(_ number: UInt, format: String? = nil) {
+            appendArgument(.cVarArg(number, format: format ?? Constants.formatUInt))
         }
 
 
+        /// - Parameter format: An optional format specifier to be used in the resulting format string. By default `"%lld"` is used.
+        ///
+        /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
+        ///     See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
         @inlinable
-        public mutating func appendInterpolation(_ number: Int64) {
-            appendArgument(.cVarArg(number, format: "%lld"))
+        public mutating func appendInterpolation(_ number: Int64, format: String? = nil) {
+            appendArgument(.cVarArg(number, format: format ?? "%lld"))
         }
 
 
+        /// - Parameter format: An optional format specifier to be used in the resulting format string. By default `"%llu"` is used.
+        ///
+        /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
+        ///     See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
         @inlinable
-        public mutating func appendInterpolation(_ number: UInt64) {
-            appendArgument(.cVarArg(number, format: "%llu"))
+        public mutating func appendInterpolation(_ number: UInt64, format: String? = nil) {
+            appendArgument(.cVarArg(number, format: format ?? "%llu"))
         }
 
 
+        /// - Parameter format: An optional format specifier to be used in the resulting format string. By default `"%d"` is used.
+        ///
+        /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
+        ///     See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
         @inlinable
-        public mutating func appendInterpolation(_ number: Int32) {
-            appendArgument(.cVarArg(number, format: "%d"))
+        public mutating func appendInterpolation(_ number: Int32, format: String? = nil) {
+            appendArgument(.cVarArg(number, format: format ?? "%d"))
         }
 
 
+        /// - Parameter format: An optional format specifier to be used in the resulting format string. By default `"%u"` is used.
+        ///
+        /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
+        ///     See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
         @inlinable
-        public mutating func appendInterpolation(_ number: UInt32) {
-            appendArgument(.cVarArg(number, format: "%u"))
+        public mutating func appendInterpolation(_ number: UInt32, format: String? = nil) {
+            appendArgument(.cVarArg(number, format: format ?? "%u"))
         }
 
 
+        /// - Parameter format: An optional format specifier to be used in the resulting format string. By default `"%d"` is used.
+        ///
+        /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
+        ///     See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
         @inlinable
-        public mutating func appendInterpolation(_ number: Int16) {
-            appendInterpolation(numericCast(number) as Int32)
+        public mutating func appendInterpolation(_ number: Int16, format: String? = nil) {
+            appendInterpolation(numericCast(number) as Int32, format: format)
         }
 
 
+        /// - Parameter format: An optional format specifier to be used in the resulting format string. By default `"%u"` is used.
+        ///
+        /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
+        ///     See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
         @inlinable
-        public mutating func appendInterpolation(_ number: UInt16) {
-            appendInterpolation(numericCast(number) as UInt32)
+        public mutating func appendInterpolation(_ number: UInt16, format: String? = nil) {
+            appendInterpolation(numericCast(number) as UInt32, format: format)
         }
 
 
+        /// - Parameter format: An optional format specifier to be used in the resulting format string. By default `"%d"` is used.
+        ///
+        /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
+        ///     See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
         @inlinable
-        public mutating func appendInterpolation(_ number: Int8) {
-            appendInterpolation(numericCast(number) as Int32)
+        public mutating func appendInterpolation(_ number: Int8, format: String? = nil) {
+            appendInterpolation(numericCast(number) as Int32, format: format)
         }
 
 
+        /// - Parameter format: An optional format specifier to be used in the resulting format string. By default `"%u"` is used.
+        ///
+        /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
+        ///     See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
         @inlinable
-        public mutating func appendInterpolation(_ number: UInt8) {
-            appendInterpolation(numericCast(number) as UInt32)
+        public mutating func appendInterpolation(_ number: UInt8, format: String? = nil) {
+            appendInterpolation(numericCast(number) as UInt32, format: format)
         }
 
 
+        /// - Parameter format: An optional format specifier to be used in the resulting format string.
+        ///     By default `"%lld"` or `"%d"` is used whether architecture is a 64-bit one.
+        ///
+        /// - Note: Value is converted to `Int` type.
+        ///
+        /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
+        ///     See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
         @inlinable
-        public mutating func appendInterpolation<T>(_ number: T)
+        public mutating func appendInterpolation<T>(_ number: T, format: String? = nil)
         where T : BinaryInteger & SignedInteger
         {
-            appendInterpolation(numericCast(number) as Int)
+            appendInterpolation(numericCast(number) as Int, format: format)
         }
 
 
+        /// - Parameter format: An optional format specifier to be used in the resulting format string.
+        ///     By default `"%llu"` or `"%u"` is used whether architecture is a 64-bit one. 
+        ///
+        /// - Note: Value is converted to `UInt` type.
+        ///
+        /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
+        ///     See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
         @inlinable
-        public mutating func appendInterpolation<T>(_ number: T)
+        public mutating func appendInterpolation<T>(_ number: T, format: String? = nil)
         where T : BinaryInteger & UnsignedInteger
         {
-            appendInterpolation(numericCast(number) as UInt)
+            appendInterpolation(numericCast(number) as UInt, format: format)
         }
 
 
+        /// - Parameter format: An optional format specifier to be used in the resulting format string. By default `"%Lg"` is used.
+        ///
+        /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
+        ///     See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
         @inlinable
-        public mutating func appendInterpolation(_ number: Float80) {
-            appendArgument(.cVarArg(number, format: "%Lf"))
+        public mutating func appendInterpolation(_ number: Float80, format: String? = nil) {
+            appendArgument(.cVarArg(number, format: format ?? "%Lg"))
         }
 
 
+        /// - Parameter format: An optional format specifier to be used in the resulting format string. By default `"%g"` is used.
+        ///
+        /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
+        ///     See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
         @inlinable
-        public mutating func appendInterpolation(_ number: Double) {
-            appendArgument(.cVarArg(number, format: "%f"))
+        public mutating func appendInterpolation(_ number: Double, format: String? = nil) {
+            appendArgument(.cVarArg(number, format: format ?? "%g"))
         }
 
 
+        /// - Parameter format: An optional format specifier to be used in the resulting format string. By default `"%g"` is used.
+        ///
+        /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
+        ///     See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
         @inlinable
-        public mutating func appendInterpolation(_ number: Float) {
-            appendArgument(.cVarArg(Double(number), format: "%f"))
+        public mutating func appendInterpolation(_ number: Float, format: String? = nil) {
+            appendArgument(.cVarArg(Double(number), format: format ?? "%g"))
         }
 
 
+        /// - Parameter format: An optional format specifier to be used in the resulting format string. By default `"%g"` is used.
+        ///
+        /// - Note: Value is converted to `Double` type.
+        ///
+        /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
+        ///     See this [article](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Strings/Articles/formatSpecifiers.html) for details.
         @inlinable
-        public mutating func appendInterpolation<T : BinaryFloatingPoint>(_ number: T) {
-            appendArgument(.cVarArg(Double(number), format: "%f"))
+        public mutating func appendInterpolation<T : BinaryFloatingPoint>(_ number: T, format: String? = nil) {
+            appendArgument(.cVarArg(Double(number), format: format ?? "%g"))
         }
 
 
