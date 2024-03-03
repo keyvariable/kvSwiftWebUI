@@ -268,7 +268,7 @@ public class KvLocalization {
         /// Primary bundle.
         private let primaryBundle: Bundle
         /// Resolved primary bundle.
-        private let resolvedPrimaryBundle: Bundle
+        private let resolvedPrimaryBundle: ResolvedBundle
 
         /// Cache of resolved bundles.
         private var resolvedBundles: ResolvedBundles
@@ -280,26 +280,40 @@ public class KvLocalization {
         static var disabled: Context { .init(languageTag: nil, primaryBundle: .main) }
 
 
+        // MARK: .ResolvedBundle
+
+        private struct ResolvedBundle {
+            let value: Bundle
+            let locale: Locale
+        }
+
+
         // MARK: .ResolvedBundles
 
         /// It's a class to be shared between contexts.
         private class ResolvedBundles {
+
+            typealias Element = ResolvedBundle
+
 
             let languageTag: String?
 
 
             init(languageTag: String?) {
                 self.languageTag = languageTag
+                self.defaultLocale = Locale(identifier: languageTag ?? "en_US_POSIX")
             }
 
 
+            private let defaultLocale: Locale
+
             /// Cache of resolved bundles by bundle URLs.
-            private var values: [URL : Bundle] = .init()
+            private var values: [URL : Element] = .init()
 
 
             // MARK: Operations
 
-            subscript(bundle: Bundle) -> Bundle {
+            subscript(bundle: Bundle) -> Element {
                 switch values[bundle.bundleURL] {
                 case .some(let bundle):
                     return bundle
@@ -313,19 +327,30 @@ public class KvLocalization {
 
 
             /// - Returns: A child bundle containing localized resources for given *languageTag* or *bundle* otherwise.
-            private func resolve(_ bundle: Bundle) -> Bundle {
-                guard let languageTag = languageTag.map({
-                    KvLocalization.selectLanguageTag(for: $0, in: bundle.localizations)?.languageTag
-                    ?? bundle.preferredLocalizations.first
-                    ?? bundle.localizations.first
-                })
-                else { return bundle }
+            private func resolve(_ bundle: Bundle) -> Element {
+                var bundle = bundle
+                var locale = defaultLocale
 
-                guard let url = bundle.url(forResource: languageTag, withExtension: "lproj"),
-                      let bundle = Bundle(url: consume url)
-                else { return bundle }
+                repeat {
+                    guard let languageTag = languageTag.flatMap({
+                        KvLocalization.selectLanguageTag(for: $0, in: bundle.localizations)?.languageTag
+                        ?? bundle.preferredLocalizations.first
+                        ?? bundle.localizations.first
+                    })
+                    else { break }
 
-                return bundle
+                    locale = languageTag != self.languageTag ? Locale(identifier: languageTag) : locale
+
+                    guard let lprojBundle = bundle
+                        .url(forResource: languageTag, withExtension: "lproj")
+                        .flatMap(Bundle.init(url:))
+                    else { break }
+
+                    bundle = lprojBundle
+                }
+                while false
+
+                return .init(value: bundle, locale: locale)
             }
 
         }
@@ -391,19 +416,22 @@ public class KvLocalization {
                                       options: Options
         ) -> String {
 
-            func Localized(_ key: String) -> String {
-                let bundle = resolved(bundle ?? self.primaryBundle)
+            func Localized(_ key: String) -> (string: String, locale: Locale) {
+                let resolvedBundle = resolved(bundle ?? self.primaryBundle)
 
-                return bundle.localizedString(forKey: key, value: defaultValue, table: table)
+                return (string: resolvedBundle.value.localizedString(forKey: key, value: defaultValue, table: table),
+                        locale: resolvedBundle.locale)
             }
 
 
             switch key.value {
             case .final(let key):
-                return Localized(key)
+                return Localized(key).string
 
             case .formatted(let format, let arguments):
-                return .init(format: Localized(format), arguments: arguments.enumerated().map { (offset, value) in
+                let (localizedFormat, locale) = Localized(format)
+                
+                return .init(format: localizedFormat, locale: locale, arguments: arguments.enumerated().map { (offset, value) in
                     switch value {
                     case .cVarArg(let value, format: _):
                         value
@@ -418,7 +446,7 @@ public class KvLocalization {
 
 
         /// - Returns: Cached result of ``resolve(_:)`` for given *bundle*.
-        private borrowing func resolved(_ bundle: Bundle) -> Bundle {
+        private borrowing func resolved(_ bundle: Bundle) -> ResolvedBundle {
             guard bundle != self.primaryBundle else { return resolvedPrimaryBundle }
 
             return resolvedBundles[bundle]
