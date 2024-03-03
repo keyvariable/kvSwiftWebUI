@@ -163,6 +163,7 @@ public struct KvLinearGradient : KvShapeStyle, KvView {
             cssForegroundStyle: { context, property in
                 "\(property ?? "color"):\(context.cssExpression(for: firstColor ?? .label))"
             },
+            foregroundColor: { firstColor },
             backgroundColor: { firstColor },
             bottomBackgroundColor: { bottomColor }
         )

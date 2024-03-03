@@ -71,11 +71,7 @@ struct KvHtmlBodyImpl : KvHtmlBody {
         // The foundation CSS is required to provide the default styles.
         htmlContext.insert(.foundation)
 
-        var environment = KvEnvironmentValues(viewConfiguration)
-        environment.navigationPath = htmlContext.navigationPath
-        environment.localization = htmlContext.localizationContext
-
-        return rootRepresentationProvider(.root(html: htmlContext, environment: environment))
+        return rootRepresentationProvider(.root(html: htmlContext, viewConfiguration: viewConfiguration))
     }
 
 

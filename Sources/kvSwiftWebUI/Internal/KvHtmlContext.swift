@@ -450,13 +450,7 @@ extension KvHtmlContext {
 
         case .system(let design):
             let cssAsset: KvCssAsset.Prototype?
-
-            (familyID, cssAsset) = switch design {
-            case .default: ("system-ui", nil)
-            case .monospaced: ("var(--ui-monospace)", .foundation)
-            case .rounded: ("var(--ui-rounded)", .foundation)
-            case .serif: ("var(--ui-serif)", .foundation)
-            }
+            (familyID, cssAsset) = KvHtmlContext.systemFontCSS(design: design)
 
             if let cssAsset {
                 insert(cssAsset)
@@ -466,6 +460,21 @@ extension KvHtmlContext {
         let lineHeight: String = font.leading.map { "/\($0.cssLineHeight)" } ?? ""
 
         return "\(font.isItalic ? "italic " : "")\(font.weight.cssValue) \(font.size.css)\(lineHeight) \(familyID)"
+    }
+
+
+    static func systemFontCSS(design: KvFont.Design) -> String {
+        systemFontCSS(design: design).css
+    }
+
+
+    private static func systemFontCSS(design: KvFont.Design) -> (css: String, KvCssAsset.Prototype?) {
+        switch design {
+        case .default: ("system-ui", nil)
+        case .monospaced: ("var(--ui-monospace)", .foundation)
+        case .rounded: ("var(--ui-rounded)", .foundation)
+        case .serif: ("var(--ui-serif)", .foundation)
+        }
     }
 
 

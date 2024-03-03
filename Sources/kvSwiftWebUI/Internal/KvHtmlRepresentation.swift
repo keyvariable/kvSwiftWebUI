@@ -25,6 +25,8 @@
 
 import Foundation
 
+import kvCssKit
+
 
 
 struct KvHtmlRepresentation {
@@ -381,12 +383,17 @@ class KvHtmlRepresentationContext {
 
     // MARK: Fabrics
 
-    static func root(html: KvHtmlContext, environment: KvEnvironmentValues? = nil) -> KvHtmlRepresentationContext {
-        .init(html: html,
-              environmentNode: environment.map(EnvironmentNode.init(_:)),
-              containerAttributes: nil,
-              viewConfiguration: environment?.viewConfiguration,
-              htmlAttributes: nil)
+    static func root(html: KvHtmlContext, viewConfiguration: KvViewConfiguration? = nil) -> KvHtmlRepresentationContext {
+        var environment: KvEnvironmentValues = .init(viewConfiguration)
+
+        environment.navigationPath = html.navigationPath
+        environment.localization = html.localizationContext
+
+        return .init(html: html,
+                     environmentNode: EnvironmentNode(environment),
+                     containerAttributes: nil,
+                     viewConfiguration: viewConfiguration,
+                     htmlAttributes: nil)
     }
 
 
@@ -395,41 +402,22 @@ class KvHtmlRepresentationContext {
 
     final class ContainerAttributes {
 
+        let layout: Layout?
+
         let layoutDirection: KvLayoutDirection?
 
-        /// This flag is set to `true` each time ``nextGridRow`` is called. ``KvGridRow`` sets this flag to `false`.
-        /// It's used to add grid span style instruction to custom views.
-        fileprivate var gridNeedsSpanNextRow: Bool = true
-
-        /// It's counted in child contexts returned by ``nextGridRow``. Then maximum of the resulting values is used by the grid's context.
-        private(set) var gridColumnCount: Int?
-
-        fileprivate let gridColumnCounder: RaiiCounter<Int>?
 
 
-
-        private init(layoutDirection: KvLayoutDirection? = nil,
-                     layoutAlignment: KvAlignment? = nil,
-                     gridColumnCounder: RaiiCounter<Int>? = nil,
-                     nextGridRow: Int? = nil
-        ) {
+        private init(layout: Layout? = nil, layoutDirection: KvLayoutDirection? = nil) {
+            self.layout = layout
             self.layoutDirection = layoutDirection
-            self._layoutAlignment = layoutAlignment
-            self.gridColumnCounder = gridColumnCounder
-            self.gridNextRowIndex = nextGridRow
         }
-
-
-
-        private let _layoutAlignment: KvAlignment?
-
-        private var gridNextRowIndex: Int?
 
 
 
         // MARK: Fabrics
 
-        static func grid(_ alignment: KvAlignment?) -> Self { .init(layoutDirection: .horizontal, layoutAlignment: alignment, nextGridRow: 1) }
+        static func grid() -> Self { .init(layout: .grid(.init()), layoutDirection: .horizontal) }
 
 
         static func stack(_ direction: KvLayoutDirection) -> Self { .init(layoutDirection: direction) }
@@ -438,64 +426,215 @@ class KvHtmlRepresentationContext {
 
         // MARK: Operations
 
-        fileprivate func nextGridRow(_ verticalAlignment: KvVerticalAlignment?) -> (containerAttributes: ContainerAttributes, index: Int, spanFlag: Bool)? {
-            guard let value = gridNextRowIndex else { return nil }
-
-            defer {
-                gridNextRowIndex = value + 1
-                gridNeedsSpanNextRow = true
+        /// - Returns: The attributes and the row.
+        fileprivate func nextGridRow() -> (container: ContainerAttributes, row: Grid.Row)? {
+            guard case .grid(let grid) = layout else {
+                assertionFailure("Internal inconsistency: «\(String(describing: layout))» layout is not `.grid(_)`")
+                return nil
             }
 
-            let columnCounter = RaiiCounter(0) { [weak self] count in
-                guard count >= 2,
-                      let container = self,
-                      container.gridColumnCount == nil || container.gridColumnCount! < count
-                else { return }
+            let row = grid.nextRow()
+            let container = ContainerAttributes(
+                layout: .gridRow(row),
+                layoutDirection: layoutDirection    // Layout direction is passed to grid rows.
+            )
 
-                container.gridColumnCount = count
-            }
-
-            return (containerAttributes: .init(layoutDirection: layoutDirection, // Layout direction is passed to grid rows.
-                                               layoutAlignment: layoutAlignment(vertical: verticalAlignment),
-                                               gridColumnCounder: columnCounter),
-                    index: value,
-                    spanFlag: gridNeedsSpanNextRow)
-        }
-
-
-        /// - Returns: The receiver's layout alignment with replaced components if both the alignment component and replacement are non-nil.
-        func layoutAlignment(horizontal: KvHorizontalAlignment? = nil, vertical: KvVerticalAlignment? = nil) -> KvAlignment? {
-            guard var alignment = _layoutAlignment else { return nil }
-
-            alignment.horizontal = horizontal ?? alignment.horizontal
-            alignment.vertical = vertical ?? alignment.vertical
-
-            return alignment
+            return (container: container, row: row)
         }
 
 
 
-        // MARK: .RaiiCounter
+        // MARK: .Layout
 
-        /// Increases internal value when ``increase`` method is called and invokes the block with the result when deinitiated.
-        class RaiiCounter<T : Numeric> {
+        enum Layout {
 
-            init(_ initialValue: T, completion: @escaping (T) -> Void) {
-                self.value = initialValue
-                self.completionBlock = completion
+            case grid(Grid)
+            case gridRow(Grid.Row)
+
+
+            // MARK: Shorthands
+
+            var grid: Grid? {
+                guard case .grid(let grid) = self else { return nil }
+                return grid
             }
 
+            var gridRow: Grid.Row? {
+                guard case .gridRow(let row) = self else { return nil }
+                return row
+            }
+        }
 
-            deinit { completionBlock(value) }
 
 
-            private var value: T
-            private let completionBlock: (T) -> Void
+        // MARK: .Grid
+
+        class Grid {
+
+            /// It's updated in child contexts returned by ``nextGridRow``.
+            private(set) var columnWidths: [ColumnWidth] = .init()
+
+
+            private var nextRowIndex: Int = 0
+
+
+            // MARK: .ColumnWidth
+
+            enum ColumnWidth {
+
+                case auto
+                case fixed(KvCssLength)
+                /// A placeholder value. E.g. it's used when a spanned cell is inserted.
+                case unset
+
+
+                // MARK: Fabrics
+
+                static func from(_ frameWidth: KvViewConfiguration.Frame.Size?) -> ColumnWidth {
+                    guard let frameWidth else { return .auto }
+
+                    switch (frameWidth.minimum, frameWidth.ideal, frameWidth.maximum) {
+                    case (.none, .some(let width), .none):
+                        return .fixed(width)
+
+                    case (.some(let min), _, .some(let max)):
+                        let ideal = frameWidth.ideal
+                        guard min == max,
+                              ideal == nil || ideal! == min
+                        else { break }
+
+                        return .fixed(min)
+
+                    default:
+                        break
+                    }
+
+                    return .auto
+                }
+
+
+                // MARK: CSS
+
+                var css: String {
+                    switch self {
+                    case .auto, .unset:
+                        "auto"
+                    case .fixed(let value):
+                        value.css
+                    }
+                }
+
+
+                // MARK: Operations
+
+                static func merge(_ lhs: inout ColumnWidth, with rhs: ColumnWidth) {
+                    switch lhs {
+                    case .auto:
+                        // Auto can't change.
+                        return
+
+                    case .fixed(let value):
+                        switch rhs {
+                        case .auto:
+                            break
+                        case .fixed(let rhs):
+                            guard value != rhs else { return /* Nothing to do */ }
+                        case .unset:
+                            return /* Unset values are ignored */
+                        }
+                        lhs = .auto
+
+                    case .unset:
+                        switch rhs {
+                        case .unset:
+                            return /* Unset values are ignored */
+                        default:
+                            lhs = rhs
+                        }
+                    }
+                }
+
+            }
 
 
             // MARK: Operations
 
-            func increase(_ increment: T = 1) { value += increment }
+            /// Appends a row and returns the row token.
+            fileprivate func nextRow() -> Row {
+                defer { nextRowIndex += 1 }
+
+                return Row(at: nextRowIndex, in: self)
+            }
+
+
+            fileprivate func processCell(at index: Int, width: ColumnWidth) {
+                switch index < columnWidths.endIndex {
+                case true:
+                    ColumnWidth.merge(&columnWidths[index] , with: width)
+
+                case false:
+                    // Missing elements
+                    if columnWidths.count < index {
+                        columnWidths.append(contentsOf: repeatElement(.auto, count: index - columnWidths.count))
+                    }
+                    columnWidths.append(width)
+                }
+            }
+
+
+            // MARK: .Row
+
+            /// It's designated to be passed to the child html representation contexts.
+            class Row {
+
+                let index: Int
+
+                /// This flag is set to `true` each time ``nextGridRow`` is called.
+                /// So an arbitrary view fills entire row.
+                /// This flag is changed to `false` for ``KvGridRow`` view, so it's children are processed as cells in a row.
+                private(set) var singleCellFlag = true
+                private(set) var nextCellIndex = 0
+
+
+                fileprivate init(at index: Int, in grid: Grid) {
+                    self.index = index
+                    self.grid = grid
+                }
+
+
+                private weak var grid: Grid?
+
+
+                // MARK: Operations
+
+                func clearSingleCellFlag() {
+                    singleCellFlag = false
+                }
+
+
+                func addCell(with viewConfiguration: KvViewConfiguration?) {
+                    let span = viewConfiguration?.gridCellColumnSpan ?? 1
+
+                    switch span <= 1 {
+                    case true:
+                        assert(span == 1)
+                        addCell(.from(viewConfiguration?.frame?.width))
+
+                    case false:
+                        (0 ..< span).forEach { _ in
+                            addCell(.unset)
+                        }
+                    }
+                }
+
+
+                private func addCell(_ width: ColumnWidth) {
+                    grid?.processCell(at: nextCellIndex, width: width)
+
+                    nextCellIndex += 1
+                }
+
+            }
 
         }
 
@@ -517,6 +656,13 @@ class KvHtmlRepresentationContext {
 
 
     // MARK: Operations
+
+    /// Current localization context.
+    var localizationContext: KvLocalization.Context {
+        environmentNode?.values.localization ?? html.localizationContext
+    }
+
+
 
     func representation(
         containerAttributes: ContainerAttributes? = nil,
@@ -560,25 +706,27 @@ class KvHtmlRepresentationContext {
 
 
 
-    /// - Parameter container: Context of container the resulting context is inside.
+    /// - Parameter containerAttributes: Context of container the resulting context is inside. If `nil` then the receiver's container attributes are inherited.
     /// - Parameter htmlAttributes: Attributes to merge with the receiver's attributes.
     ///
     /// - Returns: New context with given values and optionally inherited values.
-    func descendant(containerAttributes: ContainerAttributes? = nil,
+    func descendant(environmentNode: EnvironmentNode? = nil,
+                    containerAttributes: ContainerAttributes? = nil,
+                    viewConfiguration: KvViewConfiguration? = nil,
                     htmlAttributes: KvHtmlKit.Attributes? = nil
     ) -> KvHtmlRepresentationContext {
         let htmlAttributes = KvHtmlKit.Attributes.union(self.htmlAttributes, htmlAttributes)
 
         return .init(html: html,
-                     environmentNode: environmentNode,
+                     environmentNode: environmentNode ?? self.environmentNode,
                      containerAttributes: containerAttributes,
-                     viewConfiguration: self.viewConfiguration,
+                     viewConfiguration: viewConfiguration ?? self.viewConfiguration,
                      htmlAttributes: htmlAttributes)
     }
 
 
-    /// If *environment* contains view configuration then
-    /// method produces descendant context where view configuration is merged or replaced with given value.
+    /// If *environment* contains view configuration
+    /// then this method produces descendant context where view configuration is merged or replaced with given value.
     /// If it's impossible to merge then replaced view configuration is converted to CSS and the result is written into *extractedHtmlAttributes*.
     ///
     /// - Returns: The resulting context.
@@ -592,11 +740,9 @@ class KvHtmlRepresentationContext {
 
         func Descendant(_ viewConfiguration: KvViewConfiguration? = nil) -> KvHtmlRepresentationContext {
             // Container is passed to descendant in this case.
-            .init(html: html,
-                  environmentNode: environmentNode,
-                  containerAttributes: self.containerAttributes,
-                  viewConfiguration: viewConfiguration ?? self.viewConfiguration,
-                  htmlAttributes: self.htmlAttributes)
+            self.descendant(environmentNode: environmentNode,
+                            containerAttributes: containerAttributes,
+                            viewConfiguration: viewConfiguration ?? self.viewConfiguration)
         }
 
 
@@ -605,7 +751,7 @@ class KvHtmlRepresentationContext {
             descendant = Descendant(mergeResult)
 
         case .incompatibility:
-            // The receiver is cloned to extract CSS then.
+            // The receiver is cloned to extract HTML attributes then.
             descendant = Descendant()
 
             extractedHtmlAttributes = descendant.extractHtmlAttributes()
@@ -620,13 +766,11 @@ class KvHtmlRepresentationContext {
 
     /// Produces descendant context for grid rows.
     func gridRowDescendant(_ verticalAlignment: KvVerticalAlignment?) -> KvHtmlRepresentationContext {
-        containerAttributes?.gridNeedsSpanNextRow = false
-
         // Container context is passed to reset it later.
         let context = self.descendant(containerAttributes: containerAttributes)
 
         // Container context is changed here.
-        if let gridAttributes = context.gridHtmlAttributes(verticalAlignment) {
+        if let gridAttributes = context.extractGridHtmlAttributes(verticalAlignment, clearSingleCellFlag: true) {
             context.push(htmlAttributes: gridAttributes)
         }
 
@@ -648,7 +792,7 @@ class KvHtmlRepresentationContext {
         }
 
 
-        if let gridAttributes = gridHtmlAttributes() {
+        if let gridAttributes = extractGridHtmlAttributes() {
             Accumulate(gridAttributes)
         }
         if let attributes = attributes {
@@ -662,18 +806,28 @@ class KvHtmlRepresentationContext {
     }
 
 
-    private func gridHtmlAttributes(_ verticalAlignment: KvVerticalAlignment? = nil) -> KvHtmlKit.Attributes? {
-        guard let container = containerAttributes else { return nil }
+    private func extractGridHtmlAttributes(_ verticalAlignment: KvVerticalAlignment? = nil, clearSingleCellFlag: Bool = false) -> KvHtmlKit.Attributes? {
+        let gridRow: ContainerAttributes.Grid.Row
 
-        container.gridColumnCounder?.increase(viewConfiguration?.gridCellColumnSpan ?? 1)
+        switch containerAttributes?.layout {
+        case .grid(_):
+            guard let (rowContainer, row) = containerAttributes?.nextGridRow() else { return nil }
+            containerAttributes = rowContainer
+            gridRow = row
+        case .gridRow(let row):
+            row.addCell(with: viewConfiguration)
+            gridRow = row
+        case .none:
+            return nil
+        }
 
-        guard let (rowContainerAttributes, rowIndex, spanFlag) = container.nextGridRow(verticalAlignment) else { return nil }
-
-        self.containerAttributes = rowContainerAttributes
+        if clearSingleCellFlag {
+            gridRow.clearSingleCellFlag()
+        }
 
         var attributes = KvHtmlKit.Attributes {
-            $0.append(optionalStyles: "grid-row:\(rowIndex)",
-                      spanFlag ? "grid-column:1/-1" : nil)
+            $0.append(optionalStyles: "grid-row:\(gridRow.index + 1)",
+                      gridRow.singleCellFlag ? "grid-column:1/-1" : nil)
         }
 
         if let flexClass = verticalAlignment.map({ html.cssFlexClass(for: $0, as: .crossSelf) }) {

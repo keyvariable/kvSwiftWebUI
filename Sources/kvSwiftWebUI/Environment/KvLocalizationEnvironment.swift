@@ -56,7 +56,17 @@ extension KvEnvironmentValues {
     ///
     /// - SeeAlso: ``KvEnvironmentValues/localizationBundle``.
     public internal(set) var localization: KvLocalization.Context {
-        get { self[LocalizationKey.self]! }
+        get {
+            let context = self[LocalizationKey.self]!
+
+            // TODO: Avoid redundant repeated fetches.
+            return switch localizationBundle {
+            case .none:
+                context
+            case .some(let bundle):
+                context.with(primaryBundle: bundle)
+            }
+        }
         set { self[LocalizationKey.self] = newValue }
     }
 

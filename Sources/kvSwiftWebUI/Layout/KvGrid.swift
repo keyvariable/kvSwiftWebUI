@@ -77,7 +77,7 @@ extension KvGrid : KvHtmlRenderable {
                            horizontalSpacing ?? KvDefaults.gridHorizontalSpacing)
 
         return context.representation(
-            containerAttributes: .grid(alignment),
+            containerAttributes: .grid(),
             htmlAttributes: .init {
                 $0.insert(classes: "grid",
                           context.html.cssFlexClass(for: alignment.vertical, as: .crossItems),
@@ -92,8 +92,10 @@ extension KvGrid : KvHtmlRenderable {
                 .div,
                 attributes: {
                     var htmlAttributes = htmlAttributes
-                    if let gridColumnCount = context.containerAttributes?.gridColumnCount {
-                        htmlAttributes?.append(styles: "grid-template-columns:repeat(\(gridColumnCount),auto)")
+                    if let columnWidths = context.containerAttributes?.layout?.grid?.columnWidths,
+                       !columnWidths.isEmpty
+                    {
+                        htmlAttributes?.append(styles: "grid-template-columns:\(columnWidths.lazy.map({ $0.css }).joined(separator: " "))")
                     }
                     return htmlAttributes ?? .empty
                 },

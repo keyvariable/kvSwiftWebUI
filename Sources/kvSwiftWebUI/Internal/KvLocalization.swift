@@ -89,7 +89,7 @@ public class KvLocalization {
 
 
     func context(languageTag: String?) -> Context {
-        .init(languageTag: languageTag, bundle: bundle)
+        .init(languageTag: languageTag, primaryBundle: bundle)
     }
 
 
@@ -248,43 +248,141 @@ public class KvLocalization {
 
         /// Selected language tag in the primary bundle or `nil` whether localization is enabled.
         /// When localization is disabled, keys of localized resources are used as resolved strings.
-        public let languageTag: String?
+        public var languageTag: String? { resolvedBundles.languageTag }
 
 
-        fileprivate init(languageTag: String?, bundle: Bundle) {
-            assert(languageTag == nil || bundle.localizations.contains(languageTag!))
+        fileprivate convenience init(languageTag: String?, primaryBundle: Bundle) {
+            assert(languageTag == nil || primaryBundle.localizations.contains(languageTag!))
 
-            self.languageTag = languageTag
-            self.bundle = bundle
-            self.resolvedBundle = Context.resolve(languageTag, bundle)
+            self.init(primaryBundle: primaryBundle, resolvedBundles: .init(languageTag: languageTag))
+        }
+
+
+        private init(primaryBundle: Bundle, resolvedBundles: ResolvedBundles) {
+            self.primaryBundle = primaryBundle
+            self.resolvedPrimaryBundle = resolvedBundles[primaryBundle]
+            self.resolvedBundles = resolvedBundles
         }
 
 
         /// Primary bundle.
-        private let bundle: Bundle
+        private let primaryBundle: Bundle
         /// Resolved primary bundle.
-        private let resolvedBundle: Bundle
+        private let resolvedPrimaryBundle: ResolvedBundle
 
-        /// Cache of resolved bundles for non-primary bundle URLs.
-        ///
-        /// If a bundle contains localizations
-        private var resolvedBundles: [URL : Bundle] = .init()
+        /// Cache of resolved bundles.
+        private var resolvedBundles: ResolvedBundles
 
 
         // MARK: Fabrics
 
         /// - Returns: A context providing no localization. It just returns the keys.
-        static var disabled: Context { .init(languageTag: nil, bundle: .main) }
+        static var disabled: Context { .init(languageTag: nil, primaryBundle: .main) }
+
+
+        // MARK: .ResolvedBundle
+
+        private struct ResolvedBundle {
+            let value: Bundle
+            let locale: Locale
+        }
+
+
+        // MARK: .ResolvedBundles
+
+        /// It's a class to be shared between contexts.
+        private class ResolvedBundles {
+
+            typealias Element = ResolvedBundle
+
+
+            let languageTag: String?
+
+
+            init(languageTag: String?) {
+                self.languageTag = languageTag
+                self.defaultLocale = Locale(identifier: languageTag ?? "en_US_POSIX")
+            }
+
+
+            private let defaultLocale: Locale
+
+            /// Cache of resolved bundles by bundle URLs.
+            private var values: [URL : Element] = .init()
+
+
+            // MARK: Operations
+
+            subscript(bundle: Bundle) -> Element {
+                switch values[bundle.bundleURL] {
+                case .some(let bundle):
+                    return bundle
+
+                case .none:
+                    let resolved = resolve(bundle)
+                    values[bundle.bundleURL] = resolved
+                    return resolved
+                }
+            }
+
+
+            /// - Returns: A child bundle containing localized resources for given *languageTag* or *bundle* otherwise.
+            private func resolve(_ bundle: Bundle) -> Element {
+                var bundle = bundle
+                var locale = defaultLocale
+
+                repeat {
+                    guard let languageTag = languageTag.flatMap({
+                        KvLocalization.selectLanguageTag(for: $0, in: bundle.localizations)?.languageTag
+                        ?? bundle.preferredLocalizations.first
+                        ?? bundle.localizations.first
+                    })
+                    else { break }
+
+                    locale = languageTag != self.languageTag ? Locale(identifier: languageTag) : locale
+
+                    guard let lprojBundle = bundle
+                        .url(forResource: languageTag, withExtension: "lproj")
+                        .flatMap(Bundle.init(url:))
+                    else { break }
+
+                    bundle = lprojBundle
+                }
+                while false
+
+                return .init(value: bundle, locale: locale)
+            }
+
+        }
 
 
         // MARK: Operations
 
+        struct Options : OptionSet {
+
+            /// If specified then arguments of type ``KvText`` are replaced with `"%n$T"`.
+            static let textPlaceholders = Self(rawValue: 1 << 0)
+
+            let rawValue: UInt
+
+        }
+
+
+        func with(primaryBundle: Bundle) -> Context {
+            guard primaryBundle !== self.primaryBundle else { return self }
+
+            return .init(primaryBundle: primaryBundle, resolvedBundles: resolvedBundles)
+        }
+
+
         /// - Parameter defaultBundle: Bundle to use when the *resource*'s bundle is `nil`.
-        borrowing func string(_ resource: borrowing StringResource, defaultBundle: Bundle? = nil) -> String {
+        borrowing func string(_ resource: borrowing StringResource, options: Options = [ ]) -> String {
             string(forKey: resource.key,
                    defaultValue: resource.defaultValue,
                    table: resource.table,
-                   bundle: resource.bundle ?? defaultBundle)
+                   bundle: resource.bundle,
+                   comment: nil,
+                   options: options)
         }
 
 
@@ -306,52 +404,52 @@ public class KvLocalization {
                                      bundle: Bundle? = nil,
                                      comment: StaticString? = nil
         ) -> String {
-            let bundle = resolved(bundle ?? self.bundle)
+            string(forKey: key, defaultValue: defaultValue, table: table, bundle: bundle, comment: comment, options: [ ])
+        }
+
+
+        private borrowing func string(forKey key: KvLocalizedStringKey,
+                                      defaultValue: String?,
+                                      table: String?,
+                                      bundle: Bundle?,
+                                      comment: StaticString?,
+                                      options: Options
+        ) -> String {
+
+            func Localized(_ key: String) -> (string: String, locale: Locale) {
+                let resolvedBundle = resolved(bundle ?? self.primaryBundle)
+
+                return (string: resolvedBundle.value.localizedString(forKey: key, value: defaultValue, table: table),
+                        locale: resolvedBundle.locale)
+            }
+
 
             switch key.value {
-            case .final(let string):
-                return bundle.localizedString(forKey: string, value: defaultValue, table: table)
+            case .final(let key):
+                return Localized(key).string
 
             case .formatted(let format, let arguments):
-                return .init(format: bundle.localizedString(forKey: format, value: defaultValue, table: table),
-                             arguments: arguments)
+                let (localizedFormat, locale) = Localized(format)
+                
+                return .init(format: localizedFormat, locale: locale, arguments: arguments.enumerated().map { (offset, value) in
+                    switch value {
+                    case .cVarArg(let value, format: _):
+                        value
+                    case .text(let text):
+                        !options.contains(.textPlaceholders)
+                        ? text.plainText(in: self)
+                        : "%\(offset + 1)$T"
+                    }
+                })
             }
         }
 
 
         /// - Returns: Cached result of ``resolve(_:)`` for given *bundle*.
-        private borrowing func resolved(_ bundle: Bundle) -> Bundle {
-            guard bundle != self.bundle else { return resolvedBundle }
-            guard let languageTag else { return bundle }
+        private borrowing func resolved(_ bundle: Bundle) -> ResolvedBundle {
+            guard bundle != self.primaryBundle else { return resolvedPrimaryBundle }
 
-            return {
-                switch $0 {
-                case .some(let bundle):
-                    return bundle
-
-                case .none:
-                    let bundle = Context.resolve(languageTag, bundle)
-                    $0 = bundle
-                    return bundle
-                }
-            }(&resolvedBundles[bundle.bundleURL])
-        }
-
-
-        /// - Returns: A child bundle containing localized resources for given *languageTag* or *bundle* otherwise.
-        private static func resolve(_ languageTag: String?, _ bundle: Bundle) -> Bundle {
-            guard let languageTag = languageTag.map({
-                KvLocalization.selectLanguageTag(for: $0, in: bundle.localizations)?.languageTag
-                ?? bundle.preferredLocalizations.first
-                ?? bundle.localizations.first
-            })
-            else { return bundle }
-
-            guard let url = bundle.url(forResource: languageTag, withExtension: "lproj"),
-                  let bundle = Bundle(url: consume url)
-            else { return bundle }
-
-            return bundle
+            return resolvedBundles[bundle]
         }
 
     }

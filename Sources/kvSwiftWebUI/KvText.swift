@@ -32,6 +32,7 @@ public typealias Text = KvText
 
 
 // TODO: DOC
+// TODO: Review and optimize automatic Markdown detection and KvText substitution in localized string interpolations.
 public struct KvText : Equatable {
 
     @usableFromInline
@@ -69,6 +70,7 @@ public struct KvText : Equatable {
 
     // TODO: DOC
     @_disfavoredOverload
+    @inlinable
     public init<S>(_ content: S) where S : StringProtocol {
         self.init(verbatim: String(content))
     }
@@ -111,6 +113,39 @@ public struct KvText : Equatable {
     }
 
 
+    /// Replaces `"%n$@"` specifiers with `KvText` instances from *attributes*
+    init(format: String, arguments: [KvLocalizedStringKey.StringInterpolation.Argument], attributes: Attributes = .empty) {
+        var rest = Substring(format)
+
+        self.init()
+
+        while let match = rest.firstMatch(of: #/%(?<index>\d+)\$T/#) {
+            defer { rest = rest[match.range.upperBound...] }
+
+            if match.range.lowerBound != rest.startIndex {
+                self += KvText(rest[..<match.range.lowerBound])
+            }
+
+            let text = Int(match.output.index).flatMap { index -> KvText? in
+                // As stated in pringf standard, explicit indices start from 1.
+                switch arguments[index - 1] {
+                case .cVarArg(_, format: _):
+                    assertionFailure("Internal inconsistency: \"%n$T\" format specifiers are allowed for KvText arguments only")
+                    return nil
+                case .text(let text):
+                    return text
+                }
+            }
+
+            self += text ?? KvText(rest[match.range])
+        }
+
+        if !rest.isEmpty {
+            self += KvText(rest)
+        }
+    }
+
+
 
     // MARK: .Content
 
@@ -137,13 +172,28 @@ public struct KvText : Equatable {
             case verbatim(String)
 
 
-            // MARK: Access
+            // MARK: Operations
 
-            /// - Returns: The content in given localization context.
-            func string(in context: borrowing KvLocalization.Context, defaultBundle: Bundle?) -> String {
+            var arguments: [KvLocalizedStringKey.StringInterpolation.Argument] {
                 switch self {
                 case .localizable(let resource):
-                    context.string(resource, defaultBundle: defaultBundle)
+                    switch resource.key.value {
+                    case .final(_):
+                        [ ]
+                    case .formatted(format: _, arguments: let arguments):
+                        arguments
+                    }
+                case .verbatim(_):
+                    [ ]
+                }
+            }
+
+
+            /// - Returns: The content in given localization context.
+            func string(in context: borrowing KvLocalization.Context, options: KvLocalization.Context.Options) -> String {
+                switch self {
+                case .localizable(let resource):
+                    context.string(resource, options: options)
                 case .verbatim(let value):
                     value
                 }
@@ -156,8 +206,24 @@ public struct KvText : Equatable {
 
         @usableFromInline
         enum Transform : Equatable {
+
             case auto
             case markdown
+
+
+            // MARK: Operations
+
+            func apply(to string: String, arguments: [KvLocalizedStringKey.StringInterpolation.Argument]) -> KvText? {
+                let md = Md(string)
+
+                return switch self {
+                case .auto:
+                    md.text(arguments: arguments, options: .requireSupportedMarkup)
+                case .markdown:
+                    md.text(arguments: arguments)
+                }
+            }
+
         }
 
 
@@ -292,12 +358,27 @@ public struct KvText : Equatable {
         }
 
 
+        init(from context: borrowing KvHtmlRepresentationContext) {
+            self.init()
+
+            guard let environment = context.environmentNode?.values else { return }
+
+            if let font = environment.font {
+                self.font = font
+            }
+            if let foregroundColor = environment.foregroundStyle?.foregroundColor() {
+                self.foregroundStyle = foregroundColor
+            }
+        }
+
+
         // MARK: .Style
 
         /// Attributes those are rendered as CSS styles.
         @usableFromInline
         enum Style : Hashable, Comparable {
             case font
+            case fontDesign
             case fontWeight
             case foregroundStyle
             case isItalic
@@ -314,6 +395,19 @@ public struct KvText : Equatable {
         }
 
 
+        // MARK: Fabrics
+
+        /// - Returns: Merge result of *rhs* over *base*.
+        static func merged(_ addition: borrowing Attributes, over base: Attributes) -> Attributes {
+            var result = base
+
+            result.styles.merge(addition.styles, uniquingKeysWith: { lhs, rhs in rhs })
+            result.wrappers.merge(addition.wrappers, uniquingKeysWith: { lhs, rhs in rhs })
+
+            return result
+        }
+
+
         // MARK: : Equatable
 
         @usableFromInline
@@ -326,6 +420,8 @@ public struct KvText : Equatable {
                 switch key {
                 case .font:
                     guard cast(lhs, as: \.font) == rhs.font else { return false }
+                case .fontDesign:
+                    guard cast(lhs, as: \.fontDesign) == rhs.fontDesign else { return false }
                 case .fontWeight:
                     guard cast(lhs, as: \.fontWeight) == rhs.fontWeight else { return false }
                 case .foregroundStyle:
@@ -366,18 +462,26 @@ public struct KvText : Equatable {
 
         // MARK: Properties
 
+        /// .none — unset, .some(nil) — explicitely cleared.
         @usableFromInline
         var font: KvFont?? { get { self[.font] } set { self[.font] = newValue } }
 
+        /// .none — unset, .some(nil) — explicitely cleared.
+        @usableFromInline
+        var fontDesign: KvFont.Design?? { get { self[.fontDesign] } set { self[.fontDesign] = newValue } }
+
+        /// .none — unset, .some(nil) — explicitely cleared.
         @usableFromInline
         var fontWeight: KvFont.Weight?? { get { self[.fontWeight] } set { self[.fontWeight] = newValue } }
 
         @usableFromInline
         var isItalic: Bool? { get { self[.isItalic] } set { self[.isItalic] = newValue } }
 
+        /// .none — unset, .some(nil) — explicitely cleared.
         @usableFromInline
         var characterStyle: CharacterStyle? { get { self[.characterStyle] } set { self[.characterStyle] = newValue } }
 
+        /// .none — unset, .some(nil) — explicitely cleared.
         @usableFromInline
         var foregroundStyle: KvColor?? { get { self[.foregroundStyle] } set { self[.foregroundStyle] = newValue } }
 
@@ -404,8 +508,20 @@ public struct KvText : Equatable {
         private static func cast<T>(_ value: Any, as: KeyPath<Self, T?>) -> T { value as! T }
 
 
-        func htmlAttributes(in context: borrowing KvHtmlContext) -> KvHtmlKit.Attributes? {
-            let htmlAttributes = KvHtmlKit.Attributes { attributes in
+        /// - Parameter scope: Merged parent attributes.
+        func htmlAttributes(in context: borrowing KvHtmlContext, scope: borrowing Attributes) -> KvHtmlKit.Attributes? {
+            let htmlAttributes = KvHtmlKit.Attributes { htmlAttributes in
+
+                struct FontAccumulator {
+                    var font: KvFont?
+                    var design: KvFont.Design?
+                    var weight: KvFont.Weight?
+                }
+
+
+                var fontAccumulator = FontAccumulator()
+
+                // TODO: Use sorted dictionary or an array of keys instead of sorting
                 styles.keys
                    .sorted()
                    .forEach { key in
@@ -413,15 +529,54 @@ public struct KvText : Equatable {
 
                        switch key {
                        case .font:
-                           attributes.append(optionalStyles: Attributes.cast(value, as: \.font)?.cssStyle(in: context))
+                           fontAccumulator.font = Attributes.cast(value, as: \.font)
+                           break
+
+                       case .fontDesign:
+                           fontAccumulator.design = Attributes.cast(value, as: \.fontDesign)
+                           break
+
                        case .fontWeight:
-                           attributes.append(optionalStyles: Attributes.cast(value, as: \.fontWeight).map { "font-weight:\($0.cssValue)" })
+                           fontAccumulator.weight = Attributes.cast(value, as: \.fontWeight)
+                           break
+
                        case .foregroundStyle:
-                           attributes.append(optionalStyles: (Attributes.cast(value, as: \.foregroundStyle)?.cssExpression(in: context)).map { "color:\($0)" })
+                           htmlAttributes.append(optionalStyles: (Attributes.cast(value, as: \.foregroundStyle)?.cssExpression(in: context)).map { "color:\($0)" })
+                           break
+
                        case .isItalic:
-                           attributes.append(optionalStyles: Attributes.cast(value, as: \.isItalic) == true ? "font-style:italic" : nil)
+                           htmlAttributes.append(optionalStyles: Attributes.cast(value, as: \.isItalic) == true ? "font-style:italic" : nil)
+                           break
                        }
                    }
+
+
+                func Resovle(fontDesign: KvFont.Design?, against fontFamily: KvFont.Family?) -> KvFont.Design? {
+                    guard let fontDesign,
+                          case .system(let currentDesign) = fontFamily,
+                          fontDesign != currentDesign
+                    else { return nil }
+
+                    return fontDesign
+                }
+
+
+                switch fontAccumulator.font {
+                case .some(var font):
+                    font.family = Resovle(fontDesign: fontAccumulator.design, against: font.family)
+                        .map { .system($0) }
+                    ?? font.family
+
+                    font.weight = fontAccumulator.weight ?? font.weight
+
+                    htmlAttributes.append(optionalStyles: font.cssStyle(in: context))
+
+                case .none:
+                    let resolvedDesign = Resovle(fontDesign: fontAccumulator.design, against: scope.font??.family)
+                    htmlAttributes.append(optionalStyles: (consume resolvedDesign).map { "font-family:\(KvHtmlContext.systemFontCSS(design: $0))" })
+
+                    htmlAttributes.append(optionalStyles: fontAccumulator.weight.map { "font-weight:\($0.cssValue)" })
+                }
             }
 
             guard !htmlAttributes.isEmpty else { return nil }
@@ -491,7 +646,7 @@ public struct KvText : Equatable {
     /// - Returns: The receiver's content without attributes.
     ///
     /// - SeeAlso: ``escapedPlainBytes(in:)``.
-    func plainText(in context: borrowing KvLocalization.Context, defaultBundle: Bundle? = nil) -> String {
+    func plainText(in context: borrowing KvLocalization.Context) -> String {
         var string: String
 
         switch content {
@@ -500,18 +655,9 @@ public struct KvText : Equatable {
             string = "\(lhs.plainText(in: context))\(rhs.plainText(in: context))"
 
         case .string(let content, transform: let transform):
-            string = content.string(in: context, defaultBundle: defaultBundle)
+            string = content.string(in: context, options: [ ])
 
-            let text: KvText? = switch transform {
-            case .auto:
-                Md(string).text(options: .requireSupportedMarkup)
-            case .markdown:
-                Md(string).text()
-            case .none:
-                nil
-            }
-
-            if let text {
+            if let text = transform?.apply(to: string, arguments: content.arguments) {
                 string = text.plainText(in: context)
             }
 
@@ -555,6 +701,13 @@ public struct KvText : Equatable {
     @inlinable
     public consuming func font(_ font: Font?) -> KvText { withModifiedAttributes {
         $0.font = font
+    } }
+
+
+    // MARK: DOC
+    @inlinable
+    public consuming func fontDesign(_ design: KvFont.Design?) -> KvText { withModifiedAttributes {
+        $0.fontDesign = design
     } }
 
 
@@ -672,23 +825,15 @@ extension KvText : KvHtmlRenderable {
                 return KvText.renderHTML(for: candidate, in: context)
 
             case .string(let content, transform: let transform):
-                let string = content.string(in: context.html.localizationContext,
-                                            defaultBundle: context.environmentNode?.values[keyPath: \.localizationBundle])
+                let string = content.string(in: context.localizationContext,
+                                            options: .textPlaceholders)
+                let arguments = content.arguments
 
-                let text: KvText? = switch transform {
-                case .auto:
-                    Md(string).text(options: .requireSupportedMarkup)
-                case .markdown:
-                    Md(string).text()
-                case .none:
-                    nil
-                }
-
-                switch text {
+                switch transform?.apply(to: string, arguments: arguments) {
                 case .some(let text):
                     candidate = text
                 case .none:
-                    return KvText.renderHTML(for: KvText(verbatim: string), in: context)
+                    return KvText.renderHTML(for: KvText(format: string, arguments: arguments), in: context)
                 }
 
             case .text(let block):
@@ -701,60 +846,11 @@ extension KvText : KvHtmlRenderable {
 
 
     private static func renderHTML(for text: KvText, in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
-        context.representation(htmlAttributes: text.attributes.htmlAttributes(in: context.html)) { context, htmlAttributes in
+        let scope = Attributes(from: context)
 
-            func ContentFragment(_ content: Content) -> KvHtmlRepresentation.Fragment {
-                switch content {
-                case .joined(let block):
-                    return InnerHTML(block())
-
-                case .string(let content, transform: let transform):
-                    let string = content.string(in: context.html.localizationContext,
-                                                defaultBundle: context.environmentNode?.values[keyPath: \.localizationBundle])
-
-                    let text: KvText? = switch transform {
-                    case .auto:
-                        Md(string).text(options: .requireSupportedMarkup)
-                    case .markdown:
-                        Md(string).text()
-                    case .none:
-                        nil
-                    }
-
-                    return switch text {
-                    case .some(let text):
-                        ContentFragment(.text { text })
-                    case .none:
-                        .init(KvHtmlKit.Escaping.innerText(string))
-                    }
-
-                case .text(let block):
-                    return InnerHTML(block())
-                }
-            }
-
-
-            func InnerHTML(_ text: KvText) -> KvHtmlRepresentation.Fragment {
-                var fragment = ContentFragment(text.content)
-                let attributes = text.attributes
-
-                if !attributes.isEmpty {
-                    fragment = .tag(.span,
-                                    attributes: attributes.htmlAttributes(in: context.html) ?? .empty,
-                                    innerHTML: attributes.wrapping(fragment))
-                }
-
-                return fragment
-            }
-
-
-            func InnerHTML(_ texts: (KvText, KvText)) -> KvHtmlRepresentation.Fragment {
-                .init(InnerHTML(texts.0), InnerHTML(texts.1))
-            }
-
-
-            let innerFragment = ContentFragment(text.content)
-            let textStyle = context.environmentNode?.values.font?.textStyle ?? text.attributes.font??.textStyle
+        return context.representation(htmlAttributes: text.attributes.htmlAttributes(in: context.html, scope: scope)) { context, htmlAttributes in
+            let innerFragment = contentFragment(text.content, in: context, scope: .merged(text.attributes, over: scope))
+            let textStyle = scope.font??.textStyle ?? text.attributes.font??.textStyle
 
             return .tag(
                 Self.tag(for: textStyle),
@@ -762,6 +858,66 @@ extension KvText : KvHtmlRenderable {
                 innerHTML: text.attributes.wrapping(innerFragment)
             )
         }
+    }
+
+
+    private static func contentFragment(_ content: Content,
+                                        in context: borrowing KvHtmlRepresentationContext,
+                                        scope: borrowing Attributes
+    ) -> KvHtmlRepresentation.Fragment {
+        switch content {
+        case .joined(let block):
+            return innerHTML(block(), in: context, scope: scope)
+
+        case .string(let content, transform: let transform):
+            let string = content.string(in: context.localizationContext, options: .textPlaceholders)
+
+            return switch transform {
+            case .some(let transform):
+                contentFragment(
+                    .text {
+                        transform.apply(to: string, arguments: content.arguments)
+                        ?? KvText(format: string, arguments: content.arguments)
+                    },
+                    in: context,
+                    scope: scope
+                )
+            case .none:
+                .init(KvHtmlKit.Escaping.innerText(string))
+            }
+
+        case .text(let block):
+            return innerHTML(block(), in: context, scope: scope)
+        }
+    }
+
+
+    private static func innerHTML(_ text: KvText,
+                                  in context: borrowing KvHtmlRepresentationContext,
+                                  scope: borrowing Attributes
+    ) -> KvHtmlRepresentation.Fragment {
+        let attributes = text.attributes
+
+        switch attributes.isEmpty {
+        case false:
+            let fragment = contentFragment(text.content, in: context, scope: .merged(attributes, over: scope))
+
+            return .tag(.span,
+                        attributes: attributes.htmlAttributes(in: context.html, scope: scope) ?? .empty,
+                        innerHTML: attributes.wrapping(fragment))
+
+        case true:
+            return contentFragment(text.content, in: context, scope: scope)
+        }
+    }
+
+
+    private static func innerHTML(_ texts: (KvText, KvText),
+                                  in context: borrowing KvHtmlRepresentationContext,
+                                  scope: borrowing Attributes
+    ) -> KvHtmlRepresentation.Fragment {
+        .init(innerHTML(texts.0, in: context, scope: scope),
+              innerHTML(texts.1, in: context, scope: scope))
     }
 
 

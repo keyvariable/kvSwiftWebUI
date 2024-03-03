@@ -94,16 +94,16 @@ struct BasicsView : View {
             }
 
             Section2(header: Text("Clip Shapes")) {
-                clipShapeTemplateView { Text("RoundedRectangle") }
+                clipShapeTemplateView { Text("`RoundedRectangle`") }
                     .clipShape(.rect(cornerRadius: .em(0.6)))
 
-                clipShapeTemplateView { Text("RoundedRectangle") }
+                clipShapeTemplateView { Text("`RoundedRectangle`") }
                     .clipShape(.rect(cornerSize: .init(width: .em(1), height: .em(0.7))))
 
-                clipShapeTemplateView { Text("UnevenRoundedRectangle") }
+                clipShapeTemplateView { Text("`UnevenRoundedRectangle`") }
                     .clipShape(.rect(topLeadingRadius: .em(0.4), bottomLeadingRadius: .em(0.9), bottomTrailingRadius: .em(0.6), topTrailingRadius: .em(1.4)))
 
-                clipShapeTemplateView { Text("Ellipse") }
+                clipShapeTemplateView { Text("`Ellipse`") }
                     .clipShape(.ellipse)
             }
         }
@@ -121,11 +121,11 @@ struct BasicsView : View {
     private var layoutSection: some View {
         Section1(header: Text("Layout")) {
             Section2(header: Text("Frame and Padding")) {
-                Text(".padding(16).background(.systemGray4)")
+                Text("`.padding(16).background(.systemGray4)`")
                     .font(.system(.caption, design: .monospaced))
                     .padding(16)
                     .background(.systemGray4)
-                Text(".background(.systemGray4).padding(16)")
+                Text("`.background(.systemGray4).padding(16)`")
                     .font(.system(.caption, design: .monospaced))
                     .background(.systemGray4)
                     .padding(16)
@@ -185,7 +185,8 @@ struct BasicsView : View {
                     }
                     GridRow {
                         ForEach(0..<4) { _ in
-                            Color.separator.frame(maxWidth: .infinity, idealHeight: 4)
+                            Color.separator
+                                .frame(maxWidth: .infinity, idealHeight: 4)
                         }
                     }
                     GridRow(alignment: .bottom) {
@@ -198,8 +199,10 @@ struct BasicsView : View {
                         Text(">")
                             .gridColumnAlignment(.trailing)
                     }
-                    Color.separator.frame(maxWidth: .infinity, idealHeight: 6)
+                    Color.separator
+                        .frame(maxWidth: .infinity, idealHeight: 6)
                     GridRow {
+                        Color.clear
                         Text("Lorem")
                         Text("Ipsum")
                     }
@@ -218,12 +221,12 @@ struct BasicsView : View {
             }
 
             Section2(header: Text("Resizing")) {
-                Preview(caption: Text(".resizable()")) {
+                Preview(caption: Text("`.resizable()`")) {
                     Image("img/circles.svg", bundle: .module)
                         .resizable()
                         .frame(width: tileSize.width, height: tileSize.height)
                 }
-                Preview(caption: Text(".resizable(resizingMode: .tile)")) {
+                Preview(caption: Text("`.resizable(resizingMode: .tile)`")) {
                     Image("img/circles.svg", bundle: .module)
                         .resizable(resizingMode: .tile)
                         .frame(width: tileSize.width, height: tileSize.height, alignment: .topLeading)
@@ -235,17 +238,17 @@ struct BasicsView : View {
                     Image("img/circles.svg", bundle: .module)
                         .renderingMode(.template)
                 }
-                Preview(caption: Text(".foregroundStyle(.coral)")) {
+                Preview(caption: Text("`.foregroundStyle(.coral)`")) {
                     Image("img/circles.svg", bundle: .module)
                         .renderingMode(.template)
                         .foregroundStyle(.coral)
                 }
-                Preview(caption: Text(".foregroundStyle(.linearGradient(...))")) {
+                Preview(caption: Text("`.foregroundStyle(.linearGradient(...))`")) {
                     Image("img/circles.svg", bundle: .module)
                         .renderingMode(.template)
                         .foregroundStyle(.linearGradient(colors: [ .indigo, .violet ], endPoint: .trailing))
                 }
-                Preview(caption: Text(".foregroundStyle(.linearGradient(...))")) {
+                Preview(caption: Text("`.foregroundStyle(.linearGradient(...))`")) {
                     Image("img/circles.svg", bundle: .module)
                         .resizable(resizingMode: .tile)
                         .renderingMode(.template)
@@ -283,8 +286,8 @@ struct BasicsView : View {
                 let example = Text("Lorem ipsum dolor sit amet").padding(.em(0.35))
 
                 Preview(caption: Text("no modification")) { example }
-                Preview(caption: Text(".textCase(.uppercase)")) { example.textCase(.uppercase) }
-                Preview(caption: Text("textCase(.lowercase)")) { example.textCase(.lowercase) }
+                Preview(caption: Text("`.textCase(.uppercase)`")) { example.textCase(.uppercase) }
+                Preview(caption: Text("`.textCase(.lowercase)`")) { example.textCase(.lowercase) }
             }
         }
     }
@@ -337,7 +340,7 @@ struct BasicsView : View {
         // MARK: : View
 
         var body: some View {
-            Preview(caption: Text(verbatim: "alignment: .\(alignment)")) {
+            Preview(caption: Text.md(verbatim: "alignment: `.\(alignment)`")) {
                 HStack(alignment: alignment) {
                     item(Text("Dog"))
                     item(Text("Dog\nDog"))
@@ -362,7 +365,7 @@ struct BasicsView : View {
     private struct HorizontalSizeClassSection : View {
 
         var body: some View {
-            Section2(header: Text(verbatim: "\\.horizontalSizeClass")) {
+            Section2(header: Text.md(verbatim: "`\\.horizontalSizeClass`")) {
                 Text("An adaptive view below is presented with adaptive and forced horizontal size classes. Note how stack direction, order of views, separator and font size are adapted for screen width.")
 
                 examplePreview()
@@ -374,7 +377,7 @@ struct BasicsView : View {
 
         @ViewBuilder
         private func examplePreview(_ horizontalSizeClass: UserInterfaceSizeClass? = nil) -> some View {
-            let caption = Text("Size class: \(horizontalSizeClass.map { ".\($0)" } ?? "dynamic")")
+            let caption = Text("Size class: \(Text.md(verbatim: horizontalSizeClass.map { "`.\($0)`" } ?? "dynamic"))")
 
             switch horizontalSizeClass {
             case .none:

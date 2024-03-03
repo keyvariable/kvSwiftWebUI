@@ -72,6 +72,7 @@ extension KvText {
 
 
     // TODO: DOC
+    @_disfavoredOverload
     @inlinable
     public static func md<S>(_ content: S) -> KvText
     where S : StringProtocol
@@ -120,10 +121,11 @@ extension KvText {
 
         // MARK: Operations
 
+        /// - Parameter arguments: Arguments to substitute when formatting specifiers (including %n$T) are encountered.
         /// - Returns: Representation of the receiver as a ``KvText`` instance.
-        func text(options: Options = [ ]) -> Text? {
+        func text(arguments: [KvLocalizedStringKey.StringInterpolation.Argument], options: Options = [ ]) -> KvText? {
             let document = Document(parsing: rawValue)
-            var accumulator = TextAccumulator()
+            var accumulator = TextAccumulator(arguments: arguments)
 
             accumulator.visit(document)
 
@@ -144,7 +146,14 @@ extension KvText {
 
         private struct TextAccumulator : MarkupWalker {
 
+            init(arguments: [KvLocalizedStringKey.StringInterpolation.Argument]) {
+                self.arguments = arguments
+            }
+
+
             private var accumulator: Accumulator = .init()
+
+            private let arguments: [KvLocalizedStringKey.StringInterpolation.Argument]
 
 
             // MARK: Operations
@@ -230,6 +239,14 @@ extension KvText {
                 }
 
 
+                func append(format: String, arguments: [KvLocalizedStringKey.StringInterpolation.Argument], attributes: KvText.Attributes) {
+                    guard !format.isEmpty else { return }
+
+                    append(KvText(format: format, arguments: arguments, attributes: attributes),
+                           hasAttributes: !attributes.isEmpty)
+                }
+
+
                 func append(_ accumulator: Accumulator) {
                     guard let text = accumulator.text else { return }
 
@@ -253,9 +270,9 @@ extension KvText {
                     processChildren(of: markup)
 
                 case true:
-                    guard let plainText = (markup as? PlainTextConvertibleMarkup)?.plainText else { return }
+                    guard let format = (markup as? PlainTextConvertibleMarkup)?.plainText else { return }
 
-                    accumulator.append(plainText, attributes: .empty)
+                    accumulator.append(format: format, arguments: arguments, attributes: .empty)
                 }
             }
 
@@ -370,7 +387,7 @@ extension KvText {
 
 
             private mutating func insertSourceCode(_ sourceCode: String) {
-                accumulator.append(sourceCode, attributes: .init { $0.font = .system(.body, design: .monospaced) })
+                accumulator.append(sourceCode, attributes: .init { $0.fontDesign = .monospaced })
             }
 
         }
