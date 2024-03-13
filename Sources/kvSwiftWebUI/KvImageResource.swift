@@ -43,7 +43,7 @@ public struct KvImageResource : Hashable {
 
 
     @inlinable
-    init(name: String, bundle: Bundle) {
+    public init(name: String, bundle: Bundle) {
         self.name = name
         self.bundle = bundle
     }
