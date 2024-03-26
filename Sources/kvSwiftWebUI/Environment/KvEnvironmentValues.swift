@@ -417,16 +417,25 @@ extension KvEnvironmentValues {
                         switch key {
                         case .fixedSize:
                             attributes.append(optionalStyles: Self.cast(value, as: \.fixedSize).cssFlexShrink(in: context))
+
                         case .font:
                             attributes.append(styles: Self.cast(value, as: \.font).cssStyle(in: context.html))
+
                         case .foregroundStyle:
                             attributes.append(styles: Self.cast(value, as: \.foregroundStyle).cssForegroundStyle(context.html, nil))
+
                         case .gridCellColumnSpan:
-                            attributes.append(styles: "grid-column:span \(Self.cast(value, as: \.gridCellColumnSpan))")
+                            let span = Self.cast(value, as: \.gridCellColumnSpan)
+                            guard span > 1 else { break }
+                            
+                            attributes.append(styles: "grid-column:span \(span)")
+
                         case .gridColumnAlignment:
                             attributes.insert(classes: context.html.cssFlexClass(for: Self.cast(value, as: \.gridColumnAlignment), as: .mainSelf))
+
                         case .multilineTextAlignment:
                             attributes.append(styles: "text-align:\(Self.cast(value, as: \.multilineTextAlignment).cssTextAlign.css)")
+
                         case .tag:
                             let id: String? = switch value {
                             case let string as String: string
@@ -440,6 +449,7 @@ extension KvEnvironmentValues {
                             default: nil
                             }
                             attributes[.id] = id.map { .string($0) }
+
                         case .textCase:
                             attributes.append(styles: "text-transform:\(Self.cast(value, as: \.textCase).cssTextTransform)")
 

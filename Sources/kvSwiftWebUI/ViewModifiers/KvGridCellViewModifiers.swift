@@ -36,8 +36,12 @@ extension KvView {
 
     // TODO: DOC
     @inlinable
-    public consuming func gridCellColumns(_ count: Int) -> some KvView { mapConfiguration {
-        $0!.gridCellColumnSpan = count
-    } }
+    public consuming func gridCellColumns(_ count: Int) -> some KvView {
+        assert(count >= 1)
+
+        return mapConfiguration {
+            $0!.gridCellColumnSpan = count
+        }
+    }
 
 }
