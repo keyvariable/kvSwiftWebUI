@@ -389,7 +389,10 @@ public class KvLocalization {
             if resolvedBundle.value != bundle {
                 /// Subdirectories are not allowed in localization directories, so all directories in *name* are ignored.
                 let fileName = name.map { name in
-                    name.lastIndex(of: "/").map { String(name[$0...]) }
+                    name.lastIndex(of: "/").map { index -> String in
+                        let index = name.index(after: index)
+                        return String(name[index...])
+                    }
                     ?? name
                 }
 
