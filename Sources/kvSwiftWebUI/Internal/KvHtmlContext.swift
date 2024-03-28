@@ -591,7 +591,7 @@ extension KvHtmlContext {
 extension KvHtmlContext {
 
     func uri(for imageResource: ImageResource) -> String {
-        if let url = imageResource.bundle.url(forResource: imageResource.name, withExtension: nil) {
+        if let url = localizationContext.url(forResource: imageResource.name, bundle: imageResource.bundle) {
             guard let uri = FileKit.uri(forFileAt: url, relativeTo: "img/", preserveExtension: true)
             else { return KvDebug.pause(code: "error://", "Failed to access image at «\(url)» URL") }
 
