@@ -375,6 +375,25 @@ public class KvLocalization {
         }
 
 
+        /// - Returns: URL to a localized version of resource. Otherwise non-localized version is returned if exists.
+        borrowing func url(forResource name: String?,
+                           withExtension extension: String? = nil,
+                           subdirectory: String? = nil,
+                           bundle: Bundle? = nil
+        ) -> URL? {
+            let bundle = bundle ?? self.primaryBundle
+            let resolvedBundle = resolved(bundle)
+
+            if resolvedBundle.value != bundle,
+               let url = resolvedBundle.value.url(forResource: name, withExtension: nil, subdirectory: nil)
+            {
+                return url
+            }
+
+            return bundle.url(forResource: name, withExtension: nil, subdirectory: nil)
+        }
+
+
         /// - Parameter defaultBundle: Bundle to use when the *resource*'s bundle is `nil`.
         borrowing func string(_ resource: borrowing StringResource, options: Options = [ ]) -> String {
             string(forKey: resource.key,
