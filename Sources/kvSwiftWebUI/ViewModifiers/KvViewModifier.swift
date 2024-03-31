@@ -28,6 +28,7 @@ public typealias ViewModifier = KvViewModifier
 
 
 // TODO: DOC
+/// - Important: Currently `@Environment` is not supported in view modifiers.
 public protocol KvViewModifier {
 
     associatedtype Body : KvView
