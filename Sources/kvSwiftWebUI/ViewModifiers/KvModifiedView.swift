@@ -28,7 +28,7 @@ typealias KvViewConfiguration = KvEnvironmentValues.ViewConfiguration
 
 
 
-struct KvModifiedView : KvView {
+public struct KvModifiedView : KvView {
 
     typealias Environment = KvEnvironmentValues
 
@@ -56,7 +56,7 @@ struct KvModifiedView : KvView {
 
     // MARK: : KvView
 
-    var body: KvNeverView { Body() }
+    public var body: KvNeverView { Body() }
 
 
 

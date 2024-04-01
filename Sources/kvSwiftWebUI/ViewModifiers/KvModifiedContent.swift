@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 //
-//  Copyright (c) 2023 Svyatoslav Popov (info@keyvar.com).
+//  Copyright (c) 2024 Svyatoslav Popov (info@keyvar.com).
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 //  License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
@@ -17,31 +17,39 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvGridCellViewModifiers.swift
+//  KvModifiedContent.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 27.11.2023.
+//  Created by Svyatoslav Popov on 26.03.2024.
 //
 
-// MARK: Grid Layout Modifiers
+public typealias ModifiedContent = KvModifiedContent
 
-extension KvView {
 
-    // TODO: DOC
+
+public struct KvModifiedContent<Content, Modifier> {
+
+    public var content: Content
+
+    public var modifier: Modifier
+
+
     @inlinable
-    public consuming func gridColumnAlignment(_ alignment: KvHorizontalAlignment) -> some KvView { mapConfiguration {
-        $0!.gridColumnAlignment = alignment
-    } }
+    public init(content: Content, modifier: Modifier) {
+        self.content = content
+        self.modifier = modifier
+    }
+
+}
 
 
-    // TODO: DOC
-    @inlinable
-    public consuming func gridCellColumns(_ count: Int) -> some KvView {
-        assert(count >= 1)
 
-        return mapConfiguration {
-            $0!.gridCellColumnSpan = count
-        }
+extension KvModifiedContent : KvViewModifier
+where Content : KvViewModifier, Modifier : KvViewModifier
+{
+
+    public func body(content view: Content.Content) -> Modifier.Body {
+        modifier.apply(to: content.body(content: view))
     }
 
 }
