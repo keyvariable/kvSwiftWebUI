@@ -28,7 +28,6 @@ public typealias ViewModifier = KvViewModifier
 
 
 // TODO: DOC
-/// - Important: Currently `@Environment` is not supported in view modifiers.
 public protocol KvViewModifier {
 
     associatedtype Body : KvView
@@ -56,20 +55,6 @@ extension KvViewModifier {
 }
 
 
-// MARK: Auxiliaries
-
-extension KvViewModifier {
-
-    @usableFromInline
-    func apply<V : KvView>(to view: V) -> Body {
-        let content: Content = (view as? KvModifiedView) ?? KvModifiedView(source: { view })
-
-        return body(content: content)
-    }
-
-}
-
-
 
 // MARK: - View.modifier(_:)
 
@@ -78,7 +63,7 @@ extension KvView {
     // TODO: DOC
     @inlinable
     public consuming func modifier<T : KvViewModifier>(_ modifier: T) -> some KvView {
-        modifier.apply(to: self)
+        KvModifiedContent(content: self, modifier: modifier)
     }
 
 }

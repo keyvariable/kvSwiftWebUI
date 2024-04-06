@@ -113,4 +113,13 @@ public struct KvModifiedView : KvView {
         return fragment
     }
 
+
+
+    // MARK: Auxiliaries
+
+    /// - Returns: Given *view* if it is an instance of `KvModifiedView` or new instance wrapping *view*.
+    static func cast<V : KvView>(from view: V) -> KvModifiedView {
+        (view as? KvModifiedView) ?? KvModifiedView(source: { view })
+    }
+
 }

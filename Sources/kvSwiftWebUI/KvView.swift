@@ -111,11 +111,25 @@ extension KvView {
 
 
     private func forEachEnvironmentBinding(_ body: (KvEnvironmentProtocol) -> Void) {
-        Mirror(reflecting: self).children.forEach {
-            guard let value = $0.value as? KvEnvironmentProtocol else { return }
 
-            body(value)
+        func Process<T>(_ instance: T) {
+            // Recursively enumerating properties wrapped with `@Environment` or those values may contain wrapped properties.
+            Mirror(reflecting: instance).children.forEach {
+                switch $0.value {
+                case let value as KvEnvironmentProtocol:
+                    body(value)
+
+                case let modifier as any KvViewModifier:
+                    Process(modifier)
+
+                default:
+                    break
+                }
+            }
         }
+
+
+        Process(self)
     }
 
 }

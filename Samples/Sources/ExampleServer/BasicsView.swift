@@ -45,6 +45,7 @@ struct BasicsView : View {
             imageSection
             textSection
             environmentSection
+            viewModifierSection
         }
     }
 
@@ -300,6 +301,20 @@ struct BasicsView : View {
     }
 
 
+    private var viewModifierSection: some View {
+        Section1(header: Text("View Modifiers")) {
+            Section2(header: Text("Adaptive Padding")) {
+                Text("Below are examples where the same `Text` view is modified with the same view modifier. This modifier applies large or small padding whether horizontal size class is regular.")
+
+                HorizontalSizeClassPreview {
+                    Text("Text")
+                        .modifier(AdaptivePaddingViewModifier())
+                }
+            }
+        }
+    }
+
+
 
     // MARK: .Preview
 
@@ -323,6 +338,47 @@ struct BasicsView : View {
                     .padding(.em(0.25))
                     .background(.systemGray4)
                     .clipShape(.rect(cornerRadius: .em(0.25)))
+            }
+        }
+
+    }
+
+
+
+    // MARK: .HorizontalSizeClassPreview
+
+    /// This view presents the same content in previews in current horizontal size class and for each value.
+    private struct HorizontalSizeClassPreview<Content : View> : View {
+
+        let content: Content
+
+
+        init(@ViewBuilder content: () -> Content) {
+            self.content = content()
+        }
+
+
+        var body: some View {
+            preview(sizeClass: nil)
+
+            ForEach(UserInterfaceSizeClass.allCases, id: \.self) {
+                preview(sizeClass: $0)
+            }
+        }
+
+
+        @ViewBuilder
+        private func preview(sizeClass: UserInterfaceSizeClass?) -> some View {
+            let caption = Text("Size class: \(Text.md(verbatim: sizeClass.map { "`.\($0)`" } ?? "current"))")
+
+            switch sizeClass {
+            case .none:
+                Preview(caption: caption) { content }
+            case .some:
+                Preview(caption: caption) {
+                    content
+                }
+                .environment(\.horizontalSizeClass, sizeClass)
             }
         }
 
@@ -368,24 +424,7 @@ struct BasicsView : View {
             Section2(header: Text.md(verbatim: "`\\.horizontalSizeClass`")) {
                 Text("An adaptive view below is presented with adaptive and forced horizontal size classes. Note how stack direction, order of views, separator and font size are adapted for screen width.")
 
-                examplePreview()
-                examplePreview(.regular)
-                examplePreview(.compact)
-            }
-        }
-
-
-        @ViewBuilder
-        private func examplePreview(_ horizontalSizeClass: UserInterfaceSizeClass? = nil) -> some View {
-            let caption = Text("Size class: \(Text.md(verbatim: horizontalSizeClass.map { "`.\($0)`" } ?? "dynamic"))")
-
-            switch horizontalSizeClass {
-            case .none:
-                Preview(caption: caption, content: ExampleView.init)
-            case .some:
-                Preview(caption: caption) {
-                    ExampleView().environment(\.horizontalSizeClass, horizontalSizeClass)
-                }
+                HorizontalSizeClassPreview(content: ExampleView.init)
             }
         }
 
@@ -437,6 +476,23 @@ struct BasicsView : View {
                 Text(verbatim: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")
             }
 
+        }
+
+    }
+
+
+
+    // MARK: .AdaptivePaddingViewModifier
+
+    /// This view modifier applies padding depending on current `\.horizontalSizeClass` value.
+    private struct AdaptivePaddingViewModifier : ViewModifier {
+
+        @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+
+        func body(content: Content) -> some View {
+            content
+                .padding(horizontalSizeClass == .regular ? .em(2) : .px(4))
         }
 
     }
