@@ -17,37 +17,23 @@ extension KvHttpBundle {
 
     /// - Returns: A group with configured HTTP response.
     @inlinable
-    public var httpResponseGroup: some KvResponseGroup {
-        /// Contents of this group are responded on GET and HEAD requests.
-        KvGroup(httpMethods: .get) {
-            KvHttpResponse.with
-                .requestHeaders
-                .queryMap { $0 ?? [ ] }
-                .subpath
-                .content { input in
-                    let request = KvHttpBundle.Request(path: input.subpath, query: input.query)
-                        .headerIterator(input.requestHeaders.makeIterator())
+    public var httpResponseGroup: some KvResponseRootGroup {
+        KvRootGroup {
+            /// Contents of this group are responded on GET and HEAD requests.
+            KvGroup(httpMethods: .get) {
+                KvHttpResponse.with
+                    .requestHeaders
+                    .queryMap { $0 }    // It makes response to process any query.
+                    .subpath            // It makes response to process any subpath.
+                    .content { input in
+                        let request = KvHttpBundle.Request(urlComponents: input.requestContext.urlComponents,
+                                                           urlPath: input.subpath)
+                            .headerIterator(input.requestHeaders.makeIterator())
 
-                    return self.response(for: request)
-                }
+                        return self.response(for: request)
+                    }
+            }
         }
-    }
-
-}
-
-
-
-extension KvResponseGroupBuilder {
-
-    /// Extends `KvResponseGroupBuilder` allowing `KvHttpBundle` to be used as an expression in the group declarations:
-    /// ```swift
-    /// KvGroup {
-    ///     httpBundle
-    /// }
-    /// ```
-    @inlinable
-    public static func buildExpression(_ httpBundle: KvHttpBundle) -> some Group {
-        httpBundle.httpResponseGroup
     }
 
 }
@@ -58,7 +44,7 @@ extension KvResponseRootGroupBuilder {
 
     /// Extends `KvResponseRootGroupBuilder` allowing `KvHttpBundle` to be used as an expression in the group declarations:
     /// ```swift
-    /// KvGroup {
+    /// KvGroup(hosts: "example.com") {
     ///     httpBundle
     /// }
     /// ```

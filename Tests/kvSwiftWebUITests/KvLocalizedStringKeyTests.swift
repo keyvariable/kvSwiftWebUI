@@ -53,7 +53,7 @@ final class KvLocalizedStringKeyTests : XCTestCase {
                expectedFormat: "i=\(KvLocalizedStringKey.StringInterpolation.Constants.formatInt),i8=%d,i16=%d,i32=%d,i64=%lld")
         Assert("u=\(u),u8=\(u8),u16=\(u16),u32=\(u32),u64=\(u64)",
                expectedFormat: "u=\(KvLocalizedStringKey.StringInterpolation.Constants.formatUInt),u8=%u,u16=%u,u32=%u,u64=%llu")
-        Assert("f=\(f),lf=\(d)", expectedFormat: "f=%f,lf=%f")
+        Assert("f=\(f),lf=\(d)", expectedFormat: "f=%g,lf=%g")
         Assert("s=\(s)", expectedFormat: "s=%@")
         Assert("date=\(date),url=\(url)", expectedFormat: "date=%@,url=%@")
     }

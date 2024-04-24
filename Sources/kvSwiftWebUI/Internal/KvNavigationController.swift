@@ -52,8 +52,6 @@ struct KvNavigationController {
 
     struct Configuration {
 
-        let rootPath: KvUrlPath?
-
         let iconHeaders: String?
 
         let assets: KvHttpBundleAssets
@@ -93,9 +91,9 @@ struct KvNavigationController {
         }
 
 
-        // MARK: Subscripts
+        // MARK: Operations
 
-        subscript(representation: KvHttpBundle.Representation) -> StaticNode? {
+        func selectRootNode(for representation: KvHttpBundle.Representation) -> StaticNode? {
             switch self {
             case .localized(let nodes):
                 let node = representation.languageTag.flatMap { nodes[$0] }
@@ -113,16 +111,55 @@ struct KvNavigationController {
 
     // MARK: Operations
 
-    func htmlResponse(for request: borrowing KvHttpBundle.ProcessedRequest) -> KvHttpResponseContent? {
-        guard var node = rootNodes[request.representation].map(AnyNode.staticNode(_:)) else { return nil }
+    func htmlResponse(for request: KvHttpBundle.ProcessedRequest) -> KvHttpResponseContent? {
+        guard var node = rootNodes
+            .selectRootNode(for: request.representation)
+            .map(AnyNode.staticNode(_:))
+        else { return nil }
 
-        for component in request.path.components {
+        for component in request.urlPath.components {
             guard let nextNode = node.next(for: String(component), with: configuration) else { return nil }
 
             node = nextNode
         }
 
-        return node.htmlResponse(with: configuration, urlComponents: request.urlComponents())
+        return node.htmlResponse(with: configuration)
+    }
+
+
+    /// Invokes *callback* for each path the receiver provides response for.
+    ///
+    /// - Parameter callback: A block to invoke. It's arguments are the local path string and a stop flag. Set the flag to `true` to stop enumeration.
+    func enumeratePaths(representation: borrowing KvHttpBundle.Representation,
+                        callback: (String, inout Bool) -> Void
+    ) {
+        guard let node = rootNodes.selectRootNode(for: representation) else { return }
+
+        var stopFlag = false
+        var path = String()
+
+
+        func Process(_ node: StaticNode) {
+            callback(path, &stopFlag)
+
+            guard !stopFlag,
+                  let childNodes = node.childNodes
+            else { return }
+
+            for (component, childNode) in childNodes {
+                let count = component.count
+
+                path.append("\(KvUrlPath.separator)\(component)")
+                defer { path.removeLast(count + 1) }
+
+                Process(childNode)
+
+                guard !stopFlag else { break }
+            }
+        }
+
+
+        Process(node)
     }
 
 
@@ -150,17 +187,13 @@ struct KvNavigationController {
         }
 
 
-        func htmlResponse(
-            with configuration: borrowing Configuration,
-            urlComponents: @autoclosure () -> URLComponents
-        ) -> KvHttpResponseContent {
+        func htmlResponse(with configuration: borrowing Configuration) -> KvHttpResponseContent {
             switch self {
             case .dynamicNode(let node):
                 KvNavigationController.htmlResponse(
                     in: node.context,
                     with: node.htmlRepresentation,
-                    configuration: configuration,
-                    urlComponents: urlComponents()
+                    configuration: configuration
                 )
 
             case .staticNode(let node):
@@ -192,7 +225,6 @@ struct KvNavigationController {
             self.context = KvHtmlContext(
                 configuration.assets,
                 cssAsset: cssAsset,
-                rootPath: configuration.rootPath,
                 navigationPath: navigationPath ?? .init(elements: [ .init(value: .root, title: nil) ]),
                 localizationContext: localizationContext,
                 defaultBundle: configuration.defaultBundle,
@@ -247,10 +279,13 @@ struct KvNavigationController {
 
 
 
+        fileprivate private(set) var childNodes: [String : StaticNode]?
+
+
+
         private init(from node: borrowing Node,
                      with configuration: borrowing Configuration,
-                     cssAsset: KvCssAsset.Prototype?,
-                     urlComponents: () -> URLComponents
+                     cssAsset: KvCssAsset.Prototype?
         ) {
             let context = node.context
 
@@ -259,8 +294,7 @@ struct KvNavigationController {
             httpResponse = KvNavigationController.htmlResponse(
                 in: context,
                 with: node.htmlRepresentation,
-                configuration: configuration,
-                urlComponents: urlComponents()
+                configuration: configuration
             )
 
             navigationDestinations = context.navigationDestinations
@@ -271,17 +305,10 @@ struct KvNavigationController {
 
 
 
-        private var childNodes: [String : StaticNode]?
-
-
-
         // MARK: Fabrics
 
         /// Traverses the static navigation destinations and returns the root node.
         static func from<Content : KvView>(_ view: Content, with configuration: borrowing Configuration, _ languageTag: String? = nil) -> StaticNode {
-            var rootUrlComponents = URLComponents()
-            rootUrlComponents.path = "/"
-
             let rootNode: StaticNode
             do {
                 let localizationContext = configuration.localization.context(languageTag: languageTag)
@@ -295,11 +322,11 @@ struct KvNavigationController {
                 var cssAssetPrototype: KvCssAsset.Prototype?
                 replaceGeneratedCssWithResource(in: node.context, with: &cssAssetPrototype)
 
-                rootNode = .init(from: node, with: configuration, cssAsset: cssAssetPrototype, urlComponents: { rootUrlComponents })
+                rootNode = .init(from: node, with: configuration, cssAsset: cssAssetPrototype)
             }
 
             // Root node has empty URL components.
-            rootNode.processStaticDestinations(with: configuration, urlComponents: { rootUrlComponents })
+            rootNode.processStaticDestinations(with: configuration)
 
             return rootNode
         }
@@ -317,7 +344,7 @@ struct KvNavigationController {
             var cssAssetPrototype: KvCssAsset.Prototype?
             replaceGeneratedCssWithResource(in: node.context, with: &cssAssetPrototype)
 
-            return .init(from: node, with: configuration, cssAsset: cssAssetPrototype, urlComponents: URLComponents.init)
+            return .init(from: node, with: configuration, cssAsset: cssAssetPrototype)
         }
 
 
@@ -343,8 +370,7 @@ struct KvNavigationController {
 
         /// Processes all available static destinations recursively.
         private func processStaticDestinations(
-            with configuration: borrowing Configuration,
-            urlComponents: () -> URLComponents
+            with configuration: borrowing Configuration
         ) {
             navigationDestinations?.staticDestinations().forEach { destinationGroup in
                 typealias DestinationNode = (node: Node, data: String)
@@ -370,22 +396,13 @@ struct KvNavigationController {
                 seeds.forEach { (node, data) in
                     StaticNode.replaceGeneratedCssWithResource(in: node.context, with: &sharedCssAssetPrototype)
 
-                    let urlComponents = { () -> URLComponents in
-                        var urlComponents = urlComponents()
-
-                        urlComponents.path.append("\(urlComponents.path.last == "/" ? "" : "/")\(data)")
-
-                        return urlComponents
-                    }
-
                     let staticNode = StaticNode(
                         from: node,
                         with: configuration,
-                        cssAsset: sharedCssAssetPrototype ?? cssAsset,
-                        urlComponents: urlComponents
+                        cssAsset: sharedCssAssetPrototype ?? cssAsset
                     )
 
-                    staticNode.processStaticDestinations(with: configuration, urlComponents: urlComponents)
+                    staticNode.processStaticDestinations(with: configuration)
 
                     insertChildNode(staticNode, for: data)
                 }
@@ -425,8 +442,7 @@ struct KvNavigationController {
 
     private static func htmlResponse(in context: KvHtmlContext,
                                      with bodyRepresentation: KvHtmlRepresentation,
-                                     configuration: borrowing Configuration,
-                                     urlComponents: @autoclosure () -> URLComponents
+                                     configuration: borrowing Configuration
     ) -> KvHttpResponseContent {
 
         struct Accumulator {
@@ -474,50 +490,11 @@ struct KvNavigationController {
         }
 
 
-        func AppendLocalizedAlternativeHeaders(into accumulator: inout Accumulator) {
-            let languageTags = configuration.localization.languageTags
-
-            guard !languageTags.isEmpty else { return }
-
-
-            func LinkTag(languageTag: String, urlComponents: URLComponents) -> String? {
-                guard let url = urlComponents.url else { return nil }
-
-                return "<link rel=\"alternate\" hreflang=\"\(languageTag)\" href=\"\(url.absoluteString)\"/>"
-            }
-
-
-            var urlComponents = urlComponents()
-
-            urlComponents.queryItems?.removeAll(where: { $0.name == KvHttpBundle.Constants.languageTagsUrlQueryItemName })
-            if urlComponents.queryItems?.isEmpty == true {
-                urlComponents.queryItems = nil
-            }
-
-            accumulator.append(LinkTag(languageTag: "x-default", urlComponents: urlComponents))
-
-            // Below urlComponents.queryItems won't be empty so it' created.
-            if urlComponents.queryItems == nil {
-                urlComponents.queryItems = .init()
-            }
-            // Adding placeholder item to be updated in cycle below and saving it's index.
-            let queryItemIndex = urlComponents.queryItems!.endIndex
-            urlComponents.queryItems!.append(.init(name: KvHttpBundle.Constants.languageTagsUrlQueryItemName, value: nil))
-
-            languageTags.forEach { languageTag in
-                urlComponents.queryItems![queryItemIndex].value = languageTag
-
-                accumulator.append(LinkTag(languageTag: languageTag, urlComponents: urlComponents))
-            }
-        }
-
-
         var accumulator = Accumulator()
 
         // TODO: Accumulate entire document inside KvHtmlRepresentation and perform simultanous accumulation of data from the the data list (from KvHtmlRepresentation) and evaluation of the hash digest.
         accumulator.append("<!DOCTYPE html><html\(context.localizationContext.languageTag.map { " lang=\"\($0)\"" } ?? "")><head>")
         AppendTitleHeader(into: &accumulator)
-        AppendLocalizedAlternativeHeaders(into: &accumulator)
         accumulator.append(
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />",
             "<meta name=\"format-detection\" content=\"telephone=no\" /><meta name=\"format-detection\" content=\"date=no\" /><meta name=\"format-detection\" content=\"address=no\" /><meta name=\"format-detection\" content=\"email=no\" />",

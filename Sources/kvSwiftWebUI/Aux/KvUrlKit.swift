@@ -17,38 +17,34 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvTestKit.swift
+//  KvUrlKit.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 23.01.2024.
+//  Created by Svyatoslav Popov on 06.05.2024.
 //
 
 import Foundation
 
-@testable import kvSwiftWebUI
 
 
+struct KvUrlKit { private init() { } }
 
-/// A collection of auxiliaries for testing.
-struct KvTestKit { private init() { }
 
-    /// - Returns: HTML code of given view.
-    static func renderHTML<V : KvView>(for view: V) -> String {
-        let context = KvHtmlRepresentationContext.root(
-            html: .init(.init(),
-                        cssAsset: .init(parent: nil),
-                        navigationPath: .empty,
-                        localizationContext: .disabled,
-                        defaultBundle: nil,
-                        authorsTag: nil)
-        )
+// MARK: URL Query
 
-        var data = Data()
+extension KvUrlKit {
 
-        KvHtmlRepresentation(of: view, in: context)
-            .forEach { data.append($0) }
+    static func append(_ urlComponents: inout URLComponents, withUrlQueryItem urlQueryItem: URLQueryItem) {
+        urlComponents.queryItems?.append(urlQueryItem)
+        ?? (urlComponents.queryItems = [ urlQueryItem ])
+    }
 
-        return .init(data: data, encoding: .utf8)!
+
+    /// E.g. removes empty array of URL query items.
+    static func normalizeUrlQueryItems(in urlComponents: inout URLComponents) {
+        if urlComponents.queryItems?.isEmpty == true {
+            urlComponents.queryItems = nil
+        }
     }
 
 }

@@ -9,6 +9,7 @@ allowing developer to focus on the design of the interface and the source code.
 - dynamic navigation destinations, e.g. `/user/1234`;
 - favicons, the home screen icons and tint color, etc;
 - localization;
+- SEO: automatic sitemaps;
 - dark theme;
 - caching of responses;
 - scripts.

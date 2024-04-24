@@ -42,13 +42,7 @@ class KvHtmlContext {
     private(set) var cssAsset: KvCssAsset
 
 
-    let rootPath: KvUrlPath?
     let navigationPath: KvNavigationPath
-
-    /// Joined `.rootPath` and `.navigationPath.urlPath`.
-    private(set) lazy var absolutePath: KvUrlPath = { urlPath in
-        rootPath.map { $0 + urlPath } ?? urlPath
-    }(navigationPath.urlPath)
 
 
     let localizationContext: KvLocalization.Context
@@ -73,7 +67,6 @@ class KvHtmlContext {
 
     init(_ assets: KvHttpBundleAssets,
          cssAsset: KvCssAsset,
-         rootPath: KvUrlPath?,
          navigationPath: KvNavigationPath,
          localizationContext: KvLocalization.Context,
          defaultBundle: Bundle?,
@@ -82,7 +75,6 @@ class KvHtmlContext {
     ) {
         self.assets = assets
         self.cssAsset = cssAsset
-        self.rootPath = rootPath
         self.navigationPath = navigationPath
         self.localizationContext = localizationContext
         self.defaultBundle = defaultBundle ?? .main
@@ -113,7 +105,7 @@ class KvHtmlContext {
     /// All HTML headers registered in the receiver.
     var headers: String {
         var headers: String = resourceHeaders
-            .lazy.map { $0.html(basePath: self.rootPath) }
+            .lazy.map { $0.html() }
             .joined()
 
         if !cssAsset.isEmpty {
@@ -563,7 +555,7 @@ extension KvHtmlContext {
 
                     return KvHtmlResource.css(.external(urlComponents.url!))
                         .header?
-                        .html(basePath: nil) // URLs to external resources are not resolved against base URL.
+                        .html()
                 }
                 .joined()
         }

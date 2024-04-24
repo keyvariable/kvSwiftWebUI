@@ -25,6 +25,8 @@
 
 import Foundation
 
+import kvKit
+
 
 
 public typealias Link = KvLink
@@ -111,46 +113,80 @@ struct KvLinkKit {
                                innerHTML: KvHtmlRepresentation.Fragment,
                                in context: borrowing KvHtmlRepresentationContext
     ) -> KvHtmlRepresentation.Fragment {
-        .tag(
-            .a,
-            attributes: .union(
-                htmlAttributes,
-                .init {
-                    var url = url
-                    var isExternal = true
-
-                    if var components = URLComponents(url: url, resolvingAgainstBaseURL: true) {
-                        // - NOTE: URLs having explicit host are considered external so `target="_blank"` attribute is set.
-                        isExternal = components.host != nil
-
-                        if let languageTag = context.localizationContext.languageTag,
-                           !isExternal
-                        {
-                            func LanguageTagQueryItem() -> URLQueryItem {
-                                .init(name: KvHttpBundle.Constants.languageTagsUrlQueryItemName, value: languageTag)
-                            }
-
-                            switch components.queryItems?.contains(where: { $0.name == KvHttpBundle.Constants.languageTagsUrlQueryItemName }) {
-                            case .some(false):
-                                components.queryItems!.append(LanguageTagQueryItem())
-                            case .none:
-                                components.queryItems = [ LanguageTagQueryItem() ]
-                            case .some(true):
-                                break   // Explicit localization is not overridden.
-                            }
-                        }
-
-                        url = components.url ?? url
-                    }
-
-                    $0.set(href: url)
-                    if isExternal {
-                        $0[.target] = "_blank"
-                    }
-                }
-            ),
+        representation(
+            linkAttributes: linkAttributes(url: url, in: context),
+            htmlAttributes: htmlAttributes,
             innerHTML: innerHTML
         )
+    }
+
+
+    static func representation(urlComponents: URLComponents,
+                               htmlAttributes: KvHtmlKit.Attributes? = nil,
+                               innerHTML: KvHtmlRepresentation.Fragment,
+                               in context: borrowing KvHtmlRepresentationContext
+    ) -> KvHtmlRepresentation.Fragment {
+        representation(
+            linkAttributes: linkAttributes(urlComponents: urlComponents, in: context),
+            htmlAttributes: htmlAttributes,
+            innerHTML: innerHTML
+        )
+    }
+
+
+    private static func representation(linkAttributes: KvHtmlKit.Attributes,
+                                       htmlAttributes: KvHtmlKit.Attributes? = nil,
+                                       innerHTML: KvHtmlRepresentation.Fragment
+    ) -> KvHtmlRepresentation.Fragment {
+        .tag(
+            .a,
+            attributes: .union(htmlAttributes, linkAttributes),
+            innerHTML: innerHTML
+        )
+    }
+
+
+    private static func linkAttributes(url: URL,
+                                       in context: borrowing KvHtmlRepresentationContext
+    ) -> KvHtmlKit.Attributes {
+        guard let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: true) else {
+            return .init {
+                $0.set(href: url)
+
+                // - NOTE: URLs having explicit host are considered external so `target="_blank"` attribute is set.
+                if url.host() != nil {
+                    $0[.target] = "_blank"
+                }
+            }
+        }
+
+        return linkAttributes(urlComponents: urlComponents, in: context)
+    }
+
+
+    private static func linkAttributes(urlComponents: URLComponents,
+                                       in context: borrowing KvHtmlRepresentationContext
+    ) -> KvHtmlKit.Attributes {
+        .init {
+            // - NOTE: URLs having explicit host are considered external so `target="_blank"` attribute is set.
+            let isExternal = urlComponents.host != nil
+            let languageTag = !isExternal ? context.localizationContext.languageTag : nil
+
+            var urlComponents = urlComponents
+
+            if let languageTag {
+                KvUrlKit.append(&urlComponents, withUrlQueryItem: .init(name: KvHttpBundle.Constants.languageTagsUrlQueryItemName, value: languageTag))
+            }
+
+            if let url = urlComponents.url {
+                $0.set(href: url)
+            }
+            else { KvDebug.pause("WARNING: failed to compose an URL from \(urlComponents) components") }
+
+            if isExternal {
+                $0[.target] = "_blank"
+            }
+        }
     }
 
 }

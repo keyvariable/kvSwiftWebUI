@@ -151,8 +151,10 @@ where Label : KvView
         case .absolute(let urlPath):
             components.path = "/\(urlPath.joined)"
         case .component(let component):
-            let contextPath = context.html.absolutePath
-            let prefix = !contextPath.isEmpty ? "/\(contextPath.joined)" : ""
+            let prefix: String = {
+                !$0.isEmpty ? "/\($0.joined)" : ""
+            }(context.html.navigationPath.urlPath)
+
             components.path = "\(prefix)/\(component)"
         }
 
