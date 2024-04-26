@@ -60,14 +60,17 @@ public struct KvEnvironmentValues {
 
     // MARK: Access
 
+    /// Getter returns the closest value in the hierarchy by given *key*.
+    /// ``KvEnvironmentKey/defaultValue`` is returned if there is no value for *key*.
     public subscript<Key : KvEnvironmentKey>(key: Key.Type) -> Key.Value {
-        get {
-            let keyID = ObjectIdentifier(key)
-            return firstResult { $0.container[keyID] }
-                .map { $0 as! Key.Value }
-            ?? key.defaultValue
-        }
+        get { value(forKey: key) ?? key.defaultValue }
         set { container[ObjectIdentifier(key)] = newValue }
+    }
+
+
+    func value<Key : KvEnvironmentKey>(forKey key: Key.Type) -> Key.Value? {
+        firstResult { $0.container[ObjectIdentifier(key)] }
+            .map { $0 as! Key.Value }
     }
 
 
@@ -419,7 +422,7 @@ extension KvEnvironmentValues {
                             attributes.append(optionalStyles: Self.cast(value, as: \.fixedSize).cssFlexShrink(in: context))
 
                         case .font:
-                            attributes.append(styles: Self.cast(value, as: \.font).cssStyle(in: context.html))
+                            attributes.append(styles: Self.cast(value, as: \.font).cssStyle(in: context))
 
                         case .foregroundStyle:
                             attributes.append(styles: Self.cast(value, as: \.foregroundStyle).cssForegroundStyle(context.html, nil))

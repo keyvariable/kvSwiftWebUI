@@ -509,7 +509,7 @@ public struct KvText : Equatable {
 
 
         /// - Parameter scope: Merged parent attributes.
-        func htmlAttributes(in context: borrowing KvHtmlContext, scope: borrowing Attributes) -> KvHtmlKit.Attributes? {
+        func htmlAttributes(in context: borrowing KvHtmlRepresentationContext, scope: borrowing Attributes) -> KvHtmlKit.Attributes? {
             let htmlAttributes = KvHtmlKit.Attributes { htmlAttributes in
 
                 struct FontAccumulator {
@@ -541,7 +541,7 @@ public struct KvText : Equatable {
                            break
 
                        case .foregroundStyle:
-                           htmlAttributes.append(optionalStyles: (Attributes.cast(value, as: \.foregroundStyle)?.cssExpression(in: context)).map { "color:\($0)" })
+                           htmlAttributes.append(optionalStyles: (Attributes.cast(value, as: \.foregroundStyle)?.cssExpression(in: context.html)).map { "color:\($0)" })
                            break
 
                        case .isItalic:
@@ -848,7 +848,7 @@ extension KvText : KvHtmlRenderable {
     private static func renderHTML(for text: KvText, in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
         let scope = Attributes(from: context)
 
-        return context.representation(htmlAttributes: text.attributes.htmlAttributes(in: context.html, scope: scope)) { context, htmlAttributes in
+        return context.representation(htmlAttributes: text.attributes.htmlAttributes(in: context, scope: scope)) { context, htmlAttributes in
             let innerFragment = contentFragment(text.content, in: context, scope: .merged(text.attributes, over: scope))
             let textStyle = scope.font??.textStyle ?? text.attributes.font??.textStyle
 
@@ -903,7 +903,7 @@ extension KvText : KvHtmlRenderable {
             let fragment = contentFragment(text.content, in: context, scope: .merged(attributes, over: scope))
 
             return .tag(.span,
-                        attributes: attributes.htmlAttributes(in: context.html, scope: scope) ?? .empty,
+                        attributes: attributes.htmlAttributes(in: context, scope: scope) ?? .empty,
                         innerHTML: attributes.wrapping(fragment))
 
         case true:

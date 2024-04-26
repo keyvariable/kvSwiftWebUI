@@ -74,7 +74,7 @@ public class KvHttpBundle {
     public init<RootView>(with configuration: borrowing Configuration, @KvViewBuilder rootView: @escaping () -> RootView) throws
     where RootView : KvView
     {
-        localization = .init(configuration.localizationBundle ?? .main)
+        localization = .init(configuration.defaultBundle ?? .main)
 
         configuration.icon?.forEachHtmlResource(assets.insert(_:))
 
@@ -88,6 +88,7 @@ public class KvHttpBundle {
                         iconHeaders: configuration.icon?.htmlHeaders,
                         assets: assets,
                         localization: localization,
+                        defaultBundle: configuration.defaultBundle,
                         authorsTag: configuration.authorsTag)
         )
 
@@ -124,10 +125,12 @@ public class KvHttpBundle {
         /// Maximum size of cached responses. If `nil` then the cache is disabled. By default cache uses 50% of physical memory on the machine.
         public var responseCacheSize: ResponseCacheSize?
 
-        /// A bundle to use as localization source. If `nil` then `.main` bundle is used.
+        /// Default bundle to use when `nil` bundle is passed as an argument. If `nil` then `.main` bundle is used.
         ///
-        /// - SeeAlso: ``KvEnvironmentValues/localizationBundle``.
-        public var localizationBundle: Bundle?
+        /// For example, this property can be used to reduce explicit passing of `.module` bundle to texts, images, etc.
+        ///
+        /// - SeeAlso: ``KvView/defaultBundle(_:)``.
+        public var defaultBundle: Bundle?
 
         /// A text to be used as the author's tag.
         public var authorsTag: KvText?
@@ -135,20 +138,22 @@ public class KvHttpBundle {
 
 
         /// - Parameters:
-        ///   - rootPath: See ``rootPath`` for details.
-        ///   - icon: See ``icon`` for details.
-        ///   - responseCacheSize: See ``responseCacheSize`` for details.
+        ///   - rootPath: Initial value for ``rootPath`` property.
+        ///   - icon: Initial value for ``icon`` property.
+        ///   - responseCacheSize: Initial value for ``responseCacheSize`` property.
+        ///   - defaultBundle: Initial value for ``defaultBundle`` property.
+        ///   - authorsTag: Initial value for ``authorsTag`` property.
         @inlinable
         public init(rootPath: KvUrlPath? = nil,
                     icon: KvApplicationIcon? = nil,
                     responseCacheSize: ResponseCacheSize? = .physicalMemoryRatio(0.5),
-                    localizationBundle: Bundle? = nil,
+                    defaultBundle: Bundle? = nil,
                     authorsTag: KvText? = nil
         ) {
             self.rootPath = rootPath
             self.icon = icon
             self.responseCacheSize = responseCacheSize
-            self.localizationBundle = localizationBundle
+            self.defaultBundle = defaultBundle
             self.authorsTag = authorsTag
         }
 
@@ -234,7 +239,7 @@ public class KvHttpBundle {
 
     // MARK: .Representation
 
-    /// Representation of a resource in bundle.
+    /// Representation of a resource in a bundle.
     public struct Representation : Hashable {
 
         /// Language tag ([RFC 5646](https://datatracker.ietf.org/doc/html/rfc5646 )) to be used to select localized resources.

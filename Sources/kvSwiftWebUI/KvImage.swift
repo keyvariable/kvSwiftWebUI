@@ -37,7 +37,10 @@ public typealias Image = KvImage
 public struct KvImage : KvView {
 
     @usableFromInline
-    let resource: KvImageResource
+    let resourceSelector: KvImageResource.Selector
+
+    @usableFromInline
+    let bundle: Bundle?
 
     @usableFromInline
     private(set) var resizingMode: ResizingMode? = nil
@@ -48,12 +51,22 @@ public struct KvImage : KvView {
 
     // TODO: DOC
     @inlinable
-    public init(_ name: String, bundle: Bundle? = nil) { self.init(KvImageResource(name: name, bundle: bundle ?? .main)) }
+    public init(_ name: String, bundle: Bundle? = nil) { self.init(
+        selector: .init(name: name),
+        bundle: bundle
+    ) }
 
 
     // TODO: DOC
     @inlinable
-    public init(_ resource: KvImageResource) { self.resource = resource }
+    public init(_ resource: KvImageResource) { self.init(selector: resource.selector, bundle: resource.bundle) }
+
+
+    @usableFromInline
+    init(selector: KvImageResource.Selector, bundle: Bundle?) {
+        resourceSelector = selector
+        self.bundle = bundle
+    }
 
 
 
@@ -167,7 +180,7 @@ extension KvImage : KvHtmlRenderable {
 
     private func cssBackground(in context: KvHtmlRepresentationContext, alignment: KvAlignment?) -> KvCssBackground {
         .init(repeat: resizingMode == .tile ? .repeat : .noRepeat,
-              source: .uri(context.html.uri(for: resource)),
+              source: .uri(context.html.uri(for: resource(in: context))),
               position: alignment?.cssBackgroundPosition)
     }
 
@@ -207,7 +220,7 @@ extension KvImage : KvHtmlRenderable {
             .img,
             attributes: .union(
                 htmlAttributes,
-                .init { $0.set(src: context.html.uri(for: resource)) }
+                .init { $0.set(src: context.html.uri(for: resource(in: context))) }
             )
         )
     }
@@ -228,6 +241,12 @@ extension KvImage : KvHtmlRenderable {
                 }
             )
         )
+    }
+
+
+    private func resource(in context: KvHtmlRepresentationContext) -> KvImageResource {
+        .init(selector: resourceSelector,
+              bundle: bundle ?? context.defaultBundle)
     }
 
 }

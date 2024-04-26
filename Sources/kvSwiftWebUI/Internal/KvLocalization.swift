@@ -406,7 +406,6 @@ public class KvLocalization {
         }
 
 
-        /// - Parameter defaultBundle: Bundle to use when the *resource*'s bundle is `nil`.
         borrowing func string(_ resource: borrowing StringResource, options: Options = [ ]) -> String {
             string(forKey: resource.key,
                    defaultValue: resource.defaultValue,

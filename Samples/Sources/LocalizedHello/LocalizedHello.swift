@@ -37,7 +37,7 @@ import kvServerKit
 struct LocalizedHello : KvServer {
 
     private let frontendBundle = try! KvHttpBundle(
-        with: .init(localizationBundle: .module),
+        with: .init(defaultBundle: .module),
         rootView: { LocalizedHelloView() }
     )
 

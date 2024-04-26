@@ -35,17 +35,50 @@ public typealias ImageResource = KvImageResource
 public struct KvImageResource : Hashable {
 
     @usableFromInline
-    var name: String
-    
+    var selector: Selector
+
     @usableFromInline
     var bundle: Bundle
 
 
+    @usableFromInline
+    var name: String {
+        get { selector.name }
+        set { selector.name = newValue }
+    }
+
+
 
     @inlinable
-    public init(name: String, bundle: Bundle) {
-        self.name = name
+    public init(name: String, bundle: Bundle) { self.init(
+        selector: .init(name: name),
+        bundle: bundle
+    ) }
+
+
+    @usableFromInline
+    init(selector: Selector, bundle: Bundle) {
+        self.selector = selector
         self.bundle = bundle
+    }
+
+
+
+    // MARK: .Selector
+
+    /// Image selector contains all information required to identify an image in a bundle.
+    @usableFromInline
+    struct Selector : Hashable {
+
+        @usableFromInline
+        var name: String
+
+
+        @usableFromInline
+        init(name: String) {
+            self.name = name
+        }
+
     }
 
 }

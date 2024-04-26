@@ -60,6 +60,8 @@ struct KvNavigationController {
 
         let localization: KvLocalization
 
+        let defaultBundle: Bundle?
+
         let authorsTag: KvText?
 
     }
@@ -185,6 +187,7 @@ struct KvNavigationController {
                 rootPath: configuration.rootPath,
                 navigationPath: navigationPath ?? .init(elements: [ .init(value: .root, title: nil) ]),
                 localizationContext: localizationContext,
+                defaultBundle: configuration.defaultBundle,
                 authorsTag: configuration.authorsTag,
                 extraHeaders: configuration.iconHeaders.map { [ $0 ] }
             )

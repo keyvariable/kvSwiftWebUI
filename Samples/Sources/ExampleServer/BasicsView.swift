@@ -218,17 +218,17 @@ struct BasicsView : View {
             let tileSize: (width: KvCssLength, height: KvCssLength) = (256, 72)
 
             Section2(header: Text("Simple SVG Image")) {
-                Image("img/circles.svg", bundle: .module)
+                Image("img/circles.svg")
             }
 
             Section2(header: Text("Resizing")) {
                 Preview(caption: Text("`.resizable()`")) {
-                    Image("img/circles.svg", bundle: .module)
+                    Image("img/circles.svg")
                         .resizable()
                         .frame(width: tileSize.width, height: tileSize.height)
                 }
                 Preview(caption: Text("`.resizable(resizingMode: .tile)`")) {
-                    Image("img/circles.svg", bundle: .module)
+                    Image("img/circles.svg")
                         .resizable(resizingMode: .tile)
                         .frame(width: tileSize.width, height: tileSize.height, alignment: .topLeading)
                 }
@@ -236,21 +236,21 @@ struct BasicsView : View {
 
             Section2(header: Text("Template Redering Mode")) {
                 Preview(caption: Text("current foreground style")) {
-                    Image("img/circles.svg", bundle: .module)
+                    Image("img/circles.svg")
                         .renderingMode(.template)
                 }
                 Preview(caption: Text("`.foregroundStyle(.coral)`")) {
-                    Image("img/circles.svg", bundle: .module)
+                    Image("img/circles.svg")
                         .renderingMode(.template)
                         .foregroundStyle(.coral)
                 }
                 Preview(caption: Text("`.foregroundStyle(.linearGradient(...))`")) {
-                    Image("img/circles.svg", bundle: .module)
+                    Image("img/circles.svg")
                         .renderingMode(.template)
                         .foregroundStyle(.linearGradient(colors: [ .indigo, .violet ], endPoint: .trailing))
                 }
                 Preview(caption: Text("`.foregroundStyle(.linearGradient(...))`")) {
-                    Image("img/circles.svg", bundle: .module)
+                    Image("img/circles.svg")
                         .resizable(resizingMode: .tile)
                         .renderingMode(.template)
                         .frame(width: tileSize.width + 12, height: tileSize.height - 16)

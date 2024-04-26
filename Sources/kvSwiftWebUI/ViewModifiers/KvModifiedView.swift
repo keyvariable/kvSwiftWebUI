@@ -106,8 +106,8 @@ public struct KvModifiedView : KvView {
             fragment = .tag(.div, attributes: containerHtmlAttributes, innerHTML: fragment)
         }
 
-        if let viewConfiguration = environment.viewConfiguration {
-            context.html.processViewConfiguration(viewConfiguration)
+        if let viewConfiguration = context.environmentNode?.values.viewConfiguration {
+            context.html.processViewConfiguration(viewConfiguration, defaultBundle: context.defaultBundle)
         }
 
         return fragment

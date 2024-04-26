@@ -60,7 +60,7 @@ struct ScriptView : View {
                     .background(.gray.quaternary)
                     .clipShape(.rect(cornerRadius: .em(0.35)))
             }
-            .script(at: Bundle.module.url(forResource: "RandomNumberTimer", withExtension: "js", subdirectory: "js")!)
+            .script(.resource("RandomNumberTimer", withExtension: "js", subdirectory: "js"))
 
             Section2(header: Text("Embedded Scripts")) {
                 Text("Scripts can be passed as source code. In this case the source code is embedded into HTML.")

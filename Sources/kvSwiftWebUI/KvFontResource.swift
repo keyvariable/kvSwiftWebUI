@@ -97,25 +97,21 @@ public struct KvFontResource : Hashable {
     public enum Source : Hashable, Comparable {
 
         case local(name: String)
-        case url(String, Format? = nil) // URL is stored as String to prevent errors with `borrowing` keyword.
+        /// A resource in a bundle.
+        case resource(String?, extension: String? = nil, bundle: Bundle? = nil, subdirectory: String? = nil, format: Format? = nil)
+        case url(URL, Format? = nil)
 
 
         // MARK: Fabrics
 
-        @inlinable
-        public static func url(_ url: URL, _ format: Format? = nil) -> Self { .url(url.absoluteString, format) }
-
-
-        @inlinable
+        @available(*, deprecated, renamed: "resource(_:extension:bundle:subdirectory:format:)")
         public static func url(resource: String,
                                withExtension extension: String? = nil,
                                subdirectory: String? = nil,
                                bundle: Bundle? = nil,
                                format: Format? = nil
         ) -> Self? {
-            guard let url = (bundle ?? .main).url(forResource: resource, withExtension: `extension`, subdirectory: subdirectory) else { return nil }
-
-            return Source.url(url, format)
+            .resource(resource, extension: `extension`, bundle: bundle, subdirectory: subdirectory, format: format)
         }
 
 
@@ -188,9 +184,14 @@ public struct KvFontResource : Hashable {
             switch lhs {
             case .local(name: let lhs):
                 guard case .local(lhs) = rhs else { return false }
+
+            case let .resource(resource, extension: `extension`, bundle: bundle, subdirectory: subdirectory, format: format):
+                guard case .resource(resource, `extension`, bundle, subdirectory, format) = rhs else { return false }
+
             case .url(let url, _):
                 guard case .url(url, _) = rhs else { return false }
             }
+
             return true
         }
 
@@ -201,6 +202,13 @@ public struct KvFontResource : Hashable {
             switch self {
             case .local(let name):
                 hasher.combine(name)
+
+            case let .resource(resource, extension: `extension`, bundle: bundle, subdirectory: subdirectory, format: _):
+                hasher.combine(resource)
+                hasher.combine(`extension`)
+                hasher.combine(bundle)
+                hasher.combine(subdirectory)
+
             case .url(let url, _):
                 hasher.combine(url)
             }
@@ -213,12 +221,14 @@ public struct KvFontResource : Hashable {
 
             enum Kind : UInt, Comparable {
 
-                case local, url
+                case local, resource, url
 
                 init(_ source: Source) {
                     switch source {
                     case .local(_):
                         self = .local
+                    case .resource(_, extension: _, bundle: _, subdirectory: _, format: _):
+                        self = .resource
                     case .url(_, _):
                         self = .url
                     }
@@ -230,15 +240,48 @@ public struct KvFontResource : Hashable {
 
             }
 
+
+            /// Auxiliary compare function providing ability to cascade comparisons.
+            /// It returns `nil` when *lhs* is equal to *rhs*.
+            func Is<T : Comparable>(_ lhs: T, lessThen rhs: T) -> Bool? {
+                if lhs < rhs { return true }
+                else if rhs < lhs { return false }
+                else { return nil }
+            }
+
+
+            /// Auxiliary compare function providing ability to cascade comparisons.
+            /// It returns `nil` when *lhs* is equal to *rhs*.
+            ///
+            /// - Note: `.none` &lt; `.some(_)`
+            func Is<T : Comparable>(_ lhs: T?, lessThen rhs: T?) -> Bool? {
+                switch (lhs, rhs) {
+                case (.none, .none), (.some, .none): false
+                case (.none, .some): true
+                case (.some(let lhs), .some(let rhs)): Is(lhs, lessThen: rhs)
+                }
+            }
+
+
             switch lhs {
             case .local(name: let lhs):
                 guard case .local(let rhs) = rhs else { break }
                 return lhs < rhs
+
+            case let .resource(lResource, extension: lExtension, bundle: lBundle, subdirectory: lSubdirectory, format: _):
+                guard case let .resource(rResource, extension: rExtension, bundle: rBundle, subdirectory: rSubdirectory, format: _) = rhs else { break }
+                return (Is(lResource, lessThen: rResource)
+                        ?? Is(lExtension, lessThen: rExtension)
+                        ?? Is(lBundle?.bundleURL.absoluteString, lessThen: rBundle?.bundleURL.absoluteString)
+                        ?? Is(lSubdirectory, lessThen: rSubdirectory)
+                        ?? false)
+
             case .url(let lhs, _):
                 guard case .url(let rhs, _) = rhs else { break }
-                return lhs < rhs
+                return lhs.absoluteString < rhs.absoluteString
             }
 
+            // It's evaluated when lhs and rhs are differenct enum cases.
             return Kind(lhs) < Kind(rhs)
         }
 
