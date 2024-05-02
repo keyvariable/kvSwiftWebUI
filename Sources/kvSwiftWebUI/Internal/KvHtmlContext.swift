@@ -88,6 +88,11 @@ class KvHtmlContext {
         self.defaultBundle = defaultBundle ?? .main
         self.authorsTag = authorsTag
         self.extraHeaders = extraHeaders ?? [ ]
+
+        if localizationContext.languageTag != nil {
+            insert(KvScriptResource.resource("Localization", withExtension: "js", bundle: .module, subdirectory: "Scripts"),
+                   defaultBundle: .module)
+        }
     }
 
 

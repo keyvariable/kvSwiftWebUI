@@ -34,11 +34,16 @@ import kvHttpKit
 /// *KvLocalization* caches locales used to translate for language IDs and bundles.
 public class KvLocalization {
 
+    let defaultLanguageTag: String?
+
+
+
     init(_ bundle: Bundle) {
         self.bundle = bundle
 
         languageTags = bundle.localizations
-        defaultLanguageTag = bundle.preferredLocalizations.first ?? bundle.localizations.first
+        // If there are no localizations then `preferredLocalizations` are ignored.
+        defaultLanguageTag = !bundle.localizations.isEmpty ? (bundle.preferredLocalizations.first ?? bundle.localizations.first) : nil
     }
 
 
@@ -50,7 +55,6 @@ public class KvLocalization {
 
     /// Language tags ([RFC 5646](https://www.rfc-editor.org/rfc/rfc5646.html )).
     private let languageTags: [String]
-    private let defaultLanguageTag: String?
 
 
 
@@ -63,6 +67,7 @@ public class KvLocalization {
     }
 
 
+    /// - SeeAlso: ``defaultLanguageTag``.
     func selectLanguageTag(forAcceptLanguageHeader value: String) -> String? {
         IteratorSequence(KvLocalization.AcceptLanguageIterator(value))
             .lazy.compactMap { element -> Match<MatchCompositeRate>? in
@@ -79,7 +84,6 @@ public class KvLocalization {
             }
             .max()?
             .languageTag
-        ?? defaultLanguageTag
     }
 
 

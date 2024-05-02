@@ -22,12 +22,13 @@ extension KvHttpBundle {
         KvGroup(httpMethods: .get) {
             KvHttpResponse.with
                 .requestHeaders
+                .queryMap { $0 ?? [ ] }
                 .subpath
                 .content { input in
-                    self.response(
-                        for: KvHttpBundle.Request(path: input.subpath)
-                            .headerIterator(input.requestHeaders.makeIterator())
-                    )
+                    let request = KvHttpBundle.Request(path: input.subpath, query: input.query)
+                        .headerIterator(input.requestHeaders.makeIterator())
+
+                    return self.response(for: request)
                 }
         }
     }

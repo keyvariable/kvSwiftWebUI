@@ -93,7 +93,7 @@ extension KvLink : KvHtmlRenderable {
         context.representation { context, htmlAttributes in
             let fragment = label.htmlRepresentation(in: context)
 
-            return KvLinkKit.representation(url: url, htmlAttributes: htmlAttributes, innerHTML: fragment)
+            return KvLinkKit.representation(url: url, htmlAttributes: htmlAttributes, innerHTML: fragment, in: context)
         }
     }
 
@@ -108,16 +108,43 @@ struct KvLinkKit {
     /// This code is extracted to be reused, e.g. in ``KvText`` having link attribute.
     static func representation(url: URL,
                                htmlAttributes: KvHtmlKit.Attributes? = nil,
-                               innerHTML: KvHtmlRepresentation.Fragment
+                               innerHTML: KvHtmlRepresentation.Fragment,
+                               in context: borrowing KvHtmlRepresentationContext
     ) -> KvHtmlRepresentation.Fragment {
         .tag(
             .a,
             attributes: .union(
                 htmlAttributes,
                 .init {
+                    var url = url
+                    var isExternal = true
+
+                    if var components = URLComponents(url: url, resolvingAgainstBaseURL: true) {
+                        // - NOTE: URLs having explicit host are considered external so `target="_blank"` attribute is set.
+                        isExternal = components.host != nil
+
+                        if let languageTag = context.localizationContext.languageTag,
+                           !isExternal
+                        {
+                            func LanguageTagQueryItem() -> URLQueryItem {
+                                .init(name: KvHttpBundle.Constants.languageTagsUrlQueryItemName, value: languageTag)
+                            }
+
+                            switch components.queryItems?.contains(where: { $0.name == KvHttpBundle.Constants.languageTagsUrlQueryItemName }) {
+                            case .some(false):
+                                components.queryItems!.append(LanguageTagQueryItem())
+                            case .none:
+                                components.queryItems = [ LanguageTagQueryItem() ]
+                            case .some(true):
+                                break   // Explicit localization is not overridden.
+                            }
+                        }
+
+                        url = components.url ?? url
+                    }
+
                     $0.set(href: url)
-                    // - NOTE: URLs having explicit host are considered external so `target="_blank"` attribute is set.
-                    if url.host != nil {
+                    if isExternal {
                         $0[.target] = "_blank"
                     }
                 }

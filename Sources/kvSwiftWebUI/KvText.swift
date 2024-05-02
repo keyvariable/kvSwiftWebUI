@@ -585,7 +585,9 @@ public struct KvText : Equatable {
 
 
         /// - Returns: Given bytes wrapped by tags providing application of some attributes of the receiver.
-        func wrapping(_ innerFragment: consuming KvHtmlRepresentation.Fragment) -> KvHtmlRepresentation.Fragment {
+        func wrapping(_ innerFragment: consuming KvHtmlRepresentation.Fragment,
+                      in context: borrowing KvHtmlRepresentationContext
+        ) -> KvHtmlRepresentation.Fragment {
             var fragment = innerFragment
 
             wrappers.keys
@@ -602,7 +604,7 @@ public struct KvText : Equatable {
                         fragment = .tag(tag, innerHTML: fragment)
 
                     case .linkURL:
-                        fragment = KvLinkKit.representation(url: Attributes.cast(value, as: \.linkURL), innerHTML: fragment)
+                        fragment = KvLinkKit.representation(url: Attributes.cast(value, as: \.linkURL), innerHTML: fragment, in: context)
                     }
                 }
 
@@ -845,7 +847,7 @@ extension KvText : KvHtmlRenderable {
     }
 
 
-    private static func renderHTML(for text: KvText, in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
+    private static func renderHTML(for text: KvText, in context: borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
         let scope = Attributes(from: context)
 
         return context.representation(htmlAttributes: text.attributes.htmlAttributes(in: context, scope: scope)) { context, htmlAttributes in
@@ -855,7 +857,7 @@ extension KvText : KvHtmlRenderable {
             return .tag(
                 Self.tag(for: textStyle),
                 attributes: htmlAttributes ?? .empty,
-                innerHTML: text.attributes.wrapping(innerFragment)
+                innerHTML: text.attributes.wrapping(innerFragment, in: context)
             )
         }
     }
@@ -904,7 +906,7 @@ extension KvText : KvHtmlRenderable {
 
             return .tag(.span,
                         attributes: attributes.htmlAttributes(in: context, scope: scope) ?? .empty,
-                        innerHTML: attributes.wrapping(fragment))
+                        innerHTML: attributes.wrapping(fragment, in: context))
 
         case true:
             return contentFragment(text.content, in: context, scope: scope)

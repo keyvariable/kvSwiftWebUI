@@ -37,6 +37,12 @@ import kvKit
 /// By default it's assumed that bundle is served to the domain's root path and maximum size of response cache is 50% of physical memory on the machine.
 /// Use ``Configuration`` structure and ``init(with:rootView:)`` initializer to customize bundle.
 ///
+/// HTTP bundles support localization.
+/// Localization is evaluated explicitly from URL or can be inferred from Accept-Language HTTP header.
+/// Explicit list of the language tags ([RFC 5646](https://datatracker.ietf.org/doc/html/rfc5646 ))
+/// can be provided via ``Constants/languageTagsUrlQueryItemName`` ("lang") URL query item.
+/// For example, use "https://example.com?lang=zh-Hant" to request traditional Chinese localization of *example.com*.
+///
 /// When the responses are served with [kvServerKit](https://github.com/keyvariable/kvServerKit.swift.git ),
 /// bundles can be used as the response expressions:
 /// ```swift
@@ -109,6 +115,18 @@ public class KvHttpBundle {
     private let responseCache: KvHttpResponseCache<ProcessedRequest>?
     /// A block to be used to synthesize response when there is no cached value.
     private let responseBlock: (borrowing ProcessedRequest) -> KvHttpResponseContent?
+
+
+
+    // MARK: .Constants
+
+    public struct Constants {
+
+        /// Name of URL query item with language tags to use instead of value of `Accept-Language` header.
+        /// This query item is used to force use of a language, e.g. for the search robots in the sitemap.
+        public static let languageTagsUrlQueryItemName = "lang"
+
+    }
 
 
 
@@ -203,14 +221,18 @@ public class KvHttpBundle {
         /// Path to requested resource.
         public var path: KvUrlPath.Slice
 
+        /// URL query items.
+        public var query: [URLQueryItem]
+
         /// Iterator of HTTP headers.
         public var headerIterator: AnyIterator<HttpHeader>?
 
 
         /// A member-wise initializer.
         @inlinable
-        public init(path: KvUrlPath.Slice, headerIterator: AnyIterator<HttpHeader>? = nil) {
+        public init(path: KvUrlPath.Slice, query: [URLQueryItem] = [ ], headerIterator: AnyIterator<HttpHeader>? = nil) {
             self.path = path
+            self.query = query
             self.headerIterator = headerIterator
         }
 
@@ -249,12 +271,62 @@ public class KvHttpBundle {
 
 
 
+    // MARK: .RepresentationContext
+
+    /// ``Representation`` and some related attributes.
+    private struct RepresentationContext {
+        
+        let representation: Representation
+
+        let languageTagSource: LanguageTagSource
+
+
+        // MARK: .LanguageTagSource
+
+        enum LanguageTagSource {
+            /// Explicitly provided language tag. E.g. it can be provided via URL query.
+            case explicit
+            /// Implicitly evaluated language tag. E.g. via Accept-Language HTTP header.
+            case inferred
+        }
+
+    }
+
+
+
     // MARK: .ProcessedRequest
 
+    // TODO: Store URL query in ProcessedRequest, remove `: Hashable`, refactor the response cache to store to use path and representation as first key, the normalized query as second key.
     struct ProcessedRequest : Hashable {
 
+        /// - Note: Assuming URL query doesn't contain items with duplicated names.
+        typealias UrlQuery = [String : String?]
+
+
         let path: KvUrlPath.Slice
+
         let representation: Representation
+
+
+        // MARK: Auxiliaries
+
+        static func urlQuery(from items: [URLQueryItem]) -> UrlQuery {
+            Dictionary(items.lazy.map { ($0.name, $0.value) }, uniquingKeysWith: { lhs, rhs in lhs })
+        }
+
+
+        func urlComponents(transform: (inout URLComponents) -> Void = { _ in }) -> URLComponents {
+            var urlComponents = URLComponents()
+            urlComponents.path = "/" + path.joined
+
+            transform(&urlComponents)
+
+            if urlComponents.queryItems?.isEmpty == true {
+                urlComponents.queryItems = nil
+            }
+
+            return urlComponents
+        }
 
     }
 
@@ -262,49 +334,123 @@ public class KvHttpBundle {
 
     // MARK: Operations
 
-    /// - Returns: A representation from HTTP request headers.
-    public func representation<H>(fromHttpHeaders headerIterator: H? = Optional<[Request.HttpHeader]>.none) -> Representation
+    /// - Returns: A representation from URL and HTTP request headers.
+    ///
+    /// - Note: Localization is evaluated from URL query item named ``Constants/languageTagsUrlQueryItemName`` ("lang") and HTTP headers.
+    public func representation<H>(
+        urlQuery: borrowing [URLQueryItem] = [ ],
+        httpHeaders headerIterator: H? = Optional<[Request.HttpHeader]>.none
+    ) -> Representation
+    where H : Sequence, H.Element == Request.HttpHeader
+    {
+        let urlQuery = ProcessedRequest.urlQuery(from: urlQuery)
+
+        return representationContext(urlQuery: urlQuery, httpHeaders: headerIterator)
+            .representation
+    }
+
+
+    /// - Returns: A representation context from HTTP request headers.
+    private func representationContext<H>(
+        urlQuery: borrowing ProcessedRequest.UrlQuery,
+        httpHeaders headerIterator: H?
+    ) -> RepresentationContext
     where H : Sequence, H.Element == Request.HttpHeader
     {
         var representation = Representation()
+        var languageTagSource: RepresentationContext.LanguageTagSource
 
-        // TODO: Refactoring to a cycle is required if two or more headers are be handled.
-
-        do {
-            let languageTags = headerIterator?
-                .first(where: { $0.name.caseInsensitiveCompare("Accept-Language") == .orderedSame })?
-                .value
-
-            if let languageTags {
-                representation.languageTag = localization.selectLanguageTag(forAcceptLanguageHeader: languageTags)
-            }
+        (representation.languageTag, languageTagSource) = switch explicitLanguageTag(from: urlQuery) {
+        case .some(let value):
+            (value, .explicit)
+        case .none:
+            (inferredLanguageTag(from: headerIterator), .inferred)
         }
 
-        return representation
+        return .init(
+            representation: representation,
+            languageTagSource: languageTagSource
+        )
+    }
+
+
+    private func explicitLanguageTag(from urlQuery: borrowing ProcessedRequest.UrlQuery) -> String? {
+        guard let languageTags = urlQuery.first(where: { $0.key == Constants.languageTagsUrlQueryItemName })?.value
+        else { return nil }
+
+        return localization.selectLanguageTag(forAcceptLanguageHeader: languageTags)
+    }
+
+
+    private func inferredLanguageTag<H>(from headerIterator: H?) -> String?
+    where H : Sequence, H.Element == Request.HttpHeader
+    {
+        guard let languageTags = headerIterator?
+            .first(where: { $0.name.caseInsensitiveCompare("Accept-Language") == .orderedSame })?
+            .value
+        else { return nil }
+
+        return (localization.selectLanguageTag(forAcceptLanguageHeader: languageTags)
+                ?? localization.defaultLanguageTag)
     }
 
 
     /// - Returns: An HTTP response with contents of a resource matching given *request*.
     ///
-    /// - SeeAlso: ``representation(fromHttpHeaders:)``.
+    /// - SeeAlso: ``representation(urlQuery:httpHeaders:)``.
     public func response(for request: borrowing Request) -> KvHttpResponseContent? {
-        response(at: request.path, as: self.representation(fromHttpHeaders: request.headerIterator))
+        let urlQuery = ProcessedRequest.urlQuery(from: request.query)
+        let representationContext = representationContext(urlQuery: urlQuery, httpHeaders: request.headerIterator)
+
+        let processedRequest = ProcessedRequest(path: request.path,
+                                                representation: representationContext.representation)
+
+        // If localization is explicit and implicit localization is available then it's omitted via redirect.
+        //
+        // Assuming the robots don't provide Accept-Language so implicit localization is not available for them.
+        if case .explicit = representationContext.languageTagSource,
+           let explicitLanguageTag = representationContext.representation.languageTag,
+           let inferredLanguageTag = inferredLanguageTag(from: request.headerIterator),
+           consume inferredLanguageTag == consume explicitLanguageTag,
+           let response = noLanguageTagResponse(for: processedRequest)
+        {
+            return response
+        }
+
+        return response(for: processedRequest)
     }
 
 
     /// - Returns: An HTTP response with contents of a resource at given *path* in the bundle.
     ///
     /// - Note: `representation` is a closure to avoid it's evaluation when there is no need in it.
-    public func response(at path: borrowing KvUrlPath.Slice,
+    public func response(at path: KvUrlPath.Slice,
                          as representation: @autoclosure () -> Representation
     ) -> KvHttpResponseContent? {
-        assets[path]
-        ?? navigationResponse(for: .init(path: path, representation: representation()))
+        response(for: ProcessedRequest(path: path, representation: representation()))
+    }
+
+
+    private func response(for request: borrowing ProcessedRequest) -> KvHttpResponseContent? {
+        assets[request.path]
+        ?? navigationResponse(for: request)
     }
 
 
     private func navigationResponse(for request: ProcessedRequest) -> KvHttpResponseContent? {
         responseCache?[request, default: { responseBlock(request) }] ?? responseBlock(request)
+    }
+
+
+    /// - Returns: Redirection response to url having to explicit language tags.
+    private func noLanguageTagResponse(for request: borrowing ProcessedRequest) -> KvHttpResponseContent? {
+        let urlComponents = request.urlComponents()
+
+        assert(urlComponents.queryItems?.isEmpty != false, "Non-empty URL queries are not supported yet.")
+
+        guard let url = (consume urlComponents).url else { return nil }
+
+        return .seeOther(location: url)
     }
 
 }

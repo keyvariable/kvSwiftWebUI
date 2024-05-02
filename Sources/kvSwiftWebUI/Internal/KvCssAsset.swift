@@ -85,7 +85,7 @@ class KvCssAsset {
         static let foundation: Prototype = .init(
             parent: nil,
             resource: .css(
-                .local(.url(Bundle.module.url(forResource: "foundation", withExtension: "css", subdirectory: "html/css")!),
+                .local(.url(Bundle.module.url(forResource: "foundation", withExtension: "css", subdirectory: "HTML/css")!),
                        "z8GEYWllTRKr13Y4LLr2MA.css")
             )
         )
