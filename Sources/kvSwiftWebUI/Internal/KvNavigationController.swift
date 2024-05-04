@@ -82,7 +82,7 @@ struct KvNavigationController {
         static func `for`<RootView : KvView>(_ rootView: RootView, with configuration: borrowing Configuration) -> RootNodes {
             var rootNodes: [String : StaticNode] = .init()
 
-            configuration.localization.forEachLanguageTag { languageTag in
+            configuration.localization.languageTags.forEach { languageTag in
                 rootNodes[languageTag] = .from(rootView, with: configuration, languageTag)
             }
 
@@ -122,7 +122,7 @@ struct KvNavigationController {
             node = nextNode
         }
 
-        return node.htmlResponse(with: configuration)
+        return node.htmlResponse(with: configuration, urlComponents: request.urlComponents())
     }
 
 
@@ -150,10 +150,18 @@ struct KvNavigationController {
         }
 
 
-        func htmlResponse(with configuration: borrowing Configuration) -> KvHttpResponseContent {
+        func htmlResponse(
+            with configuration: borrowing Configuration,
+            urlComponents: @autoclosure () -> URLComponents
+        ) -> KvHttpResponseContent {
             switch self {
             case .dynamicNode(let node):
-                KvNavigationController.htmlResponse(rootPath: configuration.rootPath, in: node.context, with: node.htmlRepresentation)
+                KvNavigationController.htmlResponse(
+                    in: node.context,
+                    with: node.htmlRepresentation,
+                    configuration: configuration,
+                    urlComponents: urlComponents()
+                )
 
             case .staticNode(let node):
                 node.httpResponse
@@ -239,12 +247,21 @@ struct KvNavigationController {
 
 
 
-        private init(from node: borrowing Node, with configuration: borrowing Configuration, cssAsset: KvCssAsset.Prototype?) {
+        private init(from node: borrowing Node,
+                     with configuration: borrowing Configuration,
+                     cssAsset: KvCssAsset.Prototype?,
+                     urlComponents: () -> URLComponents
+        ) {
             let context = node.context
 
             self.cssAsset = cssAsset
 
-            httpResponse = KvNavigationController.htmlResponse(rootPath: configuration.rootPath, in: context, with: node.htmlRepresentation)
+            httpResponse = KvNavigationController.htmlResponse(
+                in: context,
+                with: node.htmlRepresentation,
+                configuration: configuration,
+                urlComponents: urlComponents()
+            )
 
             navigationDestinations = context.navigationDestinations
             navigationPath = node.navigationPath
@@ -262,11 +279,29 @@ struct KvNavigationController {
 
         /// Traverses the static navigation destinations and returns the root node.
         static func from<Content : KvView>(_ view: Content, with configuration: borrowing Configuration, _ languageTag: String? = nil) -> StaticNode {
-            let node = StaticNode.root(view, configuration: configuration, languageTag)
+            var rootUrlComponents = URLComponents()
+            rootUrlComponents.path = "/"
 
-            node.processStaticDestinations(with: configuration)
+            let rootNode: StaticNode
+            do {
+                let localizationContext = configuration.localization.context(languageTag: languageTag)
 
-            return node
+                let node = Node(KvHtmlBodyImpl(content: view),
+                                cssAsset: .init(parent: nil),
+                                configuration: configuration,
+                                localizationContext: localizationContext)
+
+                // Caching the root CSS asset.
+                var cssAssetPrototype: KvCssAsset.Prototype?
+                replaceGeneratedCssWithResource(in: node.context, with: &cssAssetPrototype)
+
+                rootNode = .init(from: node, with: configuration, cssAsset: cssAssetPrototype, urlComponents: { rootUrlComponents })
+            }
+
+            // Root node has empty URL components.
+            rootNode.processStaticDestinations(with: configuration, urlComponents: { rootUrlComponents })
+
+            return rootNode
         }
 
 
@@ -282,7 +317,7 @@ struct KvNavigationController {
             var cssAssetPrototype: KvCssAsset.Prototype?
             replaceGeneratedCssWithResource(in: node.context, with: &cssAssetPrototype)
 
-            return .init(from: node, with: configuration, cssAsset: cssAssetPrototype)
+            return .init(from: node, with: configuration, cssAsset: cssAssetPrototype, urlComponents: URLComponents.init)
         }
 
 
@@ -307,7 +342,10 @@ struct KvNavigationController {
 
 
         /// Processes all available static destinations recursively.
-        private func processStaticDestinations(with configuration: borrowing Configuration) {
+        private func processStaticDestinations(
+            with configuration: borrowing Configuration,
+            urlComponents: () -> URLComponents
+        ) {
             navigationDestinations?.staticDestinations().forEach { destinationGroup in
                 typealias DestinationNode = (node: Node, data: String)
 
@@ -329,14 +367,27 @@ struct KvNavigationController {
                 // Creation of static nodes.
                 var sharedCssAssetPrototype: KvCssAsset.Prototype?
 
-                seeds.forEach {
-                    StaticNode.replaceGeneratedCssWithResource(in: $0.node.context, with: &sharedCssAssetPrototype)
+                seeds.forEach { (node, data) in
+                    StaticNode.replaceGeneratedCssWithResource(in: node.context, with: &sharedCssAssetPrototype)
 
-                    let staticNode = StaticNode(from: $0.node, with: configuration, cssAsset: sharedCssAssetPrototype ?? cssAsset)
+                    let urlComponents = { () -> URLComponents in
+                        var urlComponents = urlComponents()
 
-                    staticNode.processStaticDestinations(with: configuration)
+                        urlComponents.path.append("\(urlComponents.path.last == "/" ? "" : "/")\(data)")
 
-                    insertChildNode(staticNode, for: $0.data)
+                        return urlComponents
+                    }
+
+                    let staticNode = StaticNode(
+                        from: node,
+                        with: configuration,
+                        cssAsset: sharedCssAssetPrototype ?? cssAsset,
+                        urlComponents: urlComponents
+                    )
+
+                    staticNode.processStaticDestinations(with: configuration, urlComponents: urlComponents)
+
+                    insertChildNode(staticNode, for: data)
                 }
             }
         }
@@ -372,7 +423,11 @@ struct KvNavigationController {
 
     // MARK: Auxiliaries
 
-    private static func htmlResponse(rootPath: KvUrlPath?, in context: KvHtmlContext, with bodyRepresentation: KvHtmlRepresentation) -> KvHttpResponseContent {
+    private static func htmlResponse(in context: KvHtmlContext,
+                                     with bodyRepresentation: KvHtmlRepresentation,
+                                     configuration: borrowing Configuration,
+                                     urlComponents: @autoclosure () -> URLComponents
+    ) -> KvHttpResponseContent {
 
         struct Accumulator {
 
@@ -406,11 +461,7 @@ struct KvNavigationController {
         }
 
 
-        var accumulator = Accumulator()
-
-        // TODO: Accumulate entire document inside KvHtmlRepresentation and perform simultanous accumulation of data from the the data list (from KvHtmlRepresentation) and evaluation of the hash digest.
-        accumulator.append("<!DOCTYPE html><html\(context.localizationContext.languageTag.map { " lang=\"\($0)\"" } ?? "")><head>")
-        do {
+        func AppendTitleHeader(into accumulator: inout Accumulator) {
             let title: String? = context.navigationPath.elements
                 .reversed()
                 .lazy.compactMap { $0.title?.escapedPlainBytes(in: context.localizationContext) }
@@ -421,6 +472,52 @@ struct KvNavigationController {
 
             accumulator.append(title)
         }
+
+
+        func AppendLocalizedAlternativeHeaders(into accumulator: inout Accumulator) {
+            let languageTags = configuration.localization.languageTags
+
+            guard !languageTags.isEmpty else { return }
+
+
+            func LinkTag(languageTag: String, urlComponents: URLComponents) -> String? {
+                guard let url = urlComponents.url else { return nil }
+
+                return "<link rel=\"alternate\" hreflang=\"\(languageTag)\" href=\"\(url.absoluteString)\"/>"
+            }
+
+
+            var urlComponents = urlComponents()
+
+            urlComponents.queryItems?.removeAll(where: { $0.name == KvHttpBundle.Constants.languageTagsUrlQueryItemName })
+            if urlComponents.queryItems?.isEmpty == true {
+                urlComponents.queryItems = nil
+            }
+
+            accumulator.append(LinkTag(languageTag: "x-default", urlComponents: urlComponents))
+
+            // Below urlComponents.queryItems won't be empty so it' created.
+            if urlComponents.queryItems == nil {
+                urlComponents.queryItems = .init()
+            }
+            // Adding placeholder item to be updated in cycle below and saving it's index.
+            let queryItemIndex = urlComponents.queryItems!.endIndex
+            urlComponents.queryItems!.append(.init(name: KvHttpBundle.Constants.languageTagsUrlQueryItemName, value: nil))
+
+            languageTags.forEach { languageTag in
+                urlComponents.queryItems![queryItemIndex].value = languageTag
+
+                accumulator.append(LinkTag(languageTag: languageTag, urlComponents: urlComponents))
+            }
+        }
+
+
+        var accumulator = Accumulator()
+
+        // TODO: Accumulate entire document inside KvHtmlRepresentation and perform simultanous accumulation of data from the the data list (from KvHtmlRepresentation) and evaluation of the hash digest.
+        accumulator.append("<!DOCTYPE html><html\(context.localizationContext.languageTag.map { " lang=\"\($0)\"" } ?? "")><head>")
+        AppendTitleHeader(into: &accumulator)
+        AppendLocalizedAlternativeHeaders(into: &accumulator)
         accumulator.append(
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />",
             "<meta name=\"format-detection\" content=\"telephone=no\" /><meta name=\"format-detection\" content=\"date=no\" /><meta name=\"format-detection\" content=\"address=no\" /><meta name=\"format-detection\" content=\"email=no\" />",
