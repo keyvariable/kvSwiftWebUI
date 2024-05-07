@@ -47,6 +47,8 @@ struct ExampleServer : KvServer {
         /// Usually in Swift packages `.module` contains resources of application so it have to be explicitly provided to texts, images, etc.
         /// Provide `.module` as default bundle to make *kvSwiftWebUI* use it as default bundle.
         /// Also default bundle is used to search for localized resources.
+        ///
+        /// - Note: *Robots.txt* file and sitemaps are generated automatically by default. See `KvHttpBundle.Configuration` for details.
         with: .init(defaultBundle: .module),
         rootView: { RootView() }
     )

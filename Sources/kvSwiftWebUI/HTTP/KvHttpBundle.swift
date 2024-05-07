@@ -26,6 +26,7 @@
 import kvHttpKit
 
 import Foundation
+import kvKit
 
 
 
@@ -42,10 +43,11 @@ import Foundation
 /// can be provided via ``Constants/languageTagsUrlQueryItemName`` ("lang") URL query item.
 /// For example, use "https://example.com?lang=zh-Hant" to request traditional Chinese localization of *example.com*.
 ///
-/// HTTP bundles support automatic generation of sitemaps.
+/// HTTP bundles support automatic generation of *robots.txt* and sitemaps.
 /// Sitemaps are generated from static navigation destinations, see ``KvView/navigationDestination(for:destination:)-9x6uf`` for details.
 /// Dynamic navigation destinations are currently ignored.
-/// Generation of sitemaps is configured via ``Configuration/sitemap-swift.property``.
+/// Use ``Configuration/sitemap-swift.property`` to configure generation of sitemaps.
+/// Use ``Configuration/robots`` to specify additional rule groups for *robots.txt* file.
 ///
 /// When the responses are served with [kvServerKit](https://github.com/keyvariable/kvServerKit.swift.git ),
 /// bundles can be used as root response group expressions:
@@ -101,6 +103,11 @@ public class KvHttpBundle {
         )
 
         sitemap = configuration.sitemap.map(Sitemap.init(from:))
+
+        robotsPrefix = configuration.robots?
+            .lazy.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
     }
 
 
@@ -116,6 +123,8 @@ public class KvHttpBundle {
     private let responseCache: KvHttpResponseCache<ProcessedRequest>?
 
     private let sitemap: Sitemap?
+
+    private let robotsPrefix: String?
 
 
 
@@ -407,6 +416,9 @@ public class KvHttpBundle {
         let responseBlock: ResponseBlock = {
             if request.urlPath.components.count == 1 {
                 switch request.urlPath.components.last {
+                case "robots.txt":
+                    return self.robotsResponse(for:)
+
                 case sitemap?.pathComponent:
                     let sitemapFormat = sitemap!.format
 
@@ -442,6 +454,52 @@ public class KvHttpBundle {
             .headers {
                 $0("Link", self.localizationHeader(with: urlComponents))
             }
+    }
+
+
+    private func robotsResponse(for request: ProcessedRequest) -> KvHttpResponseContent? {
+        var robots = robotsPrefix ?? ""
+
+        if let sitemapPathComponent = sitemap?.pathComponent {
+            func AppendSitemapRule(from urlComponents: URLComponents) {
+                guard let url = urlComponents.url
+                else { return KvDebug.pause("WARNING: failed to compose sitemap URL from \(urlComponents) components") }
+
+                robots.append("sitemap:\(url.absoluteString)\n")
+            }
+
+
+            if !robots.isEmpty {
+                robots.append("\n\n")
+            }
+
+            var urlComponents = request.bundleUrlComponents
+            urlComponents.path = "/\(sitemapPathComponent)"
+
+            switch localization.languageTags.isEmpty {
+            case false:
+                urlComponents.queryItems = [ .init(name: Constants.languageTagsUrlQueryItemName, value: nil) ]
+
+                let index = urlComponents.queryItems!.startIndex
+
+                localization.languageTags.forEach { languageTag in
+                    urlComponents.queryItems![index].value = languageTag
+
+                    AppendSitemapRule(from: urlComponents)
+                }
+
+            case true:
+                AppendSitemapRule(from: urlComponents)
+            }
+        }
+
+        guard !robots.isEmpty,
+              let content = robots.data(using: .utf8)
+        else { return nil }
+
+        return .binary { content }
+            .contentType(.text(.plain))
+            .contentLength(content.count)
     }
 
 

@@ -54,6 +54,13 @@ extension KvHttpBundle {
         /// Default value is ``Sitemap/default``.
         public var sitemap: Sitemap?
 
+        /// Array of additional rule groups for *robots.txt* file.
+        ///
+        /// Specified rule groups are joined with empty lines.
+        ///
+        /// - Note: *Robots.txt* file is generated when sitemaps are enabled or ``robots`` property is not empty.
+        public var robots: [String]?
+
         /// A text to be used as the author's tag.
         public var authorsTag: KvText?
 
@@ -64,18 +71,21 @@ extension KvHttpBundle {
         ///   - responseCacheSize: Initial value for ``responseCacheSize`` property.
         ///   - defaultBundle: Initial value for ``defaultBundle`` property.
         ///   - sitemap: Initial value for ``sitemap`` property.
+        ///   - robots: Initial value for ``robots`` property.
         ///   - authorsTag: Initial value for ``authorsTag`` property.
         @inlinable
         public init(icon: KvApplicationIcon? = nil,
                     responseCacheSize: ResponseCacheSize? = .physicalMemoryRatio(0.5),
                     defaultBundle: Bundle? = nil,
                     sitemap: Sitemap? = .default,
+                    robots: [String]? = nil,
                     authorsTag: KvText? = nil
         ) {
             self.icon = icon
             self.responseCacheSize = responseCacheSize
             self.defaultBundle = defaultBundle
             self.sitemap = sitemap
+            self.robots = robots
             self.authorsTag = authorsTag
         }
 
