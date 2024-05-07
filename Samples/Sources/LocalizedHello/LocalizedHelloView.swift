@@ -46,6 +46,8 @@ struct LocalizedHelloView : View {
                 .foregroundStyle(.label.secondary)
         }
         .padding(.bottom, .em(2))
+        /// *kvSwiftWebUI* provides complete support of `Text` arguments in string interpolations: localization, formatting, Markdown.
+        .navigationTitle("\(Text("HELLO")) | LocalizedHello")
     }
 
 }
