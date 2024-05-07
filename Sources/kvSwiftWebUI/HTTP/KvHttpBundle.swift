@@ -40,8 +40,8 @@ import kvKit
 /// HTTP bundles support localization.
 /// Localization is evaluated explicitly from URL or can be inferred from Accept-Language HTTP header.
 /// Explicit list of the language tags ([RFC 5646](https://datatracker.ietf.org/doc/html/rfc5646 ))
-/// can be provided via ``Constants/languageTagsUrlQueryItemName`` ("lang") URL query item.
-/// For example, use "https://example.com?lang=zh-Hant" to request traditional Chinese localization of *example.com*.
+/// can be provided via ``Constants/languageTagsUrlQueryItemName`` ("hl") URL query item.
+/// For example, use "https://example.com?hl=zh-Hant" to request traditional Chinese localization of *example.com*.
 ///
 /// HTTP bundles support automatic generation of *robots.txt* and sitemaps.
 /// Sitemaps are generated from static navigation destinations, see ``KvView/navigationDestination(for:destination:)-9x6uf`` for details.
@@ -134,7 +134,7 @@ public class KvHttpBundle {
 
         /// Name of URL query item with language tags to use instead of value of `Accept-Language` header.
         /// This query item is used to force use of a language, e.g. for the search robots in the sitemap.
-        public static let languageTagsUrlQueryItemName = "lang"
+        public static let languageTagsUrlQueryItemName = "hl"
 
     }
 
@@ -323,7 +323,7 @@ public class KvHttpBundle {
 
     /// - Returns: A representation from URL and HTTP request headers.
     ///
-    /// - Note: Localization is evaluated from URL query item named ``Constants/languageTagsUrlQueryItemName`` ("lang") and HTTP headers.
+    /// - Note: Localization is evaluated from URL query item named ``Constants/languageTagsUrlQueryItemName`` ("hl") and HTTP headers.
     public func representation<H>(
         urlQuery: borrowing [URLQueryItem] = [ ],
         httpHeaders headerIterator: H? = Optional<[Request.HttpHeader]>.none

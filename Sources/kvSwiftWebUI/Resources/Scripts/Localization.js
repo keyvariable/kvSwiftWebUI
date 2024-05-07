@@ -9,11 +9,11 @@ Created by Svyatoslav Popov on 01.05.2024.
 */
 
 (() => {
-    const URL_QUERY_NAME = 'lang';
+    const URL_QUERY_NAME = 'hl';
 
     if (new URLSearchParams(document.location.search).has(URL_QUERY_NAME)) { return; }
 
-    const languageTag = document.documentElement.getAttribute(URL_QUERY_NAME);
+    const languageTag = document.documentElement.getAttribute('lang');
     if (languageTag === null) { return; }
 
     const urlQueryItem = `${URL_QUERY_NAME}=${languageTag}`;
