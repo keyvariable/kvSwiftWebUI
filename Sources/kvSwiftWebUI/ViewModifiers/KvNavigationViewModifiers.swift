@@ -47,6 +47,7 @@ extension KvView {
 
     /// This modifier provides title for navigation bars and the window title.
     /// If several views declare navigation title in a navigation destination then the first title is used and others are ignored.
+    @_disfavoredOverload
     @inlinable
     public consuming func navigationTitle(_ title: KvText) -> some KvView { mapConfiguration {
         $0!.navigationTitle = title
