@@ -22,3 +22,5 @@
 */
 
 "HELLO" = "Ahoj!";
+
+"METADATA.DESCRIPTION" = "Lokalizace je důležitou součástí vývoje uživatelsky přívětivých rozhraní. Příklad LocalizedHello zobrazuje „Ahoj!“ štítek v angličtině, čínštině, hindštině a mnoha dalších jazycích.";

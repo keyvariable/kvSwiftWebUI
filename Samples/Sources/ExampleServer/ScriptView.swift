@@ -83,6 +83,9 @@ struct ScriptView : View {
                         """)
             }
         }
+        /// This modifier provides keyword metadata for the resulting navigation destination.
+        /// If several views declare keyword metadata in a navigation destination then all the keywords are joined.
+        .metadata(keywords: Text("scripts"))
     }
 
 

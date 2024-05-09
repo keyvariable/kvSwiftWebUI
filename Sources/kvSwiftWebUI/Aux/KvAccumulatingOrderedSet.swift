@@ -48,6 +48,9 @@ struct KvAccumulatingOrderedSet<Element> where Element : Identifiable {
 
     // MARK: Operations
 
+    var isEmpty: Bool { elements.isEmpty }
+
+
     /// Inserts given element if it hasn't been inserted yet.
     ///
     /// - Returns: A boolean value indicating wheter *element* has been actually inserted.

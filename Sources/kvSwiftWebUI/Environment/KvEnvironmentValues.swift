@@ -148,6 +148,10 @@ extension KvEnvironmentValues {
     @usableFromInline
     struct ViewConfiguration {
 
+        @usableFromInline
+        typealias MetadataKeywords = KvAccumulatingOrderedSet<MetadataKeyword>
+
+
         private(set) var navigationDestinations: NavigationDestinations?
         
 
@@ -177,6 +181,8 @@ extension KvEnvironmentValues {
             case foregroundStyle
             case gridCellColumnSpan
             case gridColumnAlignment
+            case metadataDescription
+            case metadataKeywords
             case multilineTextAlignment
             case navigationTitle
             case scriptResources
@@ -234,11 +240,14 @@ extension KvEnvironmentValues {
                 case .fixedSize:
                     // Accumulation
                     result.fixedSize = .union(result.fixedSize, Self.cast(value, as: \.fixedSize))
+                case .metadataKeywords:
+                    // Accumulation
+                    result.metadataKeywords = .union(result.metadataKeywords, Self.cast(value, as: \.metadataKeywords))
                 case .scriptResources:
                     // Accumulation
                     result.scriptResources = .union(result.scriptResources, Self.cast(value, as: \.scriptResources))
-                case .font, .foregroundStyle, .gridCellColumnSpan, .gridColumnAlignment, .multilineTextAlignment, .navigationTitle,
-                        .tag, .textCase:
+                case .font, .foregroundStyle, .gridCellColumnSpan, .gridColumnAlignment, .metadataDescription, .multilineTextAlignment,
+                        .navigationTitle, .tag, .textCase:
                     // Replacement
                     result.regularValues[key] = value
                 }
@@ -287,6 +296,12 @@ extension KvEnvironmentValues {
 
         @usableFromInline
         var gridColumnAlignment: KvHorizontalAlignment? { get { self[.gridColumnAlignment] } set { self[.gridColumnAlignment] = newValue } }
+
+        @usableFromInline
+        var metadataDescription: KvText? { get { self[.metadataDescription] } set { self[.metadataDescription] = newValue } }
+
+        @usableFromInline
+        var metadataKeywords: MetadataKeywords? { get { self[.metadataKeywords] } set { self[.metadataKeywords] = newValue } }
 
         @usableFromInline
         var multilineTextAlignment: KvTextAlignment? { get { self[.multilineTextAlignment] } set { self[.multilineTextAlignment] = newValue } }
@@ -386,6 +401,21 @@ extension KvEnvironmentValues {
         }
 
 
+        mutating func appendMetadataKeywords<K>(_ keywords: K)
+        where K : Sequence, K.Element == KvText
+        {
+            _ = { container in
+                if container == nil {
+                    container = .init()
+                }
+
+                keywords.forEach {
+                    container!.insert(.init(text: $0))
+                }
+            }(&metadataKeywords)
+        }
+
+
         func navigationDestination(for data: String) -> NavigationDestinations.Destination? {
             navigationDestinations?.destination(for: data)
         }
@@ -398,10 +428,14 @@ extension KvEnvironmentValues {
                 destinationProvider(data).map { (body: KvHtmlBodyImpl(content: $0.view), value: $0.value) }
             }
 
-            if navigationDestinations == nil { navigationDestinations = .init() }
+            _ = {
+                if $0 == nil {
+                    $0 = .init()
+                }
 
-            navigationDestinations!.append(provider: destinationProvider)
-            navigationDestinations!.insertStaticData(staticData)
+                $0!.append(provider: destinationProvider)
+                $0!.insertStaticData(staticData)
+            }(&navigationDestinations)
         }
 
 
@@ -456,7 +490,7 @@ extension KvEnvironmentValues {
                         case .textCase:
                             attributes.append(styles: "text-transform:\(Self.cast(value, as: \.textCase).cssTextTransform)")
 
-                        case .navigationTitle, .scriptResources:
+                        case .metadataDescription, .metadataKeywords, .navigationTitle, .scriptResources:
                             break
                         }
                     }
@@ -678,6 +712,19 @@ extension KvEnvironmentValues {
             mutating func insertStaticData<S>(_ sequence: S) where S : Sequence, S.Element == String {
                 staticData.formUnion(sequence)
             }
+
+        }
+
+
+        // MARK: .MetadataKeyword
+
+        @usableFromInline
+        struct MetadataKeyword : Identifiable {
+
+            let text: KvText
+
+            @usableFromInline
+            var id: String { text.plainText(in: .disabled).lowercased() }
 
         }
 

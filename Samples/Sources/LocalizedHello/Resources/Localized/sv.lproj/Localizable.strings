@@ -22,3 +22,5 @@
 */
 
 "HELLO" = "Hallå!";
+
+"METADATA.DESCRIPTION" = "Lokalisering är en viktig del i att utveckla användarvänliga gränssnitt. LocalizedHello-exemplet visar «Hallå!» hälsning på engelska, kinesiska, hindi och många andra språk.";

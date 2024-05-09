@@ -37,17 +37,25 @@ import kvKit
 /// Use ``Configuration`` structure and ``init(with:rootView:)`` initializer to customize bundle.
 /// By default maximum size of response cache is 50% of physical memory on the machine.
 ///
+/// ### Localization
+///
 /// HTTP bundles support localization.
 /// Localization is evaluated explicitly from URL or can be inferred from Accept-Language HTTP header.
 /// Explicit list of the language tags ([RFC 5646](https://datatracker.ietf.org/doc/html/rfc5646 ))
 /// can be provided via ``Constants/languageTagsUrlQueryItemName`` ("hl") URL query item.
 /// For example, use "https://example.com?hl=zh-Hant" to request traditional Chinese localization of *example.com*.
 ///
+/// ### SEO
+///
 /// HTTP bundles support automatic generation of *robots.txt* and sitemaps.
 /// Sitemaps are generated from static navigation destinations, see ``KvView/navigationDestination(for:destination:)-9x6uf`` for details.
 /// Dynamic navigation destinations are currently ignored.
 /// Use ``Configuration/sitemap-swift.property`` to configure generation of sitemaps.
 /// Use ``Configuration/robots`` to specify additional rule groups for *robots.txt* file.
+///
+/// - SeeAlso: ``KvView/metadata(keywords:)-3w75u``, ``KvView/metadata(description:)-8ai0v``.
+///
+/// ### Integration with *kvServerKit*
 ///
 /// When the responses are served with [kvServerKit](https://github.com/keyvariable/kvServerKit.swift.git ),
 /// bundles can be used as root response group expressions:

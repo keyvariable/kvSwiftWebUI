@@ -22,3 +22,5 @@
 */
 
 "HELLO" = "你好！";
+
+"METADATA.DESCRIPTION" = "在地化是開發用戶友善介面的重要組成部分。 LocalizedHello 範例顯示 «你好！» 英語、漢語、印地語和許多其他語言的問候語。";

@@ -55,6 +55,9 @@ class KvHtmlContext {
 
 
 
+    /// Metadata accumulated from the views.
+    private(set) var metadata: Metadata = .init()
+
     /// First non-nil navigation title.
     private(set) var navigationTitle: KvText?
     /// All declared destinations.
@@ -97,6 +100,47 @@ class KvHtmlContext {
 
     /// Set of inserted scripts.
     private var scriptIDs: Set<KvScriptResource.ID> = .init()
+
+
+
+    // MARK: .Metadata
+
+    struct Metadata {
+
+        /// First non-nil description.
+        private(set) var description: KvText?
+        /// All declared keywords.
+        private(set) var keywords: KvViewConfiguration.MetadataKeywords?
+
+
+        init() { }
+
+
+        // MARK: Operations
+
+        mutating func process(description: KvText?) {
+            guard self.description == nil,
+                  description != nil
+            else { return }
+
+            self.description = description
+        }
+
+
+        mutating func insert(keywords: KvViewConfiguration.MetadataKeywords?) {
+            guard let keywords else { return }
+
+            switch self.keywords {
+            case .some:
+                keywords.forEach {
+                    self.keywords!.insert($0)
+                }
+            case .none:
+                self.keywords = keywords
+            }
+        }
+
+    }
 
 
 
@@ -178,7 +222,7 @@ class KvHtmlContext {
         case let .resource(resource, extension: `extension`, bundle: bundle, subdirectory: subdirectory):
             let bundle = bundle ?? defaultBundle()
             guard let url = bundle.url(forResource: resource, withExtension: `extension`, subdirectory: subdirectory)
-            else { return KvDebug.pause("Warning: failed to access script resuorce «\(KvStringKit.with(resource))» with «\(KvStringKit.with(`extension`))» extension in \(bundle) at «\(KvStringKit.with(subdirectory))» subdirectory") }
+            else { return KvDebug.pause("Warning: failed to access script resource «\(KvStringKit.with(resource))» with «\(KvStringKit.with(`extension`))» extension in \(bundle) at «\(KvStringKit.with(subdirectory))» subdirectory") }
 
             Insert(at: url)
 
@@ -201,6 +245,9 @@ class KvHtmlContext {
             return cachedDefaultBundle
         }
 
+
+        metadata.process(description: viewConfiguration.metadataDescription)
+        metadata.insert(keywords: viewConfiguration.metadataKeywords)
 
         navigationTitle = navigationTitle ?? viewConfiguration.navigationTitle
         navigationDestinations = .merged(navigationDestinations, viewConfiguration.navigationDestinations)

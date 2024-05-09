@@ -9,7 +9,7 @@ allowing developer to focus on the design of the interface and the source code.
 - dynamic navigation destinations, e.g. `/user/1234`;
 - favicons, the home screen icons and tint color, etc;
 - localization;
-- SEO: automatic *robots.txt* and sitemaps;
+- SEO: the description and keyword HTML metadata, automatic *robots.txt* and sitemaps;
 - dark theme;
 - caching of responses;
 - scripts.
@@ -18,7 +18,7 @@ A significant difference from *SwiftUI* is that lengths are in CSS units.
 It's possible to declare padding of `.em(1.5)` or a view of `min(.vw(100), 1024)` width.
 
 Also *kvSwiftWebUI* provides limited integration of [Markdown](https://www.markdownguide.org) and `Text` type.
-Declarations of texts with rich formatting become shorter, localization of formatted texts becomes easier. 
+Declarations of texts with rich formatting become shorter, localization of formatted texts becomes easier.
 
 See [*Samples*](./Samples) package for examples.
 Also *ExampleServer* is running at [example.swiftwebui.keyvar.com](https://example.swiftwebui.keyvar.com).

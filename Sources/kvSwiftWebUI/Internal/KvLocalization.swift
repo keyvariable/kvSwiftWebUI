@@ -276,7 +276,7 @@ public class KvLocalization {
         // MARK: Fabrics
 
         /// - Returns: A context providing no localization. It just returns the keys.
-        static var disabled: Context { .init(languageTag: nil, primaryBundle: .main) }
+        static let disabled: Context  = .init(languageTag: nil, primaryBundle: .main)
 
 
         // MARK: .ResolvedBundle

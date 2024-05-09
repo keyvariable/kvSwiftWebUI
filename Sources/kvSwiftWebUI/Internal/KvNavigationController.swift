@@ -490,6 +490,27 @@ struct KvNavigationController {
         }
 
 
+        func MetadataHeader(name: String, content: String) -> String {
+            KvHtmlKit.Tag.meta.html(attributes: .init {
+                $0[.name] = .string(name)
+                $0[.content] = .string(content)
+            })
+        }
+
+
+        func MetadataKeywordsHeaderIfPresent(with keywords: KvViewConfiguration.MetadataKeywords?) -> String? {
+            guard let keywords,
+                  !keywords.isEmpty
+            else { return nil }
+
+            let content = keywords
+                .lazy.map { $0.text.plainText(in: context.localizationContext) }
+                .joined(separator: ",")
+
+            return MetadataHeader(name: "keywords", content: content)
+        }
+
+
         var accumulator = Accumulator()
 
         // TODO: Accumulate entire document inside KvHtmlRepresentation and perform simultanous accumulation of data from the the data list (from KvHtmlRepresentation) and evaluation of the hash digest.
@@ -498,6 +519,10 @@ struct KvNavigationController {
         accumulator.append(
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />",
             "<meta name=\"format-detection\" content=\"telephone=no\" /><meta name=\"format-detection\" content=\"date=no\" /><meta name=\"format-detection\" content=\"address=no\" /><meta name=\"format-detection\" content=\"email=no\" />",
+            context.metadata.description.map {
+                MetadataHeader(name: "description", content: $0.plainText(in: context.localizationContext))
+            },
+            MetadataKeywordsHeaderIfPresent(with: context.metadata.keywords),
             context.headers,
             "</head>"
         )

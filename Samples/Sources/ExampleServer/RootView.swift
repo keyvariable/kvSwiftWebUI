@@ -49,23 +49,29 @@ struct RootView : View {
         ) {
             /// Page contents are organized to sections: ``Section1``, ``Section2``, ``BodySection``.
 
+            /// Declarations can be reused. Text below is reused as introduction and as HTML document's description metadata.
+            ///
+            /// `Text` provides limited support of [Markdown](https://www.markdownguide.org ).
+            /// `Text` automatically looks up for supported *Markdown* expressions in localized values.
+            ///
+            /// Some expressions (e.g. HTML special characters) are ignored by default.
+            /// Use `Text.md(_:tableName:bundle:comment:)` fabric to force *Markdown* processing.
+            let overview = Text("""
+                [kvSwiftWebUI](\(Constants.kvSwiftWebUI_GitHubURL)) is a cross-platform framework providing API to declare web-interfaces in a way very close to SwiftUI framework.
+                It allows to implement web interfaces in a declarative paradigm.
+                kvSwiftWebUI minimizes efforts to create and maintain boilerplate code allowing developer to focus on the design of the interface and the source code.
+                """)
+
             BodySection {
-                /// `Text` provides limited support of [Markdown](https://www.markdownguide.org ).
-                /// `Text` automatically looks up for supported *Markdown* expressions in localized values.
-                ///
-                /// Some expressions (e.g. HTML special characters) are ignored by default.
-                /// Use `Text.md(_:tableName:bundle:comment:)` fabric to force *Markdown* processing.
-                Text("""
-                    [kvSwiftWebUI](\(Constants.kvSwiftWebUI_GitHubURL)) is a cross-platform framework providing API to declare web-interfaces in a way very close to SwiftUI framework.
-                    It allows to implement web interfaces in a declarative paradigm.
-                    kvSwiftWebUI minimizes efforts to create and maintain boilerplate code allowing developer to focus on the design of the interface and the source code.
-                    """)
+                overview
 
                 Text("""
                     The declared interfaces have to be served.
                     In this example the backend is served with [kvServerKit](\(Constants.kvServerKit_GitHubURL)) framework.
                     """)
             }
+            /// As `.navigationTitle(_:)`, if several views declare description metadata in a navigation destination then the first description is used and others are ignored.
+            .metadata(description: overview)
 
             Section1(header: Text("Contents")) {
                 /// Views for a collection of values can be declared via `ForEach` view.
@@ -97,6 +103,15 @@ struct RootView : View {
                 ScriptView()
             }
         }
+        /// This modifier provides keyword metadata for the resulting navigation destination.
+        /// If several views declare keyword metadata in a navigation destination then all the keywords are joined.
+        ///
+        /// - Note: Keywords are localized.
+        ///
+        /// - SeeAlso: `.metadata(description:)` modifier.
+        ///
+        /// - Tip: Use `Text(verbatim:)` to prevent localization of argument.
+        .metadata(keywords: Text("example"), Text("articles"))
     }
 
 

@@ -47,6 +47,15 @@ struct BasicsView : View {
             environmentSection
             viewModifierSection
         }
+        /// This modifier provides keyword metadata for the resulting navigation destination.
+        /// If several views declare keyword metadata in a navigation destination then all the keywords are joined.
+        ///
+        /// - Note: Keywords are localized.
+        ///
+        /// - SeeAlso: `.metadata(description:)` modifier.
+        ///
+        /// - Tip: Use `Text(verbatim:)` to prevent localization of argument.
+        .metadata(keywords: Text("basics"))
     }
 
 

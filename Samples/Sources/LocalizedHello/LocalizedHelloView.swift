@@ -48,6 +48,18 @@ struct LocalizedHelloView : View {
         .padding(.bottom, .em(2))
         /// *kvSwiftWebUI* provides complete support of `Text` arguments in string interpolations: localization, formatting, Markdown.
         .navigationTitle("\(Text("HELLO")) | LocalizedHello")
+        /// This modifier specifies text to use as document's description metadata. It's used for SEO.
+        /// Also *kvSwiftWebUI* automatically generates sitemaps and *robots.txt* file.
+        ///
+        /// - Note: Descriptions are localized.
+        .metadata(description: "METADATA.DESCRIPTION")
+        /// This modifier provides keyword metadata for the resulting navigation destination.
+        /// If several views declare keyword metadata in a navigation destination then all the keywords are joined.
+        ///
+        /// - Note: Keywords are localized.
+        ///
+        /// - Tip: Use `Text(verbatim:)` to prevent localization of argument.
+        .metadata(keywords: Text("HELLO"), Text(verbatim: "LocalizedHello"), Text(verbatim: "kvSwiftWebUI"))
     }
 
 }

@@ -22,3 +22,5 @@
 */
 
 "HELLO" = "Xin chào!";
+
+"METADATA.DESCRIPTION" = "Bản địa hóa là một phần quan trọng trong việc phát triển giao diện thân thiện với người dùng. Ví dụ LocalizedHello hiển thị «Xin chào!» lời chào bằng tiếng Anh, tiếng Trung, tiếng Hindi và nhiều ngôn ngữ khác.";
