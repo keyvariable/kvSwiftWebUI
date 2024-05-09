@@ -154,7 +154,7 @@ struct KvLinkKit {
                 $0.set(href: url)
 
                 // - NOTE: URLs having explicit host are considered external so `target="_blank"` attribute is set.
-                if url.host() != nil {
+                if url.host != nil {
                     $0[.target] = "_blank"
                 }
             }
