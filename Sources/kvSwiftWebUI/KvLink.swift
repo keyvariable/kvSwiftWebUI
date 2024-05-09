@@ -174,7 +174,9 @@ struct KvLinkKit {
 
             var urlComponents = urlComponents
 
-            if let languageTag {
+            if let languageTag,
+               urlComponents.queryItems?.contains(where: { $0.name == KvHttpBundle.Constants.languageTagsUrlQueryItemName }) != true
+            {
                 KvUrlKit.append(&urlComponents, withUrlQueryItem: .init(name: KvHttpBundle.Constants.languageTagsUrlQueryItemName, value: languageTag))
             }
 
