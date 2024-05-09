@@ -25,6 +25,8 @@
 
 import kvSwiftWebUI
 
+import Foundation
+
 
 
 struct LocalizedHelloView : View {
@@ -41,10 +43,19 @@ struct LocalizedHelloView : View {
                 .font(.largeTitle)
                 .padding(.vertical, .em(2))
 
-            Text(verbatim: ".languageTag == \(localization.languageTag.map { "\"\($0)\"" } ?? "nil")")
-                .font(.system(.footnote, design: .monospaced))
-                .foregroundStyle(.label.secondary)
+            Group {
+                /// - Note: *Markdown* is used to style text as source code.
+                Text("`.languageTag == \(localization.languageTag.map { "\"\($0)\"" } ?? "nil")`")
+                    .padding(.bottom, .em(2))
+
+                localizationMenu
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 640)
+            }
+            .font(.footnote.leading(.loose))
+            .foregroundStyle(.label.secondary)
         }
+        .padding(.horizontal, .em(0.5))
         .padding(.bottom, .em(2))
         /// *kvSwiftWebUI* provides complete support of `Text` arguments in string interpolations: localization, formatting, Markdown.
         .navigationTitle("\(Text("HELLO")) | LocalizedHello")
@@ -60,6 +71,33 @@ struct LocalizedHelloView : View {
         ///
         /// - Tip: Use `Text(verbatim:)` to prevent localization of argument.
         .metadata(keywords: Text("HELLO"), Text(verbatim: "LocalizedHello"), Text(verbatim: "kvSwiftWebUI"))
+    }
+
+
+    @ViewBuilder
+    private var localizationMenu: some View {
+        Bundle.module.localizations
+            .sorted()
+            .lazy.compactMap { languageTag -> Text? in
+                guard let url = URL(string: "/?\(KvHttpBundle.Constants.languageTagsUrlQueryItemName)=\(languageTag)") else { return nil }
+
+                let locale = Locale(identifier: languageTag)
+                let languageTagLabel = Text("`\(languageTag)`")
+
+                let label = locale.localizedString(forIdentifier: languageTag)
+                    .map { languageTagLabel + Text(verbatim: " — \($0)") }
+                ?? languageTagLabel
+
+                return label.link(url)
+            }
+            .reduce(Optional<Text>.none) { partialResult, text in
+                switch partialResult {
+                case .some(let partialResult):
+                    partialResult + Text(verbatim: ", ") + text
+                case .none:
+                    text
+                }
+            }
     }
 
 }
