@@ -392,7 +392,7 @@ extension KvHtmlContext {
 
             expression = ColorKit.cssExpression(id: id,
                                                 opacity: color.opacity,
-                                                options: needsAlpha ? .useAplhaVariable : [ ])
+                                                options: needsAlpha ? .useAlphaVariable : [ ])
         }
 
         return expression
@@ -430,7 +430,7 @@ extension KvHtmlContext {
 
         static func cssExpression(id: String, opacity: Double?, options: CssOptions = [ ]) -> String {
             let alpha = opacity.map { String(format: "%.3g", $0) }
-            ?? (options.contains(.useAplhaVariable) ? "var(\(ColorKit.variableName(id: id, suffix: .a)))" : nil)
+            ?? (options.contains(.useAlphaVariable) ? "var(\(ColorKit.variableName(id: id, suffix: .a)))" : nil)
 
             switch alpha {
             case .some(let alpha):
@@ -460,7 +460,7 @@ extension KvHtmlContext {
 
         struct CssOptions : OptionSet {
 
-            static let useAplhaVariable = Self(rawValue: 1 << 0)
+            static let useAlphaVariable = Self(rawValue: 1 << 0)
 
             let rawValue: UInt
 
