@@ -573,6 +573,9 @@ extension KvHtmlKit {
 
         // MARK: .Value
 
+        /// This type is used to avoid double optionality of attribute values.
+        /// Attribute are of `Value?` type.  Optionality indicates whether an attribute persists to an attribute set.
+        /// `.null` value means that attribute has no value, e.g. *disabled* attribute in `<input id="date" type="date" disabled />`.
         enum Value : ExpressibleByNilLiteral, ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
 
             case string(String)
