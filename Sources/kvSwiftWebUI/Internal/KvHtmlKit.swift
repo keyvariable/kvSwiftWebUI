@@ -381,6 +381,7 @@ extension KvHtmlKit {
     /// - Note: Attributes are equal when their HTML names are equal.
     enum Attribute : Hashable {
 
+        case alt
         case `class`
         case content
         case href
@@ -411,6 +412,7 @@ extension KvHtmlKit {
 
         var htmlName: String {
             switch self {
+            case .alt: "alt"
             case .class: "class"
             case .content: "content"
             case .href: "href"
@@ -543,7 +545,7 @@ extension KvHtmlKit {
                     (classes?.joined(separator: " ")).map(Value.string(_:))
                 case .style:
                     (styles?.joined(separator: ";")).map(Value.string(_:))
-                case .content, .href, .id, .linkRel, .media, .name, .raw(_), .src, .target, .type:
+                default:
                     container[attribute].map(Value.init(_:))
                 }
             }
@@ -555,7 +557,7 @@ extension KvHtmlKit {
                 case .style:
                     assertionFailure("Don't use subscript to set raw style value, use dedicated methods instead.")
                     styles = newValue?.asString.map { [ $0 ] }
-                case .content, .href, .id, .linkRel, .media, .name, .raw(_), .src, .target, .type:
+                default:
                     container[attribute] = newValue?.rawValue
                 }
             }
@@ -726,7 +728,7 @@ extension KvHtmlKit {
                     Attributes.cast(value, as: \.classes).joined(separator: " ")
                 case .style:
                     Attributes.cast(value, as: \.styles).joined(separator: ";")
-                case .content, .href, .id, .linkRel, .media, .name, .raw(_), .src, .target, .type:
+                default:
                     Value(value).asString
                 }
 

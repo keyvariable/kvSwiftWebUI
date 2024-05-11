@@ -228,6 +228,8 @@ struct BasicsView : View {
 
             Section2(header: Text("Simple SVG Image")) {
                 Image("img/circles.svg")
+                    /// Image accessibility labels are used as values for *alt* HTML attribute. It matters for SEO and screen readers.
+                    .accessibilityLabel("Example of an SVG image with colored circles on transparent background")
             }
 
             Section2(header: Text("Resizing")) {

@@ -9,7 +9,7 @@ allowing developer to focus on the design of the interface and the source code.
 - dynamic navigation destinations, e.g. `/user/1234`;
 - favicons, the home screen icons and tint color, etc;
 - localization;
-- SEO: the description and keyword HTML metadata, automatic *robots.txt* and sitemaps;
+- SEO: the description and keyword HTML metadata, *alt* HTML attributes, automatic *robots.txt* and sitemaps;
 - dark theme;
 - caching of responses;
 - scripts.
