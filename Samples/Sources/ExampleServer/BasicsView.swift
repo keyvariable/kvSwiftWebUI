@@ -322,7 +322,7 @@ struct BasicsView : View {
 
     private var viewModifierSection: some View {
         Section1(header: Text("View Modifiers")) {
-            Section2(header: Text("Adaptive Padding")) {
+            Section2(header: Text("Adaptive Padding Sample")) {
                 Text("Below are examples where the same `Text` view is modified with the same view modifier. This modifier applies large or small padding whether horizontal size class is regular.")
 
                 HorizontalSizeClassPreview {
