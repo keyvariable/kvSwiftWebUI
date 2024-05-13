@@ -301,6 +301,14 @@ struct BasicsView : View {
                 Preview(caption: Text("`.textCase(.uppercase)`")) { example.textCase(.uppercase) }
                 Preview(caption: Text("`.textCase(.lowercase)`")) { example.textCase(.lowercase) }
             }
+
+            Section2(header: Text("Interpolations")) {
+                /// `Text` also supports custom format specifiers.
+                Text("`Double.pi` is \(Double.pi) (\(Double.pi, format: "%.16g")).")
+                /// `Text` interpolations are convenient to localize content and avoid usage of concatenations.
+                /// In this case it's needed to provide translations for "This text" and "%@ is interpolated into another text." strings.
+                Text("\(Text("This text").foregroundStyle(.green)) is interpolated into another text.")
+            }
         }
     }
 
