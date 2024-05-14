@@ -249,6 +249,9 @@ public class KvLocalization {
         /// When localization is disabled, keys of localized resources are used as resolved strings.
         public var languageTag: String? { resolvedBundles.languageTag }
 
+        /// A locale selected by ``languageTag`` or *en_US_POSIX* by default.
+        public var locale: Locale { resolvedBundles.defaultLocale }
+
 
         fileprivate convenience init(languageTag: String?, primaryBundle: Bundle) {
             assert(languageTag == nil || primaryBundle.localizations.contains(languageTag!))
@@ -297,14 +300,14 @@ public class KvLocalization {
 
             let languageTag: String?
 
+            let defaultLocale: Locale
+
 
             init(languageTag: String?) {
                 self.languageTag = languageTag
                 self.defaultLocale = Locale(identifier: languageTag ?? "en_US_POSIX")
             }
 
-
-            private let defaultLocale: Locale
 
             /// Cache of resolved bundles by bundle URLs.
             private var values: [URL : Element] = .init()
