@@ -127,7 +127,7 @@ public struct KvText : Equatable {
             }
 
             let text = Int(match.output.index).flatMap { index -> KvText? in
-                // As stated in pringf standard, explicit indices start from 1.
+                // As stated in printf standard, explicit indices start from 1.
                 switch arguments[index - 1] {
                 case .cVarArg(_, format: _):
                     assertionFailure("Internal inconsistency: \"%n$T\" format specifiers are allowed for KvText arguments only")
