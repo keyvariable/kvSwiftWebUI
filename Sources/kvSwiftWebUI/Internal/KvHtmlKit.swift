@@ -392,6 +392,7 @@ extension KvHtmlKit {
         case src
         case style
         case target
+        case title
         case type
 
         case raw(String)
@@ -424,6 +425,7 @@ extension KvHtmlKit {
             case .src: "src"
             case .style: "style"
             case .target: "target"
+            case .title: "title"
             case .type: "type"
             }
         }

@@ -181,6 +181,7 @@ extension KvEnvironmentValues {
             case foregroundStyle
             case gridCellColumnSpan
             case gridColumnAlignment
+            case help
             case metadataDescription
             case metadataKeywords
             case multilineTextAlignment
@@ -246,8 +247,8 @@ extension KvEnvironmentValues {
                 case .scriptResources:
                     // Accumulation
                     result.scriptResources = .union(result.scriptResources, Self.cast(value, as: \.scriptResources))
-                case .font, .foregroundStyle, .gridCellColumnSpan, .gridColumnAlignment, .metadataDescription, .multilineTextAlignment,
-                        .navigationTitle, .tag, .textCase:
+                case .font, .foregroundStyle, .gridCellColumnSpan, .gridColumnAlignment, .help, .metadataDescription,
+                        .multilineTextAlignment, .navigationTitle, .tag, .textCase:
                     // Replacement
                     result.regularValues[key] = value
                 }
@@ -296,6 +297,9 @@ extension KvEnvironmentValues {
 
         @usableFromInline
         var gridColumnAlignment: KvHorizontalAlignment? { get { self[.gridColumnAlignment] } set { self[.gridColumnAlignment] = newValue } }
+
+        @usableFromInline
+        var help: KvText? { get { self[.help] } set { self[.help] = newValue } }
 
         @usableFromInline
         var metadataDescription: KvText? { get { self[.metadataDescription] } set { self[.metadataDescription] = newValue } }
@@ -469,6 +473,9 @@ extension KvEnvironmentValues {
 
                         case .gridColumnAlignment:
                             attributes.insert(classes: context.html.cssFlexClass(for: Self.cast(value, as: \.gridColumnAlignment), as: .mainSelf))
+
+                        case .help:
+                            attributes[.title] = .string(Self.cast(value, as: \.help).plainText(in: context.localizationContext))
 
                         case .multilineTextAlignment:
                             attributes.append(styles: "text-align:\(Self.cast(value, as: \.multilineTextAlignment).cssTextAlign.css)")

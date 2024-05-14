@@ -180,6 +180,8 @@ struct BasicsView : View {
                     }
                     .padding()
                 }
+                /// This modifier provides text for a tooltip.
+                .help("This view is made programmatically uzing ZStack")
             }
 
             Section2(header: Text("Grid")) {
@@ -303,11 +305,17 @@ struct BasicsView : View {
             }
 
             Section2(header: Text("Interpolations")) {
-                /// `Text` also supports custom format specifiers.
+                /// `KvLocalizedStringKey` supports string interpolations.
                 Text("`Double.pi` is \(Double.pi) (\(Double.pi, format: "%.16g")).")
-                /// `Text` interpolations are convenient to localize content and avoid usage of concatenations.
+                /// `Text` can be passed to `KvLocalizedStringKey` string interpolations as an argument.
+                /// It helps to avoid usage of hard-to-read concatenations and use better localization keys.
                 /// In this case it's needed to provide translations for "This text" and "%@ is interpolated into another text." strings.
-                Text("\(Text("This text").foregroundStyle(.green)) is interpolated into another text.")
+                let argument: Text = Text("This text")
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.green)
+                    /// `Text` interpolations support `.help(_:)` modifier.
+                    .help("An interpolation argument")
+                Text("\(argument) is interpolated into another text.")
             }
         }
     }

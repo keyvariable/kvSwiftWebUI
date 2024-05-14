@@ -84,11 +84,20 @@ struct LocalizedHelloView : View {
                 let locale = Locale(identifier: languageTag)
                 let languageTagLabel = Text("`\(languageTag)`")
 
-                let label = locale.localizedString(forIdentifier: languageTag)
+                var label = locale.localizedString(forIdentifier: languageTag)
                     .map { languageTagLabel + Text(verbatim: " — \($0)") }
                 ?? languageTagLabel
 
-                return label.link(url)
+                label = label.link(url)
+
+                if languageTag != localization.languageTag,
+                   let help = localization.locale.localizedString(forIdentifier: languageTag)
+                {
+                    /// `.help(_:)` modifier provides contextual help information usually presented as a tooltip.
+                    label = label.help(help)
+                }
+
+                return label
             }
             .reduce(Optional<Text>.none) { partialResult, text in
                 switch partialResult {
