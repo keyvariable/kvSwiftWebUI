@@ -577,17 +577,17 @@ extension KvHtmlKit {
 
         /// This type is used to avoid double optionality of attribute values.
         /// Attribute are of `Value?` type.  Optionality indicates whether an attribute persists to an attribute set.
-        /// `.null` value means that attribute has no value, e.g. *disabled* attribute in `<input id="date" type="date" disabled />`.
-        enum Value : ExpressibleByNilLiteral, ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
+        /// `.void` value means that attribute has no value, e.g. *disabled* attribute in `<input id="date" type="date" disabled />`.
+        enum Value : ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
 
             case string(String)
-            case null
+            case void
 
 
             fileprivate init(_ value: Any) {
                 switch value {
                 case is NSNull:
-                    self = .null
+                    self = .void
                 default:
                     self = .string(value as! String)
                 }
@@ -597,12 +597,9 @@ extension KvHtmlKit {
             fileprivate var rawValue: Any {
                 switch self {
                 case .string(let value): value
-                case .null: NSNull()
+                case .void: NSNull()
                 }
             }
-
-
-            init(nilLiteral: ()) { self = .null }
 
 
             init(stringLiteral value: StringLiteralType) { self = .string(value) }
@@ -611,7 +608,7 @@ extension KvHtmlKit {
             var asString: String? {
                 switch self {
                 case .string(let string): string
-                case .null: nil
+                case .void: nil
                 }
             }
 
