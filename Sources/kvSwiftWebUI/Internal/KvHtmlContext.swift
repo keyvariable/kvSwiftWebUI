@@ -94,7 +94,7 @@ class KvHtmlContext {
 
     private var extraHeaders: [String]
 
-    private var resourceHeaders: KvAccumulatingOrderedSet<KvHtmlResource.Header> = .init()
+    private var resourceHeaders: KvOrderedIdentitySet<KvHtmlResource.Header> = .init()
 
     private var gFonts: GFonts = .init()
 
@@ -557,13 +557,15 @@ extension KvHtmlContext {
     fileprivate struct GFonts {
 
         /// [Family : Query].
-        private var elements: [String : Set<QueryItem>] = .init()
+        private var elements: [String : KvOrderedIdentitySet<QueryItem>] = .init()
 
 
         // MARK: .QueryItem
 
         /// - Note: Query items are sorted to meet the 
-        private struct QueryItem : Hashable, Comparable {
+        ///
+        /// Conformance to `Identifiable` is to use `QueryItem` in `KvOrderedIdentitySet` collection.
+        private struct QueryItem : Hashable, Comparable, Identifiable {
 
             var italic: Bool
             var weight: UInt16
@@ -582,6 +584,11 @@ extension KvHtmlContext {
                 }
             }
 
+
+            // MARK: : Identifiable
+
+            var id: QueryItem { self }
+
         }
 
 
@@ -594,7 +601,6 @@ extension KvHtmlContext {
             return elements
                 .lazy.compactMap { family, query in
                     let tuples = query
-                        .sorted()
                         .lazy.map { "\($0.italic ? "1" : "0"),\($0.weight)" }
                         .joined(separator: ";")
 

@@ -112,7 +112,7 @@ public struct KvScriptResource {
 
 // MARK: : Identifiable
 
-/// Conformance to `Identifiable` is to use `KvScriptResource` in `KvAccumulatingOrderedSet` collection.
+/// Conformance to `Identifiable` is to use `KvScriptResource` in `KvOrderedIdentitySet` collection.
 extension KvScriptResource : Identifiable { }
 
 

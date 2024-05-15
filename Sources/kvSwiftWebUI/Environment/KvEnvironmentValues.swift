@@ -149,7 +149,7 @@ extension KvEnvironmentValues {
     struct ViewConfiguration {
 
         @usableFromInline
-        typealias MetadataKeywords = KvAccumulatingOrderedSet<MetadataKeyword>
+        typealias MetadataKeywords = KvOrderedIdentitySet<MetadataKeyword>
 
 
         private(set) var navigationDestinations: NavigationDestinations?
@@ -317,7 +317,7 @@ extension KvEnvironmentValues {
         private(set) var padding: KvCssEdgeInsets? { get { self[.padding] } set { self[.padding] = newValue } }
 
         @usableFromInline
-        var scriptResources: KvAccumulatingOrderedSet<KvScriptResource>? { get { self[.scriptResources] } set { self[.scriptResources] = newValue } }
+        var scriptResources: KvOrderedIdentitySet<KvScriptResource>? { get { self[.scriptResources] } set { self[.scriptResources] = newValue } }
 
         @usableFromInline
         var tag: AnyHashable? { get { self[.tag] } set { self[.tag] = newValue } }
