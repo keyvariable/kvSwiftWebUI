@@ -166,8 +166,8 @@ extension KvEnvironmentValues {
         }
 
 
-        private var regularValues: [RegularKey : Any] = [:]
-        private var constrainedValues: [ConstrainedKey : Any] = [:]
+        private var regularValues: KvOrderedDictionary<RegularKey, Any> = [:]
+        private var constrainedValues: KvOrderedDictionary<ConstrainedKey, Any> = [:]
 
         private var constraints: Constraints = [ ]
 
@@ -450,74 +450,66 @@ extension KvEnvironmentValues {
             guard !regularValues.isEmpty || !constrainedValues.isEmpty else { return nil }
 
             let attributes = KvHtmlKit.Attributes { attributes in
-                regularValues.keys
-                    .sorted()
-                    .forEach { key in
-                        let value = regularValues[key]!
+                regularValues.forEach { key, value in
+                    switch key {
+                    case .fixedSize:
+                        attributes.append(optionalStyles: Self.cast(value, as: \.fixedSize).cssFlexShrink(in: context))
 
-                        switch key {
-                        case .fixedSize:
-                            attributes.append(optionalStyles: Self.cast(value, as: \.fixedSize).cssFlexShrink(in: context))
+                    case .font:
+                        attributes.append(styles: Self.cast(value, as: \.font).cssStyle(in: context))
 
-                        case .font:
-                            attributes.append(styles: Self.cast(value, as: \.font).cssStyle(in: context))
+                    case .foregroundStyle:
+                        attributes.append(styles: Self.cast(value, as: \.foregroundStyle).cssForegroundStyle(context.html, nil))
 
-                        case .foregroundStyle:
-                            attributes.append(styles: Self.cast(value, as: \.foregroundStyle).cssForegroundStyle(context.html, nil))
+                    case .gridCellColumnSpan:
+                        let span = Self.cast(value, as: \.gridCellColumnSpan)
+                        guard span > 1 else { break }
 
-                        case .gridCellColumnSpan:
-                            let span = Self.cast(value, as: \.gridCellColumnSpan)
-                            guard span > 1 else { break }
-                            
-                            attributes.append(styles: "grid-column:span \(span)")
+                        attributes.append(styles: "grid-column:span \(span)")
 
-                        case .gridColumnAlignment:
-                            attributes.insert(classes: context.html.cssFlexClass(for: Self.cast(value, as: \.gridColumnAlignment), as: .mainSelf))
+                    case .gridColumnAlignment:
+                        attributes.insert(classes: context.html.cssFlexClass(for: Self.cast(value, as: \.gridColumnAlignment), as: .mainSelf))
 
-                        case .help:
-                            attributes[.title] = .string(Self.cast(value, as: \.help).plainText(in: context.localizationContext))
+                    case .help:
+                        attributes[.title] = .string(Self.cast(value, as: \.help).plainText(in: context.localizationContext))
 
-                        case .multilineTextAlignment:
-                            attributes.append(styles: "text-align:\(Self.cast(value, as: \.multilineTextAlignment).cssTextAlign.css)")
+                    case .multilineTextAlignment:
+                        attributes.append(styles: "text-align:\(Self.cast(value, as: \.multilineTextAlignment).cssTextAlign.css)")
 
-                        case .tag:
-                            let id: String? = switch value {
+                    case .tag:
+                        let id: String? = switch value {
+                        case let string as String: string
+                        case let value as LosslessStringConvertible: value.description
+                        case let value as any RawRepresentable:
+                            switch value.rawValue {
                             case let string as String: string
                             case let value as LosslessStringConvertible: value.description
-                            case let value as any RawRepresentable:
-                                switch value.rawValue {
-                                case let string as String: string
-                                case let value as LosslessStringConvertible: value.description
-                                default: nil
-                                }
                             default: nil
                             }
-                            attributes[.id] = id.map { .string($0) }
-
-                        case .textCase:
-                            attributes.append(styles: "text-transform:\(Self.cast(value, as: \.textCase).cssTextTransform)")
-
-                        case .metadataDescription, .metadataKeywords, .navigationTitle, .scriptResources:
-                            break
+                        default: nil
                         }
-                    }
+                        attributes[.id] = id.map { .string($0) }
 
-                constrainedValues.keys
-                    .sorted()
-                    .forEach { key in
-                        let value = constrainedValues[key]!
+                    case .textCase:
+                        attributes.append(styles: "text-transform:\(Self.cast(value, as: \.textCase).cssTextTransform)")
 
-                        switch key {
-                        case .background:
-                            attributes.append(styles: Self.cast(value, as: \.background).cssBackgroundStyle(context.html, nil))
-                        case .clipShape:
-                            attributes.formUnion(Self.cast(value, as: \.clipShape).htmlAttributes)
-                        case .frame:
-                            attributes.formUnion(Self.cast(value, as: \.frame).htmlAttributes(in: context))
-                        case .padding:
-                            attributes.append(styles: "padding:\(Self.cast(value, as: \.padding).css)")
-                        }
+                    case .metadataDescription, .metadataKeywords, .navigationTitle, .scriptResources:
+                        break
                     }
+                }
+
+                constrainedValues.forEach { key, value in
+                    switch key {
+                    case .background:
+                        attributes.append(styles: Self.cast(value, as: \.background).cssBackgroundStyle(context.html, nil))
+                    case .clipShape:
+                        attributes.formUnion(Self.cast(value, as: \.clipShape).htmlAttributes)
+                    case .frame:
+                        attributes.formUnion(Self.cast(value, as: \.frame).htmlAttributes(in: context))
+                    case .padding:
+                        attributes.append(styles: "padding:\(Self.cast(value, as: \.padding).css)")
+                    }
+                }
             }
 
             return !attributes.isEmpty ? attributes : nil

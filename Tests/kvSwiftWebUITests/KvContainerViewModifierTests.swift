@@ -36,7 +36,7 @@ final class KvContainerViewModifierTests : XCTestCase {
     func testBackgroundAndPaddingOrder() {
         XCTAssertEqual(
             KvTestKit.renderHTML(for: Text("1").padding(.em(2)).background(0xAABBCC as KvColor)),
-            "<p style=\"background-color:#AABBCC;padding:2em\">1</p>"
+            "<p style=\"padding:2em;background-color:#AABBCC\">1</p>"
         )
 
         XCTAssertEqual(

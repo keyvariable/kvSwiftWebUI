@@ -363,10 +363,10 @@ public struct KvText : Equatable {
         }
 
 
-        private var regular: [RegularKey : Any] = .init()
+        private var regular: KvOrderedDictionary<RegularKey, Any> = [:]
 
         /// Attributes those are rendered as HTML tags.
-        private var wrappers: [WrapperKey : Any] = .init()
+        private var wrappers: KvOrderedDictionary<WrapperKey, Any> = [:]
 
 
         // MARK: .RegularKey
@@ -524,31 +524,27 @@ public struct KvText : Equatable {
                 var fontAccumulator = FontAccumulator()
 
                 // TODO: Use sorted dictionary or an array of keys instead of sorting
-                regular.keys
-                   .sorted()
-                   .forEach { key in
-                       let value = regular[key]!
+                regular.forEach { key, value in
+                    switch key {
+                    case .font:
+                        fontAccumulator.font = Attributes.cast(value, as: \.font)
 
-                       switch key {
-                       case .font:
-                           fontAccumulator.font = Attributes.cast(value, as: \.font)
+                    case .fontDesign:
+                        fontAccumulator.design = Attributes.cast(value, as: \.fontDesign)
 
-                       case .fontDesign:
-                           fontAccumulator.design = Attributes.cast(value, as: \.fontDesign)
+                    case .fontWeight:
+                        fontAccumulator.weight = Attributes.cast(value, as: \.fontWeight)
 
-                       case .fontWeight:
-                           fontAccumulator.weight = Attributes.cast(value, as: \.fontWeight)
+                    case .foregroundStyle:
+                        htmlAttributes.append(optionalStyles: (Attributes.cast(value, as: \.foregroundStyle)?.cssExpression(in: context.html)).map { "color:\($0)" })
 
-                       case .foregroundStyle:
-                           htmlAttributes.append(optionalStyles: (Attributes.cast(value, as: \.foregroundStyle)?.cssExpression(in: context.html)).map { "color:\($0)" })
+                    case .help:
+                        htmlAttributes[.title] = .string(Attributes.cast(value, as: \.help).plainText(in: context.localizationContext))
 
-                       case .help:
-                           htmlAttributes[.title] = .string(Attributes.cast(value, as: \.help).plainText(in: context.localizationContext))
-
-                       case .isItalic:
-                           htmlAttributes.append(optionalStyles: Attributes.cast(value, as: \.isItalic) == true ? "font-style:italic" : nil)
-                       }
-                   }
+                    case .isItalic:
+                        htmlAttributes.append(optionalStyles: Attributes.cast(value, as: \.isItalic) == true ? "font-style:italic" : nil)
+                    }
+                }
 
 
                 func Resovle(fontDesign: KvFont.Design?, against fontFamily: KvFont.Family?) -> KvFont.Design? {
@@ -590,23 +586,19 @@ public struct KvText : Equatable {
         ) -> KvHtmlRepresentation.Fragment {
             var fragment = innerFragment
 
-            wrappers.keys
-                .sorted()
-                .forEach { key in
-                    let value = wrappers[key]!
-
-                    switch key {
-                    case .characterStyle:
-                        let tag: KvHtmlKit.Tag = switch Attributes.cast(value, as: \.characterStyle) {
-                        case .subscript: .sub
-                        case .superscript: .sup
-                        }
-                        fragment = .tag(tag, innerHTML: fragment)
-
-                    case .linkURL:
-                        fragment = KvLinkKit.representation(url: Attributes.cast(value, as: \.linkURL), innerHTML: fragment, in: context)
+            wrappers.forEach { key, value in
+                switch key {
+                case .characterStyle:
+                    let tag: KvHtmlKit.Tag = switch Attributes.cast(value, as: \.characterStyle) {
+                    case .subscript: .sub
+                    case .superscript: .sup
                     }
+                    fragment = .tag(tag, innerHTML: fragment)
+
+                case .linkURL:
+                    fragment = KvLinkKit.representation(url: Attributes.cast(value, as: \.linkURL), innerHTML: fragment, in: context)
                 }
+            }
 
             return fragment
         }
