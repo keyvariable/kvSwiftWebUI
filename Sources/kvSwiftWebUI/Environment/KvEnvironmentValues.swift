@@ -60,14 +60,17 @@ public struct KvEnvironmentValues {
 
     // MARK: Access
 
+    /// Getter returns the closest value in the hierarchy by given *key*.
+    /// ``KvEnvironmentKey/defaultValue`` is returned if there is no value for *key*.
     public subscript<Key : KvEnvironmentKey>(key: Key.Type) -> Key.Value {
-        get {
-            let keyID = ObjectIdentifier(key)
-            return firstResult { $0.container[keyID] }
-                .map { $0 as! Key.Value }
-            ?? key.defaultValue
-        }
+        get { value(forKey: key) ?? key.defaultValue }
         set { container[ObjectIdentifier(key)] = newValue }
+    }
+
+
+    func value<Key : KvEnvironmentKey>(forKey key: Key.Type) -> Key.Value? {
+        firstResult { $0.container[ObjectIdentifier(key)] }
+            .map { $0 as! Key.Value }
     }
 
 
@@ -145,6 +148,10 @@ extension KvEnvironmentValues {
     @usableFromInline
     struct ViewConfiguration {
 
+        @usableFromInline
+        typealias MetadataKeywords = KvOrderedIdentitySet<MetadataKeyword>
+
+
         private(set) var navigationDestinations: NavigationDestinations?
         
 
@@ -159,8 +166,8 @@ extension KvEnvironmentValues {
         }
 
 
-        private var regularValues: [RegularKey : Any] = [:]
-        private var constrainedValues: [ConstrainedKey : Any] = [:]
+        private var regularValues: KvOrderedDictionary<RegularKey, Any> = [:]
+        private var constrainedValues: KvOrderedDictionary<ConstrainedKey, Any> = [:]
 
         private var constraints: Constraints = [ ]
 
@@ -174,6 +181,9 @@ extension KvEnvironmentValues {
             case foregroundStyle
             case gridCellColumnSpan
             case gridColumnAlignment
+            case help
+            case metadataDescription
+            case metadataKeywords
             case multilineTextAlignment
             case navigationTitle
             case scriptResources
@@ -231,11 +241,14 @@ extension KvEnvironmentValues {
                 case .fixedSize:
                     // Accumulation
                     result.fixedSize = .union(result.fixedSize, Self.cast(value, as: \.fixedSize))
+                case .metadataKeywords:
+                    // Accumulation
+                    result.metadataKeywords = .union(result.metadataKeywords, Self.cast(value, as: \.metadataKeywords))
                 case .scriptResources:
                     // Accumulation
                     result.scriptResources = .union(result.scriptResources, Self.cast(value, as: \.scriptResources))
-                case .font, .foregroundStyle, .gridCellColumnSpan, .gridColumnAlignment, .multilineTextAlignment, .navigationTitle,
-                        .tag, .textCase:
+                case .font, .foregroundStyle, .gridCellColumnSpan, .gridColumnAlignment, .help, .metadataDescription,
+                        .multilineTextAlignment, .navigationTitle, .tag, .textCase:
                     // Replacement
                     result.regularValues[key] = value
                 }
@@ -286,6 +299,15 @@ extension KvEnvironmentValues {
         var gridColumnAlignment: KvHorizontalAlignment? { get { self[.gridColumnAlignment] } set { self[.gridColumnAlignment] = newValue } }
 
         @usableFromInline
+        var help: KvText? { get { self[.help] } set { self[.help] = newValue } }
+
+        @usableFromInline
+        var metadataDescription: KvText? { get { self[.metadataDescription] } set { self[.metadataDescription] = newValue } }
+
+        @usableFromInline
+        var metadataKeywords: MetadataKeywords? { get { self[.metadataKeywords] } set { self[.metadataKeywords] = newValue } }
+
+        @usableFromInline
         var multilineTextAlignment: KvTextAlignment? { get { self[.multilineTextAlignment] } set { self[.multilineTextAlignment] = newValue } }
 
         @usableFromInline
@@ -295,7 +317,7 @@ extension KvEnvironmentValues {
         private(set) var padding: KvCssEdgeInsets? { get { self[.padding] } set { self[.padding] = newValue } }
 
         @usableFromInline
-        var scriptResources: KvAccumulatingOrderedSet<KvScriptResource>? { get { self[.scriptResources] } set { self[.scriptResources] = newValue } }
+        var scriptResources: KvOrderedIdentitySet<KvScriptResource>? { get { self[.scriptResources] } set { self[.scriptResources] = newValue } }
 
         @usableFromInline
         var tag: AnyHashable? { get { self[.tag] } set { self[.tag] = newValue } }
@@ -383,6 +405,21 @@ extension KvEnvironmentValues {
         }
 
 
+        mutating func appendMetadataKeywords<K>(_ keywords: K)
+        where K : Sequence, K.Element == KvText
+        {
+            _ = { container in
+                if container == nil {
+                    container = .init()
+                }
+
+                keywords.forEach {
+                    container!.insert(.init(text: $0))
+                }
+            }(&metadataKeywords)
+        }
+
+
         func navigationDestination(for data: String) -> NavigationDestinations.Destination? {
             navigationDestinations?.destination(for: data)
         }
@@ -395,10 +432,14 @@ extension KvEnvironmentValues {
                 destinationProvider(data).map { (body: KvHtmlBodyImpl(content: $0.view), value: $0.value) }
             }
 
-            if navigationDestinations == nil { navigationDestinations = .init() }
+            _ = {
+                if $0 == nil {
+                    $0 = .init()
+                }
 
-            navigationDestinations!.append(provider: destinationProvider)
-            navigationDestinations!.insertStaticData(staticData)
+                $0!.append(provider: destinationProvider)
+                $0!.insertStaticData(staticData)
+            }(&navigationDestinations)
         }
 
 
@@ -409,71 +450,66 @@ extension KvEnvironmentValues {
             guard !regularValues.isEmpty || !constrainedValues.isEmpty else { return nil }
 
             let attributes = KvHtmlKit.Attributes { attributes in
-                regularValues.keys
-                    .sorted()
-                    .forEach { key in
-                        let value = regularValues[key]!
+                regularValues.forEach { key, value in
+                    switch key {
+                    case .fixedSize:
+                        attributes.append(optionalStyles: Self.cast(value, as: \.fixedSize).cssFlexShrink(in: context))
 
-                        switch key {
-                        case .fixedSize:
-                            attributes.append(optionalStyles: Self.cast(value, as: \.fixedSize).cssFlexShrink(in: context))
+                    case .font:
+                        attributes.append(styles: Self.cast(value, as: \.font).cssStyle(in: context))
 
-                        case .font:
-                            attributes.append(styles: Self.cast(value, as: \.font).cssStyle(in: context.html))
+                    case .foregroundStyle:
+                        attributes.append(styles: Self.cast(value, as: \.foregroundStyle).cssForegroundStyle(context.html, nil))
 
-                        case .foregroundStyle:
-                            attributes.append(styles: Self.cast(value, as: \.foregroundStyle).cssForegroundStyle(context.html, nil))
+                    case .gridCellColumnSpan:
+                        let span = Self.cast(value, as: \.gridCellColumnSpan)
+                        guard span > 1 else { break }
 
-                        case .gridCellColumnSpan:
-                            let span = Self.cast(value, as: \.gridCellColumnSpan)
-                            guard span > 1 else { break }
-                            
-                            attributes.append(styles: "grid-column:span \(span)")
+                        attributes.append(styles: "grid-column:span \(span)")
 
-                        case .gridColumnAlignment:
-                            attributes.insert(classes: context.html.cssFlexClass(for: Self.cast(value, as: \.gridColumnAlignment), as: .mainSelf))
+                    case .gridColumnAlignment:
+                        attributes.insert(classes: context.html.cssFlexClass(for: Self.cast(value, as: \.gridColumnAlignment), as: .mainSelf))
 
-                        case .multilineTextAlignment:
-                            attributes.append(styles: "text-align:\(Self.cast(value, as: \.multilineTextAlignment).cssTextAlign.css)")
+                    case .help:
+                        attributes[.title] = .string(Self.cast(value, as: \.help).plainText(in: context.localizationContext))
 
-                        case .tag:
-                            let id: String? = switch value {
+                    case .multilineTextAlignment:
+                        attributes.append(styles: "text-align:\(Self.cast(value, as: \.multilineTextAlignment).cssTextAlign.css)")
+
+                    case .tag:
+                        let id: String? = switch value {
+                        case let string as String: string
+                        case let value as LosslessStringConvertible: value.description
+                        case let value as any RawRepresentable:
+                            switch value.rawValue {
                             case let string as String: string
                             case let value as LosslessStringConvertible: value.description
-                            case let value as any RawRepresentable:
-                                switch value.rawValue {
-                                case let string as String: string
-                                case let value as LosslessStringConvertible: value.description
-                                default: nil
-                                }
                             default: nil
                             }
-                            attributes[.id] = id.map { .string($0) }
-
-                        case .textCase:
-                            attributes.append(styles: "text-transform:\(Self.cast(value, as: \.textCase).cssTextTransform)")
-
-                        case .navigationTitle, .scriptResources:
-                            break
+                        default: nil
                         }
-                    }
+                        attributes[.id] = id.map { .string($0) }
 
-                constrainedValues.keys
-                    .sorted()
-                    .forEach { key in
-                        let value = constrainedValues[key]!
+                    case .textCase:
+                        attributes.append(styles: "text-transform:\(Self.cast(value, as: \.textCase).cssTextTransform)")
 
-                        switch key {
-                        case .background:
-                            attributes.append(styles: Self.cast(value, as: \.background).cssBackgroundStyle(context.html, nil))
-                        case .clipShape:
-                            attributes.formUnion(Self.cast(value, as: \.clipShape).htmlAttributes)
-                        case .frame:
-                            attributes.formUnion(Self.cast(value, as: \.frame).htmlAttributes(in: context))
-                        case .padding:
-                            attributes.append(styles: "padding:\(Self.cast(value, as: \.padding).css)")
-                        }
+                    case .metadataDescription, .metadataKeywords, .navigationTitle, .scriptResources:
+                        break
                     }
+                }
+
+                constrainedValues.forEach { key, value in
+                    switch key {
+                    case .background:
+                        attributes.append(styles: Self.cast(value, as: \.background).cssBackgroundStyle(context.html, nil))
+                    case .clipShape:
+                        attributes.formUnion(Self.cast(value, as: \.clipShape).htmlAttributes)
+                    case .frame:
+                        attributes.formUnion(Self.cast(value, as: \.frame).htmlAttributes(in: context))
+                    case .padding:
+                        attributes.append(styles: "padding:\(Self.cast(value, as: \.padding).css)")
+                    }
+                }
             }
 
             return !attributes.isEmpty ? attributes : nil
@@ -675,6 +711,19 @@ extension KvEnvironmentValues {
             mutating func insertStaticData<S>(_ sequence: S) where S : Sequence, S.Element == String {
                 staticData.formUnion(sequence)
             }
+
+        }
+
+
+        // MARK: .MetadataKeyword
+
+        @usableFromInline
+        struct MetadataKeyword : Identifiable {
+
+            let text: KvText
+
+            @usableFromInline
+            var id: String { text.plainText(in: .disabled).lowercased() }
 
         }
 

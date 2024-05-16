@@ -45,7 +45,17 @@ struct BasicsView : View {
             imageSection
             textSection
             environmentSection
+            viewModifierSection
         }
+        /// This modifier provides keyword metadata for the resulting navigation destination.
+        /// If several views declare keyword metadata in a navigation destination then all the keywords are joined.
+        ///
+        /// - Note: Keywords are localized.
+        ///
+        /// - SeeAlso: `.metadata(description:)` modifier.
+        ///
+        /// - Tip: Use `Text(verbatim:)` to prevent localization of argument.
+        .metadata(keywords: Text("basics"))
     }
 
 
@@ -170,6 +180,8 @@ struct BasicsView : View {
                     }
                     .padding()
                 }
+                /// This modifier provides text for a tooltip.
+                .help("This view is made programmatically uzing ZStack")
             }
 
             Section2(header: Text("Grid")) {
@@ -217,17 +229,19 @@ struct BasicsView : View {
             let tileSize: (width: KvCssLength, height: KvCssLength) = (256, 72)
 
             Section2(header: Text("Simple SVG Image")) {
-                Image("img/circles.svg", bundle: .module)
+                Image("img/circles.svg")
+                    /// Image accessibility labels are used as values for *alt* HTML attribute. It matters for SEO and screen readers.
+                    .accessibilityLabel("Example of an SVG image with colored circles on transparent background")
             }
 
             Section2(header: Text("Resizing")) {
                 Preview(caption: Text("`.resizable()`")) {
-                    Image("img/circles.svg", bundle: .module)
+                    Image("img/circles.svg")
                         .resizable()
                         .frame(width: tileSize.width, height: tileSize.height)
                 }
                 Preview(caption: Text("`.resizable(resizingMode: .tile)`")) {
-                    Image("img/circles.svg", bundle: .module)
+                    Image("img/circles.svg")
                         .resizable(resizingMode: .tile)
                         .frame(width: tileSize.width, height: tileSize.height, alignment: .topLeading)
                 }
@@ -235,21 +249,21 @@ struct BasicsView : View {
 
             Section2(header: Text("Template Redering Mode")) {
                 Preview(caption: Text("current foreground style")) {
-                    Image("img/circles.svg", bundle: .module)
+                    Image("img/circles.svg")
                         .renderingMode(.template)
                 }
                 Preview(caption: Text("`.foregroundStyle(.coral)`")) {
-                    Image("img/circles.svg", bundle: .module)
+                    Image("img/circles.svg")
                         .renderingMode(.template)
                         .foregroundStyle(.coral)
                 }
                 Preview(caption: Text("`.foregroundStyle(.linearGradient(...))`")) {
-                    Image("img/circles.svg", bundle: .module)
+                    Image("img/circles.svg")
                         .renderingMode(.template)
                         .foregroundStyle(.linearGradient(colors: [ .indigo, .violet ], endPoint: .trailing))
                 }
                 Preview(caption: Text("`.foregroundStyle(.linearGradient(...))`")) {
-                    Image("img/circles.svg", bundle: .module)
+                    Image("img/circles.svg")
                         .resizable(resizingMode: .tile)
                         .renderingMode(.template)
                         .frame(width: tileSize.width + 12, height: tileSize.height - 16)
@@ -289,6 +303,20 @@ struct BasicsView : View {
                 Preview(caption: Text("`.textCase(.uppercase)`")) { example.textCase(.uppercase) }
                 Preview(caption: Text("`.textCase(.lowercase)`")) { example.textCase(.lowercase) }
             }
+
+            Section2(header: Text("Interpolations")) {
+                /// `KvLocalizedStringKey` supports string interpolations.
+                Text("`Double.pi` is \(Double.pi) (\(Double.pi, format: "%.16g")).")
+                /// `Text` can be passed to `KvLocalizedStringKey` string interpolations as an argument.
+                /// It helps to avoid usage of hard-to-read concatenations and use better localization keys.
+                /// In this case it's needed to provide translations for "This text" and "%@ is interpolated into another text." strings.
+                let argument: Text = Text("This text")
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.green)
+                    /// `Text` interpolations support `.help(_:)` modifier.
+                    .help("An interpolation argument")
+                Text("\(argument) is interpolated into another text.")
+            }
         }
     }
 
@@ -296,6 +324,20 @@ struct BasicsView : View {
     private var environmentSection: some View {
         Section1(header: Text("Environment")) {
             HorizontalSizeClassSection()
+        }
+    }
+
+
+    private var viewModifierSection: some View {
+        Section1(header: Text("View Modifiers")) {
+            Section2(header: Text("Adaptive Padding Sample")) {
+                Text("Below are examples where the same `Text` view is modified with the same view modifier. This modifier applies large or small padding whether horizontal size class is regular.")
+
+                HorizontalSizeClassPreview {
+                    Text("Text")
+                        .modifier(AdaptivePaddingViewModifier())
+                }
+            }
         }
     }
 
@@ -323,6 +365,47 @@ struct BasicsView : View {
                     .padding(.em(0.25))
                     .background(.systemGray4)
                     .clipShape(.rect(cornerRadius: .em(0.25)))
+            }
+        }
+
+    }
+
+
+
+    // MARK: .HorizontalSizeClassPreview
+
+    /// This view presents the same content in previews in current horizontal size class and for each value.
+    private struct HorizontalSizeClassPreview<Content : View> : View {
+
+        let content: Content
+
+
+        init(@ViewBuilder content: () -> Content) {
+            self.content = content()
+        }
+
+
+        var body: some View {
+            preview(sizeClass: nil)
+
+            ForEach(UserInterfaceSizeClass.allCases, id: \.self) {
+                preview(sizeClass: $0)
+            }
+        }
+
+
+        @ViewBuilder
+        private func preview(sizeClass: UserInterfaceSizeClass?) -> some View {
+            let caption = Text("Size class: \(Text.md(verbatim: sizeClass.map { "`.\($0)`" } ?? "current"))")
+
+            switch sizeClass {
+            case .none:
+                Preview(caption: caption) { content }
+            case .some:
+                Preview(caption: caption) {
+                    content
+                }
+                .environment(\.horizontalSizeClass, sizeClass)
             }
         }
 
@@ -368,24 +451,7 @@ struct BasicsView : View {
             Section2(header: Text.md(verbatim: "`\\.horizontalSizeClass`")) {
                 Text("An adaptive view below is presented with adaptive and forced horizontal size classes. Note how stack direction, order of views, separator and font size are adapted for screen width.")
 
-                examplePreview()
-                examplePreview(.regular)
-                examplePreview(.compact)
-            }
-        }
-
-
-        @ViewBuilder
-        private func examplePreview(_ horizontalSizeClass: UserInterfaceSizeClass? = nil) -> some View {
-            let caption = Text("Size class: \(Text.md(verbatim: horizontalSizeClass.map { "`.\($0)`" } ?? "dynamic"))")
-
-            switch horizontalSizeClass {
-            case .none:
-                Preview(caption: caption, content: ExampleView.init)
-            case .some:
-                Preview(caption: caption) {
-                    ExampleView().environment(\.horizontalSizeClass, horizontalSizeClass)
-                }
+                HorizontalSizeClassPreview(content: ExampleView.init)
             }
         }
 
@@ -437,6 +503,23 @@ struct BasicsView : View {
                 Text(verbatim: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")
             }
 
+        }
+
+    }
+
+
+
+    // MARK: .AdaptivePaddingViewModifier
+
+    /// This view modifier applies padding depending on current `\.horizontalSizeClass` value.
+    private struct AdaptivePaddingViewModifier : ViewModifier {
+
+        @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+
+        func body(content: Content) -> some View {
+            content
+                .padding(horizontalSizeClass == .regular ? .em(2) : .px(4))
         }
 
     }

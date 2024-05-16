@@ -104,6 +104,11 @@ struct ColorDetailView<ID : ColorID> : View {
         ///         Also Safari tints bars using the background.
         .background(color)
         .navigationTitle(colorID.label)
+        /// This modifier provides keyword metadata for the resulting navigation destination.
+        /// If several views declare keyword metadata in a navigation destination then all the keywords are joined.
+        .metadata(keywords: Text("navigation"), Text("dynamic destination"), Text("Color"))
+        /// Color detail page is custom and doesn't consume ``Page`` view  so ``PageKeywordModifier`` is used to provide common keywords.
+        .modifier(PageKeywordModifier())
     }
 
 

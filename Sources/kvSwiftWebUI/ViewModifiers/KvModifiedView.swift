@@ -106,11 +106,20 @@ public struct KvModifiedView : KvView {
             fragment = .tag(.div, attributes: containerHtmlAttributes, innerHTML: fragment)
         }
 
-        if let viewConfiguration = environment.viewConfiguration {
-            context.html.processViewConfiguration(viewConfiguration)
+        if let viewConfiguration = context.environmentNode?.values.viewConfiguration {
+            context.html.processViewConfiguration(viewConfiguration, defaultBundle: context.defaultBundle)
         }
 
         return fragment
+    }
+
+
+
+    // MARK: Auxiliaries
+
+    /// - Returns: Given *view* if it is an instance of `KvModifiedView` or new instance wrapping *view*.
+    static func cast<V : KvView>(from view: V) -> KvModifiedView {
+        (view as? KvModifiedView) ?? KvModifiedView(source: { view })
     }
 
 }

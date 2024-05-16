@@ -22,3 +22,5 @@
 */
 
 "HELLO" = "Buna ziua!";
+
+"METADATA.DESCRIPTION" = "Localizarea este o parte importantă a dezvoltării de interfețe ușor de utilizat. Exemplul LocalizedHello afișează „Bună ziua!” etichetă în engleză, chineză, hindi și multe alte limbi.";

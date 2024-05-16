@@ -34,11 +34,19 @@ import kvHttpKit
 /// *KvLocalization* caches locales used to translate for language IDs and bundles.
 public class KvLocalization {
 
+    /// Language tags ([RFC 5646](https://www.rfc-editor.org/rfc/rfc5646.html )).
+    let languageTags: [String]
+
+    let defaultLanguageTag: String?
+
+
+
     init(_ bundle: Bundle) {
         self.bundle = bundle
 
-        languageTags = bundle.localizations
-        defaultLanguageTag = bundle.preferredLocalizations.first ?? bundle.localizations.first
+        languageTags = bundle.localizations.sorted()
+        // If there are no localizations then `preferredLocalizations` are ignored.
+        defaultLanguageTag = !bundle.localizations.isEmpty ? (bundle.preferredLocalizations.first ?? bundle.localizations.first) : nil
     }
 
 
@@ -47,10 +55,6 @@ public class KvLocalization {
 
 
     private let bundle: Bundle
-
-    /// Language tags ([RFC 5646](https://www.rfc-editor.org/rfc/rfc5646.html )).
-    private let languageTags: [String]
-    private let defaultLanguageTag: String?
 
 
 
@@ -63,6 +67,7 @@ public class KvLocalization {
     }
 
 
+    /// - SeeAlso: ``defaultLanguageTag``.
     func selectLanguageTag(forAcceptLanguageHeader value: String) -> String? {
         IteratorSequence(KvLocalization.AcceptLanguageIterator(value))
             .lazy.compactMap { element -> Match<MatchCompositeRate>? in
@@ -79,12 +84,6 @@ public class KvLocalization {
             }
             .max()?
             .languageTag
-        ?? defaultLanguageTag
-    }
-
-
-    func forEachLanguageTag(_ body: (String) -> Void) {
-        languageTags.forEach(body)
     }
 
 
@@ -250,6 +249,9 @@ public class KvLocalization {
         /// When localization is disabled, keys of localized resources are used as resolved strings.
         public var languageTag: String? { resolvedBundles.languageTag }
 
+        /// A locale selected by ``languageTag`` or *en_US_POSIX* by default.
+        public var locale: Locale { resolvedBundles.defaultLocale }
+
 
         fileprivate convenience init(languageTag: String?, primaryBundle: Bundle) {
             assert(languageTag == nil || primaryBundle.localizations.contains(languageTag!))
@@ -277,7 +279,7 @@ public class KvLocalization {
         // MARK: Fabrics
 
         /// - Returns: A context providing no localization. It just returns the keys.
-        static var disabled: Context { .init(languageTag: nil, primaryBundle: .main) }
+        static let disabled: Context  = .init(languageTag: nil, primaryBundle: .main)
 
 
         // MARK: .ResolvedBundle
@@ -298,14 +300,14 @@ public class KvLocalization {
 
             let languageTag: String?
 
+            let defaultLocale: Locale
+
 
             init(languageTag: String?) {
                 self.languageTag = languageTag
                 self.defaultLocale = Locale(identifier: languageTag ?? "en_US_POSIX")
             }
 
-
-            private let defaultLocale: Locale
 
             /// Cache of resolved bundles by bundle URLs.
             private var values: [URL : Element] = .init()
@@ -406,7 +408,6 @@ public class KvLocalization {
         }
 
 
-        /// - Parameter defaultBundle: Bundle to use when the *resource*'s bundle is `nil`.
         borrowing func string(_ resource: borrowing StringResource, options: Options = [ ]) -> String {
             string(forKey: resource.key,
                    defaultValue: resource.defaultValue,

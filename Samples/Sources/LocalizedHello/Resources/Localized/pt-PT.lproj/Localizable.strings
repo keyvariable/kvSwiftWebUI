@@ -22,3 +22,5 @@
 */
 
 "HELLO" = "Olá!";
+
+"METADATA.DESCRIPTION" = "A localização é uma parte importante do desenvolvimento de interfaces fáceis de usar. O exemplo LocalizedHello exibe «Olá!» etiqueta em inglês, chinês, hindi e muitos outros idiomas.";

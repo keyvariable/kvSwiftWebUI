@@ -23,10 +23,6 @@
 //  Created by Svyatoslav Popov on 11.02.2024.
 //
 
-import Foundation
-
-
-
 // MARK: - \.localization
 
 extension KvEnvironmentValues {
@@ -54,45 +50,22 @@ extension KvEnvironmentValues {
     ///
     /// - Note: ``Text`` view supports localization so in most cases there is no need to access localization context.
     ///
-    /// - SeeAlso: ``KvEnvironmentValues/localizationBundle``.
+    /// - SeeAlso: ``KvEnvironmentValues/defaultBundle``.
     public internal(set) var localization: KvLocalization.Context {
         get {
             let context = self[LocalizationKey.self]!
 
-            // TODO: Avoid redundant repeated fetches.
-            return switch localizationBundle {
+            // TODO: Avoid redundant duplicate fetches.
+            return switch defaultBundleIfExists {
             case .none:
                 context
             case .some(let bundle):
+                // The context is evaluated for the HTTP bundle's default bundle.
+                // So if the default bundle is changed then content must be re-evaluated.
                 context.with(primaryBundle: bundle)
             }
         }
         set { self[LocalizationKey.self] = newValue }
-    }
-
-}
-
-
-
-// MARK: - \.localizationBundle
-
-extension KvEnvironmentValues {
-
-    private struct LocalizationBundleKey : KvEnvironmentKey {
-
-        static var defaultValue: Bundle? { nil }
-
-    }
-
-
-    /// Default localization bundle.
-    ///
-    /// If provided, then the value is used instead of ``KvHttpBundle/Configuration/localizationBundle`` in configuration of HTTP bundle.
-    ///
-    /// - SeeAlso: ``KvView/localizationBundle(_:)``.
-    public var localizationBundle: Bundle? {
-        get { self[LocalizationBundleKey.self] }
-        set { self[LocalizationBundleKey.self] = newValue }
     }
 
 }

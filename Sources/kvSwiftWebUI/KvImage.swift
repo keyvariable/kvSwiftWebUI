@@ -34,26 +34,86 @@ public typealias Image = KvImage
 
 
 // TODO: DOC
+/// - Tip: Use ``accessibilityLabel(_:)-283fr`` modifier to provide value for *alt* HTML attribute. It matters for SEO and screen readers.
 public struct KvImage : KvView {
 
     @usableFromInline
-    let resource: KvImageResource
+    let resourceSelector: KvImageResource.Selector
 
     @usableFromInline
-    private(set) var resizingMode: ResizingMode? = nil
+    let bundle: Bundle?
+
 
     @usableFromInline
-    private(set) var renderingMode: TemplateRenderingMode? = nil
+    var configuration: Configuration = .init()
+
 
 
     // TODO: DOC
     @inlinable
-    public init(_ name: String, bundle: Bundle? = nil) { self.init(KvImageResource(name: name, bundle: bundle ?? .main)) }
+    public init(_ name: String, bundle: Bundle? = nil) { self.init(
+        selector: .init(name: name),
+        bundle: bundle
+    ) }
 
 
     // TODO: DOC
     @inlinable
-    public init(_ resource: KvImageResource) { self.resource = resource }
+    public init(_ resource: KvImageResource) { self.init(selector: resource.selector, bundle: resource.bundle) }
+
+
+    @usableFromInline
+    init(selector: KvImageResource.Selector, bundle: Bundle?) {
+        resourceSelector = selector
+        self.bundle = bundle
+    }
+
+
+
+    // MARK: .Configuration
+
+    @usableFromInline
+    struct Configuration {
+
+        private var values: [Key : Any] = [:]
+
+
+        // MARK: .Key
+
+        enum Key : Hashable {
+            case accessibilityLabel
+            case renderingMode
+            case resizingMode
+        }
+
+
+        // MARK: Properties
+
+        private subscript<T>(key: Key) -> T? {
+            get { values[key] as! T? }
+            set { values[key] = newValue }
+        }
+
+
+        @usableFromInline
+        var accessibilityLabel: KvText? {
+            get { self[.accessibilityLabel] }
+            set { self[.accessibilityLabel] = newValue }
+        }
+
+        @usableFromInline
+        var renderingMode: TemplateRenderingMode? {
+            get { self[.renderingMode] }
+            set { self[.renderingMode] = newValue }
+        }
+
+        @usableFromInline
+        var resizingMode: ResizingMode? {
+            get { self[.resizingMode] }
+            set { self[.resizingMode] = newValue }
+        }
+
+    }
 
 
 
@@ -93,22 +153,47 @@ public struct KvImage : KvView {
 
     // MARK: Modifiers
 
-    // TODO: DOC
-    @inlinable
-    public consuming func resizable(resizingMode: ResizingMode = .stretch) -> KvImage {
+    @usableFromInline
+    consuming func modified(with transform: (inout Configuration) -> Void) -> KvImage {
         var copy = self
-        copy.resizingMode = resizingMode
+        transform(&copy.configuration)
         return copy
     }
 
 
+    /// This modifier provides value of accessibility label.
+    /// Accessibility labels for images are used as values of *alt* HTML attribute.
+    @inlinable
+    public consuming func accessibilityLabel(_ label: KvText) -> KvImage { modified {
+        $0.accessibilityLabel = label
+    } }
+
+
+    /// An overload of ``accessibilityLabel(_:)-283fr`` modifier.
+    @inlinable
+    public consuming func accessibilityLabel(_ label: KvLocalizedStringKey) -> KvImage { accessibilityLabel(Text(label)) }
+
+
+    /// An overload of ``accessibilityLabel(_:)-283fr`` modifier.
+    @_disfavoredOverload
+    @inlinable
+    public consuming func accessibilityLabel<S>(_ label: S) -> KvImage
+    where S : StringProtocol
+    { accessibilityLabel(Text(label)) }
+
+
     // TODO: DOC
     @inlinable
-    public consuming func renderingMode(_ renderingMode: TemplateRenderingMode?) -> KvImage {
-        var copy = self
-        copy.renderingMode = renderingMode
-        return copy
-    }
+    public consuming func renderingMode(_ renderingMode: TemplateRenderingMode?) -> KvImage { modified {
+        $0.renderingMode = renderingMode
+    } }
+
+
+    // TODO: DOC
+    @inlinable
+    public consuming func resizable(resizingMode: ResizingMode = .stretch) -> KvImage { modified {
+        $0.resizingMode = resizingMode
+    } }
 
 }
 
@@ -119,7 +204,7 @@ public struct KvImage : KvView {
 extension KvImage : KvHtmlRenderable {
 
     func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
-        switch renderingMode {
+        switch configuration.renderingMode {
         case .original, nil:
             return context.representation { context, htmlAttributes in
                 renderContentHTML(in: context,
@@ -132,7 +217,7 @@ extension KvImage : KvHtmlRenderable {
                 let alignment = context.environmentNode?.values.viewConfiguration?.frame?.alignment
                 let mask = cssBackground(in: context, alignment: alignment)
 
-                let resizingHtmlAttributes: KvHtmlKit.Attributes? = (resizingMode != nil
+                let resizingHtmlAttributes: KvHtmlKit.Attributes? = (configuration.resizingMode != nil
                                                                      ? .init { $0.insert(classes: "resizable") }
                                                                      : nil)
 
@@ -166,8 +251,8 @@ extension KvImage : KvHtmlRenderable {
 
 
     private func cssBackground(in context: KvHtmlRepresentationContext, alignment: KvAlignment?) -> KvCssBackground {
-        .init(repeat: resizingMode == .tile ? .repeat : .noRepeat,
-              source: .uri(context.html.uri(for: resource)),
+        .init(repeat: configuration.resizingMode == .tile ? .repeat : .noRepeat,
+              source: .uri(context.html.uri(for: resource(in: context))),
               position: alignment?.cssBackgroundPosition)
     }
 
@@ -177,7 +262,7 @@ extension KvImage : KvHtmlRenderable {
         htmlAttributes: borrowing KvHtmlKit.Attributes?,
         alignment: @autoclosure () -> KvAlignment?
     ) -> KvHtmlRepresentation.Fragment {
-        switch resizingMode {
+        switch configuration.resizingMode {
         case .stretch:
             renderImgHTML(
                 in: context,
@@ -207,7 +292,12 @@ extension KvImage : KvHtmlRenderable {
             .img,
             attributes: .union(
                 htmlAttributes,
-                .init { $0.set(src: context.html.uri(for: resource)) }
+                .init {
+                    $0.set(src: context.html.uri(for: resource(in: context)))
+                    if let value = configuration.accessibilityLabel?.plainText(in: context.localizationContext) {
+                        $0[.alt] = .string(value)
+                    }
+                }
             )
         )
     }
@@ -228,6 +318,12 @@ extension KvImage : KvHtmlRenderable {
                 }
             )
         )
+    }
+
+
+    private func resource(in context: KvHtmlRepresentationContext) -> KvImageResource {
+        .init(selector: resourceSelector,
+              bundle: bundle ?? context.defaultBundle)
     }
 
 }

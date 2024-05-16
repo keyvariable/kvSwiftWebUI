@@ -369,6 +369,7 @@ public struct KvLocalizedStringKey : Equatable, ExpressibleByStringInterpolation
         }
 
 
+#if arch(x86_64)
         /// - Parameter format: An optional format specifier to be used in the resulting format string. By default `"%Lg"` is used.
         ///
         /// - Note: Format strings and the arguments are passed to `String(format:locale:arguments)`.
@@ -377,6 +378,7 @@ public struct KvLocalizedStringKey : Equatable, ExpressibleByStringInterpolation
         public mutating func appendInterpolation(_ number: Float80, format: String? = nil) {
             appendArgument(.cVarArg(number, format: format ?? "%Lg"))
         }
+#endif // arch(x86_64)
 
 
         /// - Parameter format: An optional format specifier to be used in the resulting format string. By default `"%g"` is used.

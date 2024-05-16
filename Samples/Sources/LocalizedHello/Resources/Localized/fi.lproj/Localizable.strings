@@ -22,3 +22,5 @@
 */
 
 "HELLO" = "Hei!";
+
+"METADATA.DESCRIPTION" = "Lokalisointi on tärkeä osa käyttäjäystävällisten käyttöliittymien kehittämistä. LocalizedHei esimerkki näyttää \"Hei!\" etiketti englanniksi, kiinaksi, hindiksi ja monilla muilla kielillä.";

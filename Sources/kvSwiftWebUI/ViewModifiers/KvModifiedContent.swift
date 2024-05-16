@@ -44,12 +44,44 @@ public struct KvModifiedContent<Content, Modifier> {
 
 
 
+// MARK: : KvView
+
+extension KvModifiedContent : KvView
+where Content : KvView, Modifier : KvViewModifier
+{
+
+    public var body: KvNeverView { Body() }
+
+}
+
+
+
+// MARK: : KvHtmlRenderable
+
+extension KvModifiedContent : KvHtmlRenderable
+where Self : KvView
+{
+
+    func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
+        modifier
+            .body(content: KvModifiedView.cast(from: content))
+            .htmlRepresentation(in: context)
+    }
+
+}
+
+
+
+// MARK: : KvViewModifier
+
 extension KvModifiedContent : KvViewModifier
 where Content : KvViewModifier, Modifier : KvViewModifier
 {
 
     public func body(content view: Content.Content) -> Modifier.Body {
-        modifier.apply(to: content.body(content: view))
+        let intermidiateContent = content.body(content: view)
+
+        return modifier.body(content: KvModifiedView.cast(from: intermidiateContent))
     }
 
 }

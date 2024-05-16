@@ -381,6 +381,7 @@ extension KvHtmlKit {
     /// - Note: Attributes are equal when their HTML names are equal.
     enum Attribute : Hashable {
 
+        case alt
         case `class`
         case content
         case href
@@ -391,6 +392,7 @@ extension KvHtmlKit {
         case src
         case style
         case target
+        case title
         case type
 
         case raw(String)
@@ -411,6 +413,7 @@ extension KvHtmlKit {
 
         var htmlName: String {
             switch self {
+            case .alt: "alt"
             case .class: "class"
             case .content: "content"
             case .href: "href"
@@ -422,6 +425,7 @@ extension KvHtmlKit {
             case .src: "src"
             case .style: "style"
             case .target: "target"
+            case .title: "title"
             case .type: "type"
             }
         }
@@ -543,7 +547,7 @@ extension KvHtmlKit {
                     (classes?.joined(separator: " ")).map(Value.string(_:))
                 case .style:
                     (styles?.joined(separator: ";")).map(Value.string(_:))
-                case .content, .href, .id, .linkRel, .media, .name, .raw(_), .src, .target, .type:
+                default:
                     container[attribute].map(Value.init(_:))
                 }
             }
@@ -555,7 +559,7 @@ extension KvHtmlKit {
                 case .style:
                     assertionFailure("Don't use subscript to set raw style value, use dedicated methods instead.")
                     styles = newValue?.asString.map { [ $0 ] }
-                case .content, .href, .id, .linkRel, .media, .name, .raw(_), .src, .target, .type:
+                default:
                     container[attribute] = newValue?.rawValue
                 }
             }
@@ -571,16 +575,19 @@ extension KvHtmlKit {
 
         // MARK: .Value
 
-        enum Value : ExpressibleByNilLiteral, ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
+        /// This type is used to avoid double optionality of attribute values.
+        /// Attribute are of `Value?` type.  Optionality indicates whether an attribute persists to an attribute set.
+        /// `.void` value means that attribute has no value, e.g. *disabled* attribute in `<input id="date" type="date" disabled />`.
+        enum Value : ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
 
             case string(String)
-            case null
+            case void
 
 
             fileprivate init(_ value: Any) {
                 switch value {
                 case is NSNull:
-                    self = .null
+                    self = .void
                 default:
                     self = .string(value as! String)
                 }
@@ -590,12 +597,9 @@ extension KvHtmlKit {
             fileprivate var rawValue: Any {
                 switch self {
                 case .string(let value): value
-                case .null: NSNull()
+                case .void: NSNull()
                 }
             }
-
-
-            init(nilLiteral: ()) { self = .null }
 
 
             init(stringLiteral value: StringLiteralType) { self = .string(value) }
@@ -604,7 +608,7 @@ extension KvHtmlKit {
             var asString: String? {
                 switch self {
                 case .string(let string): string
-                case .null: nil
+                case .void: nil
                 }
             }
 
@@ -726,7 +730,7 @@ extension KvHtmlKit {
                     Attributes.cast(value, as: \.classes).joined(separator: " ")
                 case .style:
                     Attributes.cast(value, as: \.styles).joined(separator: ";")
-                case .content, .href, .id, .linkRel, .media, .name, .raw(_), .src, .target, .type:
+                default:
                     Value(value).asString
                 }
 

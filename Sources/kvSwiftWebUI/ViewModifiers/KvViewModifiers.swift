@@ -28,8 +28,7 @@
 extension KvView {
 
     var modifiable: KvModifiedView { consuming get {
-        let view = consume self
-        return ((view as? KvModifiedView) ?? KvModifiedView(source: { view }))
+        KvModifiedView.cast(from: self)
     } }
 
 

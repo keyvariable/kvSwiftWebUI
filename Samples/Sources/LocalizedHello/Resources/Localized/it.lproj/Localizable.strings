@@ -22,3 +22,5 @@
 */
 
 "HELLO" = "Ciao!";
+
+"METADATA.DESCRIPTION" = "La localizzazione è una parte importante dello sviluppo di interfacce user-friendly. L'esempio LocalizedHello visualizza «Ciao!» etichetta in inglese, cinese, hindi e molte altre lingue.";

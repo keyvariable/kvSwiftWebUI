@@ -17,28 +17,40 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvLocalizationViewModifiers.swift
+//  KvGeneralEnvironment.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 17.02.2024.
+//  Created by Svyatoslav Popov on 24.04.2024.
 //
 
 import Foundation
 
 
 
-// MARK: Localization Related Modifiers
+// MARK: - \.defaultBundle
 
-extension KvView {
+extension KvEnvironmentValues {
 
-    /// This modifier is a shorthand for:
-    /// ```swift
-    /// view.environment(\.localizationBundle, bundle)
-    /// ```
+    private struct DefaultBundleKey : KvEnvironmentKey {
+
+        static var defaultValue: Bundle { .main }
+
+    }
+
+
+    /// Default bundle to use when `nil` bundle is passed as an argument.
     ///
-    /// - SeeAlso: ``KvEnvironmentValues/localizationBundle``.
-    public consuming func localizationBundle(_ bundle: Bundle?) -> some KvView {
-        environment(\.localizationBundle, bundle)
+    /// Provided value is used instead of ``KvHttpBundle/Configuration/defaultBundle`` in configuration of HTTP bundle.
+    ///
+    /// - SeeAlso: ``KvView/defaultBundle(_:)``.
+    public var defaultBundle: Bundle {
+        get { self[DefaultBundleKey.self] }
+        set { self[DefaultBundleKey.self] = newValue }
+    }
+
+
+    var defaultBundleIfExists: Bundle? {
+        self.value(forKey: DefaultBundleKey.self)
     }
 
 }

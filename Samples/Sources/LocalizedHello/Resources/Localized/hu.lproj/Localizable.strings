@@ -22,3 +22,5 @@
 */
 
 "HELLO" = "Helló!";
+
+"METADATA.DESCRIPTION" = "A lokalizáció fontos része a felhasználóbarát felületek fejlesztésének. LocalizedHello példa a \"Helló!\" címke angol, kínai, hindi és sok más nyelven.";

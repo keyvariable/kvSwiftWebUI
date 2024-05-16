@@ -22,3 +22,5 @@
 */
 
 "HELLO" = "Merhaba!";
+
+"METADATA.DESCRIPTION" = "Yerelleştirme, kullanıcı dostu arayüzler geliştirmenin önemli bir parçasıdır. LocalizedHello örneği \"Merhaba!\" görüntüler İngilizce, Çince, Hintçe ve diğer birçok dilde selamlama.";

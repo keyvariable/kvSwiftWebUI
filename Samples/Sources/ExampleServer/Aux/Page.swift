@@ -86,6 +86,25 @@ struct Page<Content : View> : View {
         ///         Also Safari tints bars using the background.
         .background(.accent)
         .navigationTitle(title)
+        /// This view modifier declares common keywords.
+        .modifier(PageKeywordModifier())
+    }
+
+}
+
+
+
+/// Declaration of the keywords is extracted to a view modifier to reuse on custom pages, e.g. ``ColorDetailView``.
+struct PageKeywordModifier : ViewModifier {
+
+    func body(content: Content) -> some View {
+        /// `.metadata(keywords:)` modifier specifies keywords in document's metadata.
+        /// Keywords of all views in a document are joined.
+        /// Common keywords are defined here.
+        ///
+        /// - Note: Keywords are localized.
+        content
+            .metadata(keywords: Text("Swift"), Text("cross-platform"), Text("SwiftUI"), Text("web"), Text(verbatim: "ExampleServer"), Text(verbatim: "kvSwiftWebUI"))
     }
 
 }

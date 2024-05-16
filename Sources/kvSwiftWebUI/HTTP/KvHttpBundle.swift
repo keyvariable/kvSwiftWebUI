@@ -23,22 +23,42 @@
 //  Created by Svyatoslav Popov on 25.10.2023.
 //
 
-import Foundation
-
 import kvHttpKit
+
+import Foundation
 import kvKit
 
 
 
 /// *KvHttpBundle* resolves the root view to collection HTTP responses including HTML, styles, resources, etc.
 ///
-/// When bundle is initialized, use ``response(for:)`` or ``response(at:as:)`` methods to process requests and get responses.
+/// When bundle is initialized, use ``response(for:)`` methods to process requests and get responses.
 ///
-/// By default it's assumed that bundle is served to the domain's root path and maximum size of response cache is 50% of physical memory on the machine.
 /// Use ``Configuration`` structure and ``init(with:rootView:)`` initializer to customize bundle.
+/// By default maximum size of response cache is 50% of physical memory on the machine.
+///
+/// ### Localization
+///
+/// HTTP bundles support localization.
+/// Localization is evaluated explicitly from URL or can be inferred from Accept-Language HTTP header.
+/// Explicit list of the language tags ([RFC 5646](https://datatracker.ietf.org/doc/html/rfc5646 ))
+/// can be provided via ``Constants/languageTagsUrlQueryItemName`` ("hl") URL query item.
+/// For example, use "https://example.com?hl=zh-Hant" to request traditional Chinese localization of *example.com*.
+///
+/// ### SEO
+///
+/// HTTP bundles support automatic generation of *robots.txt* and sitemaps.
+/// Sitemaps are generated from static navigation destinations, see ``KvView/navigationDestination(for:destination:)-9x6uf`` for details.
+/// Dynamic navigation destinations are currently ignored.
+/// Use ``Configuration/sitemap-swift.property`` to configure generation of sitemaps.
+/// Use ``Configuration/robots`` to specify additional rule groups for *robots.txt* file.
+///
+/// - SeeAlso: ``KvView/metadata(keywords:)-3w75u``, ``KvView/metadata(description:)-8ai0v``.
+///
+/// ### Integration with *kvServerKit*
 ///
 /// When the responses are served with [kvServerKit](https://github.com/keyvariable/kvServerKit.swift.git ),
-/// bundles can be used as the response expressions:
+/// bundles can be used as root response group expressions:
 /// ```swift
 /// import kvServerKit
 /// import kvSwiftWebUI
@@ -60,13 +80,12 @@ public class KvHttpBundle {
     /// A shorthand for ``init(with:rootView:)``.
     @inlinable
     convenience public init<RootView>(
-        at rootPath: KvUrlPath? = nil,
         icon: KvApplicationIcon? = nil,
         @KvViewBuilder rootView: @escaping () -> RootView
     ) throws
     where RootView : KvView
     {
-        try self.init(with: .init(rootPath: rootPath, icon: icon), rootView: rootView)
+        try self.init(with: .init(icon: icon), rootView: rootView)
     }
 
 
@@ -74,7 +93,7 @@ public class KvHttpBundle {
     public init<RootView>(with configuration: borrowing Configuration, @KvViewBuilder rootView: @escaping () -> RootView) throws
     where RootView : KvView
     {
-        localization = .init(configuration.localizationBundle ?? .main)
+        localization = .init(configuration.defaultBundle ?? .main)
 
         configuration.icon?.forEachHtmlResource(assets.insert(_:))
 
@@ -84,20 +103,24 @@ public class KvHttpBundle {
 
         navigationController = .init(
             for: rootView(),
-            with: .init(rootPath: configuration.rootPath,
-                        iconHeaders: configuration.icon?.htmlHeaders,
+            with: .init(iconHeaders: configuration.icon?.htmlHeaders,
                         assets: assets,
                         localization: localization,
+                        defaultBundle: configuration.defaultBundle,
                         authorsTag: configuration.authorsTag)
         )
 
-        do {
-            let navigationController = navigationController
-            // - NOTE: Catching reference to `self` is avoided to prevent retain cycle.
-            responseBlock = { navigationController.htmlResponse(for: $0) }
-        }
+        sitemap = configuration.sitemap.map(Sitemap.init(from:))
+
+        robotsPrefix = configuration.robots?
+            .lazy.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
     }
 
+
+
+    private typealias ResponseBlock = (borrowing ProcessedRequest) -> KvHttpResponseContent?
 
 
     private let assets = KvHttpBundleAssets()
@@ -106,82 +129,39 @@ public class KvHttpBundle {
     private let navigationController: KvNavigationController
 
     private let responseCache: KvHttpResponseCache<ProcessedRequest>?
-    /// A block to be used to synthesize response when there is no cached value.
-    private let responseBlock: (borrowing ProcessedRequest) -> KvHttpResponseContent?
+
+    private let sitemap: Sitemap?
+
+    private let robotsPrefix: String?
 
 
 
-    // MARK: .Configuration
+    // MARK: .Constants
 
-    public struct Configuration {
+    public struct Constants {
 
-        /// A path on the server the root view is served at. Empty or `nil` values mean that the root view is served at "/" path.
-        public var rootPath: KvUrlPath?
+        /// Name of URL query item with language tags to use instead of value of `Accept-Language` header.
+        /// This query item is used to force use of a language, e.g. for the search robots in the sitemap.
+        public static let languageTagsUrlQueryItemName = "hl"
 
-        /// An icon to be used in browser UI, on OS home screens, etc.
-        public var icon: KvApplicationIcon?
-
-        /// Maximum size of cached responses. If `nil` then the cache is disabled. By default cache uses 50% of physical memory on the machine.
-        public var responseCacheSize: ResponseCacheSize?
-
-        /// A bundle to use as localization source. If `nil` then `.main` bundle is used.
-        ///
-        /// - SeeAlso: ``KvEnvironmentValues/localizationBundle``.
-        public var localizationBundle: Bundle?
-
-        /// A text to be used as the author's tag.
-        public var authorsTag: KvText?
+    }
 
 
 
-        /// - Parameters:
-        ///   - rootPath: See ``rootPath`` for details.
-        ///   - icon: See ``icon`` for details.
-        ///   - responseCacheSize: See ``responseCacheSize`` for details.
-        @inlinable
-        public init(rootPath: KvUrlPath? = nil,
-                    icon: KvApplicationIcon? = nil,
-                    responseCacheSize: ResponseCacheSize? = .physicalMemoryRatio(0.5),
-                    localizationBundle: Bundle? = nil,
-                    authorsTag: KvText? = nil
-        ) {
-            self.rootPath = rootPath
-            self.icon = icon
-            self.responseCacheSize = responseCacheSize
-            self.localizationBundle = localizationBundle
-            self.authorsTag = authorsTag
-        }
+    // MARK: .Sitemap
+
+    /// Prepared configuration of sitemap.
+    private struct Sitemap {
+
+        let format: KvSitemap.Format
+
+        /// - Note: It's of `Substring` type for internal needs.
+        let pathComponent: Substring
 
 
-        // MARK: .ResponseCacheSize
-
-        public enum ResponseCacheSize : ExpressibleByIntegerLiteral {
-
-            /// Number bytes to be used as maximum size of the response cache.
-            case byteSize(UInt64)
-            /// Ratio of physical memory on the machine. E.g. `.physicalMemoryRatio(0.5)` means 50% of the physical memory size.
-            case physicalMemoryRatio(Double)
-
-
-            // MARK: : ExpressibleByIntegerLiteral
-
-            public init(integerLiteral value: IntegerLiteralType) {
-                self = .byteSize(numericCast(value))
-            }
-
-
-            // MARK: Operations
-
-            var value: UInt64 {
-                switch self {
-                case .byteSize(let value):
-                    return value
-
-                case .physicalMemoryRatio(let ratio):
-                    return .init(clamp(ratio, 0.0 as Double, 1.0 as Double) * Double(ProcessInfo.processInfo.physicalMemory))
-                }
-            }
-
+        init(from configuration: borrowing Configuration.Sitemap) {
+            format = configuration.format
+            pathComponent = .init(configuration.pathComponent)
         }
 
     }
@@ -195,8 +175,13 @@ public class KvHttpBundle {
         public typealias HttpHeader = (name: String, value: String)
 
 
-        /// Path to requested resource.
-        public var path: KvUrlPath.Slice
+
+        /// Components of requests URL.
+        public let urlComponents: URLComponents
+
+        /// Structured path from ``urlComponents``.
+        @usableFromInline
+        let urlPath: KvUrlPath.Slice
 
         /// Iterator of HTTP headers.
         public var headerIterator: AnyIterator<HttpHeader>?
@@ -204,9 +189,23 @@ public class KvHttpBundle {
 
         /// A member-wise initializer.
         @inlinable
-        public init(path: KvUrlPath.Slice, headerIterator: AnyIterator<HttpHeader>? = nil) {
-            self.path = path
+        package init(urlComponents: URLComponents,
+                     urlPath: KvUrlPath.Slice,
+                     headerIterator: AnyIterator<HttpHeader>? = nil
+        ) {
+            self.urlComponents = urlComponents
+            self.urlPath = urlPath
             self.headerIterator = headerIterator
+        }
+
+
+        @inlinable
+        public init(urlComponents: URLComponents,
+                    headerIterator: AnyIterator<HttpHeader>? = nil
+        ) {
+            self.init(urlComponents: urlComponents,
+                      urlPath: .init(path: urlComponents.path),
+                      headerIterator: headerIterator)
         }
 
 
@@ -234,7 +233,7 @@ public class KvHttpBundle {
 
     // MARK: .Representation
 
-    /// Representation of a resource in bundle.
+    /// Representation of a resource in a bundle.
     public struct Representation : Hashable {
 
         /// Language tag ([RFC 5646](https://datatracker.ietf.org/doc/html/rfc5646 )) to be used to select localized resources.
@@ -244,12 +243,85 @@ public class KvHttpBundle {
 
 
 
+    // MARK: .RepresentationContext
+
+    /// ``Representation`` and some related attributes.
+    fileprivate struct RepresentationContext {
+
+        let representation: Representation
+
+        let urlQuery: ProcessedRequest.UrlQuery
+
+        let languageTagSource: LanguageTagSource
+
+
+        // MARK: .LanguageTagSource
+
+        enum LanguageTagSource {
+            /// Explicitly provided language tag. E.g. it can be provided via URL query.
+            case explicit
+            /// Implicitly evaluated language tag. E.g. via Accept-Language HTTP header.
+            case inferred
+        }
+
+    }
+
+
+
     // MARK: .ProcessedRequest
 
+    // TODO: Store URL query in ProcessedRequest, remove `: Hashable`, refactor the response cache to store to use path and representation as first key, the normalized query as second key.
     struct ProcessedRequest : Hashable {
 
-        let path: KvUrlPath.Slice
+        /// - Note: Assuming URL query doesn't contain items with duplicated names.
+        typealias UrlQuery = [String : String?]
+
+
+        fileprivate let urlComponents: URLComponents
+
+        /// Structured path from ``urlComponents``.
+        let urlPath: KvUrlPath.Slice
+        /// URL query items from ``urlComponents`` in `Dictionary` container.
+        let urlQuery: UrlQuery
+
         let representation: Representation
+
+
+        fileprivate init(request: borrowing Request, context: borrowing RepresentationContext) {
+            var urlComponents = request.urlComponents
+
+            // TODO: Don't clear .queryItems when the cache will use some other key instead of ProcessedRequest.
+            urlComponents.queryItems = nil
+
+            self.urlComponents = urlComponents
+            urlPath = request.urlPath
+            urlQuery = context.urlQuery
+            representation = context.representation
+        }
+
+
+        // MARK: Auxiliaries
+
+        var bundleUrlComponents: URLComponents {
+            var urlComponents = self.urlComponents
+
+            urlComponents.path = ""
+            urlComponents.queryItems = nil
+            urlComponents.fragment = nil
+
+            return urlComponents
+        }
+
+
+        func urlComponents(transform: (inout URLComponents) -> Void = { _ in }) -> URLComponents {
+            var urlComponents = self.urlComponents
+
+            transform(&urlComponents)
+
+            KvUrlKit.normalizeUrlQueryItems(in: &urlComponents)
+
+            return urlComponents
+        }
 
     }
 
@@ -257,49 +329,251 @@ public class KvHttpBundle {
 
     // MARK: Operations
 
-    /// - Returns: A representation from HTTP request headers.
-    public func representation<H>(fromHttpHeaders headerIterator: H? = Optional<[Request.HttpHeader]>.none) -> Representation
+    /// - Returns: A representation from URL and HTTP request headers.
+    ///
+    /// - Note: Localization is evaluated from URL query item named ``Constants/languageTagsUrlQueryItemName`` ("hl") and HTTP headers.
+    public func representation<H>(
+        urlQuery: borrowing [URLQueryItem] = [ ],
+        httpHeaders headerIterator: H? = Optional<[Request.HttpHeader]>.none
+    ) -> Representation
+    where H : Sequence, H.Element == Request.HttpHeader
+    {
+        representationContext(urlQuery: urlQuery, httpHeaders: headerIterator)
+            .representation
+    }
+
+
+    /// - Returns: A representation context from HTTP request headers.
+    private func representationContext<H>(
+        urlQuery: [URLQueryItem],
+        httpHeaders headerIterator: H?
+    ) -> RepresentationContext
     where H : Sequence, H.Element == Request.HttpHeader
     {
         var representation = Representation()
+        var languageTagSource: RepresentationContext.LanguageTagSource
 
-        // TODO: Refactoring to a cycle is required if two or more headers are be handled.
+        let urlQuery = Dictionary(urlQuery.lazy.map { ($0.name, $0.value) }, uniquingKeysWith: { lhs, rhs in lhs })
 
-        do {
-            let languageTags = headerIterator?
-                .first(where: { $0.name.caseInsensitiveCompare("Accept-Language") == .orderedSame })?
-                .value
-
-            if let languageTags {
-                representation.languageTag = localization.selectLanguageTag(forAcceptLanguageHeader: languageTags)
-            }
+        (representation.languageTag, languageTagSource) = switch explicitLanguageTag(from: urlQuery) {
+        case .some(let value):
+            (value, .explicit)
+        case .none:
+            (inferredLanguageTag(from: headerIterator), .inferred)
         }
 
-        return representation
+        return .init(
+            representation: representation,
+            urlQuery: urlQuery,
+            languageTagSource: languageTagSource
+        )
+    }
+
+
+    private func explicitLanguageTag(from urlQuery: borrowing ProcessedRequest.UrlQuery) -> String? {
+        guard let languageTags = urlQuery.first(where: { $0.key == Constants.languageTagsUrlQueryItemName })?.value
+        else { return nil }
+
+        return localization.selectLanguageTag(forAcceptLanguageHeader: languageTags)
+    }
+
+
+    private func inferredLanguageTag<H>(from headerIterator: H?) -> String?
+    where H : Sequence, H.Element == Request.HttpHeader
+    {
+        guard let languageTags = headerIterator?
+            .first(where: { $0.name.caseInsensitiveCompare("Accept-Language") == .orderedSame })?
+            .value
+        else { return nil }
+
+        return (localization.selectLanguageTag(forAcceptLanguageHeader: languageTags)
+                ?? localization.defaultLanguageTag)
     }
 
 
     /// - Returns: An HTTP response with contents of a resource matching given *request*.
     ///
-    /// - SeeAlso: ``representation(fromHttpHeaders:)``.
+    /// - SeeAlso: ``representation(urlQuery:httpHeaders:)``.
     public func response(for request: borrowing Request) -> KvHttpResponseContent? {
-        response(at: request.path, as: self.representation(fromHttpHeaders: request.headerIterator))
+        let representationContext = representationContext(urlQuery: request.urlComponents.queryItems ?? [ ],
+                                                          httpHeaders: request.headerIterator)
+
+        let processedRequest = ProcessedRequest(request: request, context: representationContext)
+
+        // If localization is explicit and implicit localization is available then it's omitted via redirect.
+        //
+        // Assuming the robots don't provide Accept-Language so implicit localization is not available for them.
+        if case .explicit = representationContext.languageTagSource,
+           let explicitLanguageTag = representationContext.representation.languageTag,
+           let inferredLanguageTag = inferredLanguageTag(from: request.headerIterator),
+           consume inferredLanguageTag == consume explicitLanguageTag,
+           let response = noLanguageTagResponse(for: processedRequest)
+        {
+            return response
+        }
+
+        return response(for: processedRequest)
     }
 
 
-    /// - Returns: An HTTP response with contents of a resource at given *path* in the bundle.
-    ///
-    /// - Note: `representation` is a closure to avoid it's evaluation when there is no need in it.
-    public func response(at path: borrowing KvUrlPath.Slice,
-                         as representation: @autoclosure () -> Representation
+    private func response(for request: borrowing ProcessedRequest) -> KvHttpResponseContent? {
+        if let response = assets[request.urlPath] {
+            return response
+        }
+
+        let responseBlock: ResponseBlock = {
+            if request.urlPath.components.count == 1 {
+                switch request.urlPath.components.last {
+                case "robots.txt":
+                    return self.robotsResponse(for:)
+
+                case sitemap?.pathComponent:
+                    let sitemapFormat = sitemap!.format
+
+                    return { request in
+                        self.sitemapResponse(representation: request.representation,
+                                             bundleUrlComponents: request.bundleUrlComponents,
+                                             format: sitemapFormat)
+                    }
+
+                default:
+                    break
+                }
+            }
+
+            return self.navigationResponse(for:)
+        }()
+
+        return cachedResponse(for: request, responseProvider: responseBlock)
+    }
+
+
+    private func cachedResponse(for request: ProcessedRequest,
+                                responseProvider: (borrowing ProcessedRequest) -> KvHttpResponseContent?
     ) -> KvHttpResponseContent? {
-        assets[path]
-        ?? navigationResponse(for: .init(path: path, representation: representation()))
+        responseCache?[request, default: { responseProvider(request) }] ?? responseProvider(request)
     }
 
 
-    private func navigationResponse(for request: ProcessedRequest) -> KvHttpResponseContent? {
-        responseCache?[request, default: { responseBlock(request) }] ?? responseBlock(request)
+    private func navigationResponse(for request: borrowing ProcessedRequest) -> KvHttpResponseContent? {
+        let urlComponents = request.urlComponents
+
+        return navigationController.htmlResponse(for: request)?
+            .headers {
+                $0("Link", self.localizationHeader(with: urlComponents))
+            }
+    }
+
+
+    private func robotsResponse(for request: ProcessedRequest) -> KvHttpResponseContent? {
+        var robots = robotsPrefix ?? ""
+
+        if let sitemapPathComponent = sitemap?.pathComponent {
+            func AppendSitemapRule(from urlComponents: URLComponents) {
+                guard let url = urlComponents.url
+                else { return KvDebug.pause("WARNING: failed to compose sitemap URL from \(urlComponents) components") }
+
+                robots.append("sitemap:\(url.absoluteString)\n")
+            }
+
+
+            if !robots.isEmpty {
+                robots.append("\n\n")
+            }
+
+            var urlComponents = request.bundleUrlComponents
+            urlComponents.path = "/\(sitemapPathComponent)"
+
+            switch localization.languageTags.isEmpty {
+            case false:
+                urlComponents.queryItems = [ .init(name: Constants.languageTagsUrlQueryItemName, value: nil) ]
+
+                let index = urlComponents.queryItems!.startIndex
+
+                localization.languageTags.forEach { languageTag in
+                    urlComponents.queryItems![index].value = languageTag
+
+                    AppendSitemapRule(from: urlComponents)
+                }
+
+            case true:
+                AppendSitemapRule(from: urlComponents)
+            }
+        }
+
+        guard !robots.isEmpty,
+              let content = robots.data(using: .utf8)
+        else { return nil }
+
+        return .binary { content }
+            .contentType(.text(.plain))
+            .contentLength(content.count)
+    }
+
+
+    private func sitemapResponse(representation: borrowing Representation,
+                                 bundleUrlComponents: URLComponents,
+                                 format: KvSitemap.Format
+    ) -> KvHttpResponseContent? {
+        var urlComponents = bundleUrlComponents
+
+        if let languageTag = representation.languageTag {
+            KvUrlKit.append(&urlComponents,
+                            withUrlQueryItem: .init(name: Constants.languageTagsUrlQueryItemName, value: languageTag))
+        }
+
+        assert(urlComponents.path.isEmpty)
+
+        switch format {
+        case .plainText:
+            var encoder = KvSitemap.TextEncoder()
+
+            navigationController.enumeratePaths(representation: representation) { path, stopFlag in
+                urlComponents.path = path
+
+                guard let url = urlComponents.url else { return }
+
+                switch encoder.append(url) {
+                case .failure(.totalByteLimitExceeded):
+                    stopFlag = true
+                case .success, .failure(.unableToEncodeURL(_)):
+                    break
+                }
+            }
+
+            return encoder.response()
+        }
+    }
+
+
+    /// - Returns: Redirection response to url having to explicit language tags.
+    private func noLanguageTagResponse(for request: borrowing ProcessedRequest) -> KvHttpResponseContent? {
+        let urlComponents = request.urlComponents {
+            $0.queryItems?.removeAll(where: { $0.name == Constants.languageTagsUrlQueryItemName })
+        }
+
+        guard let url = (consume urlComponents).url else { return nil }
+
+        return .seeOther(location: url)
+    }
+
+
+    private func localizationHeader(with urlComponents: URLComponents) -> String {
+        var urlComponents = urlComponents
+
+        KvUrlKit.append(&urlComponents, withUrlQueryItem: .init(name: Constants.languageTagsUrlQueryItemName, value: nil))
+
+        let queryItemIndex = urlComponents.queryItems!.endIndex - 1
+
+        return localization.languageTags
+            .lazy.compactMap { languageTag -> String? in
+                urlComponents.queryItems![queryItemIndex].value = languageTag
+
+                guard let url = urlComponents.url else { return nil }
+
+                return "\(url.absoluteString);rel=\"alternate\";hreflang=\"\(languageTag)\""
+            }
+            .joined(separator: ",")
     }
 
 }
@@ -311,3 +585,15 @@ public class KvHttpBundle {
 // TODO: Delete in 1.0.0
 @available(*, deprecated, renamed: "KvHttpBundle")
 public typealias KvHtmlBundle = KvHttpBundle
+
+
+extension KvHttpBundle {
+
+    @available(*, unavailable, message: "Use `response(for:)` instead")
+    public func response(at path: KvUrlPath.Slice,
+                         as representation: @autoclosure () -> Representation
+    ) -> KvHttpResponseContent? {
+        nil
+    }
+
+}

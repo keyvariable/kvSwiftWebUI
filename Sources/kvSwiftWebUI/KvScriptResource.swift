@@ -30,7 +30,7 @@ import Crypto
 
 
 // TODO: DOC
-public struct KvScriptResource : Identifiable {
+public struct KvScriptResource {
 
     var content: Content
 
@@ -50,7 +50,17 @@ public struct KvScriptResource : Identifiable {
     public static func sourceCode(_ sourceCode: String) -> KvScriptResource {
         let hash = SHA256.hash(data: sourceCode.data(using: .utf8)!)
 
-        return .init(content: .sourceCode(sourceCode, hash))
+        return .init(content: .sourceCode(sourceCode, id: hash))
+    }
+
+
+    /// - Returns: An instance from a resource in a bundle.
+    public static func resource(_ resource: String?,
+                                withExtension extension: String? = nil,
+                                bundle: Bundle? = nil,
+                                subdirectory: String? = nil
+    ) -> KvScriptResource {
+        return .init(content: .resource(resource, extension: `extension`, bundle: bundle, subdirectory: subdirectory))
     }
 
 
@@ -65,9 +75,11 @@ public struct KvScriptResource : Identifiable {
 
     enum Content {
 
+        /// Content is a resource in a bundle.
+        case resource(String?, extension: String? = nil, bundle: Bundle? = nil, subdirectory: String? = nil)
         /// Explicit source code and digest to be used as an ID.
-        case sourceCode(String, SHA256.Digest)
-        /// Content is at given URL. E.g. file resource in a bundle.
+        case sourceCode(String, id: SHA256.Digest)
+        /// Content is at given URL.
         case url(URL)
 
     }
@@ -78,18 +90,30 @@ public struct KvScriptResource : Identifiable {
 
     public enum ID : Hashable {
         case digest(SHA256.Digest)
+        case resource(String?, extension: String?, bundle: Bundle?, subdirectory: String?)
         case url(URL)
     }
 
 
     public var id: ID {
         switch content {
-        case .sourceCode(_, let digest): .digest(digest)
-        case .url(let url): .url(url)
+        case let .resource(resource, extension: `extension`, bundle: bundle, subdirectory: subdirectory):
+            return .resource(resource, extension: `extension`, bundle: bundle, subdirectory: subdirectory)
+        case .sourceCode(_, let digest):
+            return .digest(digest)
+        case .url(let url):
+            return .url(url)
         }
     }
 
 }
+
+
+
+// MARK: : Identifiable
+
+/// Conformance to `Identifiable` is to use `KvScriptResource` in `KvOrderedIdentitySet` collection.
+extension KvScriptResource : Identifiable { }
 
 
 

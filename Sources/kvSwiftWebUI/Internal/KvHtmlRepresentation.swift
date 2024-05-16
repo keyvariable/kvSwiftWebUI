@@ -386,6 +386,7 @@ class KvHtmlRepresentationContext {
     static func root(html: KvHtmlContext, viewConfiguration: KvViewConfiguration? = nil) -> KvHtmlRepresentationContext {
         var environment: KvEnvironmentValues = .init(viewConfiguration)
 
+        environment.defaultBundle = html.defaultBundle
         environment.navigationPath = html.navigationPath
         environment.localization = html.localizationContext
 
@@ -660,6 +661,12 @@ class KvHtmlRepresentationContext {
     /// Current localization context.
     var localizationContext: KvLocalization.Context {
         environmentNode?.values.localization ?? html.localizationContext
+    }
+
+
+    /// Current default value for optional values of `Bundle` type.
+    var defaultBundle: Bundle {
+        environmentNode?.values.defaultBundle ?? .main
     }
 
 

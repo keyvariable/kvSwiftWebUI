@@ -17,53 +17,34 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvViewModifier.swift
+//  KvUrlKit.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 26.03.2024.
+//  Created by Svyatoslav Popov on 06.05.2024.
 //
 
-public typealias ViewModifier = KvViewModifier
+import Foundation
 
 
 
-// TODO: DOC
-public protocol KvViewModifier {
-
-    associatedtype Body : KvView
+struct KvUrlKit { private init() { } }
 
 
-    typealias Content = KvModifiedView
+// MARK: URL Query
 
+extension KvUrlKit {
 
-    // TODO: DOC
-    @KvViewBuilder
-    func body(content: Content) -> Body
-
-}
-
-
-// MARK: Concatenation
-
-extension KvViewModifier {
-
-    @inlinable
-    public func concat<T>(_ modifier: T) -> KvModifiedContent<Self, T> {
-        .init(content: self, modifier: modifier)
+    static func append(_ urlComponents: inout URLComponents, withUrlQueryItem urlQueryItem: URLQueryItem) {
+        urlComponents.queryItems?.append(urlQueryItem)
+        ?? (urlComponents.queryItems = [ urlQueryItem ])
     }
 
-}
 
-
-
-// MARK: - View.modifier(_:)
-
-extension KvView {
-
-    // TODO: DOC
-    @inlinable
-    public consuming func modifier<T : KvViewModifier>(_ modifier: T) -> some KvView {
-        KvModifiedContent(content: self, modifier: modifier)
+    /// E.g. removes empty array of URL query items.
+    static func normalizeUrlQueryItems(in urlComponents: inout URLComponents) {
+        if urlComponents.queryItems?.isEmpty == true {
+            urlComponents.queryItems = nil
+        }
     }
 
 }

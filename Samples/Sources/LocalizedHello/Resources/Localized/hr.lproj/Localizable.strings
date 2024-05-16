@@ -22,3 +22,5 @@
 */
 
 "HELLO" = "Zdravo!";
+
+"METADATA.DESCRIPTION" = "Lokalizacija je važan dio razvoja korisničkog sučelja. Primjer LocalizedHello prikazuje «Zdravo!» oznaka na engleskom, kineskom, hindskom i mnogim drugim jezicima.";

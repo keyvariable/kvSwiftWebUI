@@ -17,53 +17,37 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvViewModifier.swift
+//  KvAccessibilityViewModifiers.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 26.03.2024.
+//  Created by Svyatoslav Popov on 12.05.2024.
 //
 
-public typealias ViewModifier = KvViewModifier
+import Foundation
 
 
 
-// TODO: DOC
-public protocol KvViewModifier {
-
-    associatedtype Body : KvView
-
-
-    typealias Content = KvModifiedView
-
-
-    // TODO: DOC
-    @KvViewBuilder
-    func body(content: Content) -> Body
-
-}
-
-
-// MARK: Concatenation
-
-extension KvViewModifier {
-
-    @inlinable
-    public func concat<T>(_ modifier: T) -> KvModifiedContent<Self, T> {
-        .init(content: self, modifier: modifier)
-    }
-
-}
-
-
-
-// MARK: - View.modifier(_:)
+// MARK: Contextual Help Modifiers
 
 extension KvView {
 
     // TODO: DOC
     @inlinable
-    public consuming func modifier<T : KvViewModifier>(_ modifier: T) -> some KvView {
-        KvModifiedContent(content: self, modifier: modifier)
-    }
+    public consuming func help(_ text: KvText) -> some KvView { mapConfiguration {
+        $0!.help = text
+    } }
+
+
+    /// An overload of ``help(_:)-68to3`` modifier.
+    @inlinable
+    public consuming func help(_ key: KvLocalizedStringKey) -> some KvView { help(KvText(key)) }
+
+
+    /// An overload of ``help(_:)-68to3`` modifier.
+    @_disfavoredOverload
+    @inlinable
+    public consuming func help<S>(_ string: S) -> some KvView
+    where S : StringProtocol
+    { help(KvText(string)) }
 
 }

@@ -37,9 +37,9 @@ struct KvTestKit { private init() { }
         let context = KvHtmlRepresentationContext.root(
             html: .init(.init(),
                         cssAsset: .init(parent: nil),
-                        rootPath: nil,
                         navigationPath: .empty,
                         localizationContext: .disabled,
+                        defaultBundle: nil,
                         authorsTag: nil)
         )
 

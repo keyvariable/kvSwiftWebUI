@@ -33,11 +33,14 @@ import kvServerKit
 
 
 /// See source code of *ExampleServer* target for detailed comments.
+///
+/// Use `KvHttpBundle.Constants.languageTagsUrlQueryItemName` ("hl") URL query item to request particular localization.
+/// For example, visit "https://localhost:8080?hl=zh-Hant" for traditional Chinese localization.
 @main
 struct LocalizedHello : KvServer {
 
     private let frontendBundle = try! KvHttpBundle(
-        with: .init(localizationBundle: .module),
+        with: .init(defaultBundle: .module),
         rootView: { LocalizedHelloView() }
     )
 

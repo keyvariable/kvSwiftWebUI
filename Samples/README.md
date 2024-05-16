@@ -25,8 +25,10 @@ Note: `swift run ExampleServer` command builds and runs *ExampleServer* sample.
 ## LocalizedHello
 
 Localization is an important part of developing user-friendly interfaces.
-This example displays «Hello!» label in English, Chinese, Hindi and many other languages.
-By default, the phrase is displayed in default package localization: English.
+This example displays «Hello!» greeting in English, Chinese, Hindi and many other languages.
+By default, language is evaluated from *Accept-Language* HTTP header.
+
+*LocalizedHello* is running at [hello.swiftwebui.keyvar.com](https://hello.swiftwebui.keyvar.com).
 
 Note: `swift run LocalizedHello` command builds and runs *LocalizedHello* sample.
 

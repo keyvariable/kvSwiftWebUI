@@ -39,10 +39,8 @@ extension KvView {
     /// ```swift
     /// EmptyView()
     ///     .script("window.alert('Hello!')")
-    ///     .script(at: Bundle.module.url(
-    ///         forResource: "SomeScript",
-    ///         withExtension: "js"
-    ///     )!)
+    ///     .script(.resource("SomeScript", withExtension: "js"))
+    ///     .script(at: URL(string: "https://example.com/some_script.js")!)
     /// ```
     @inlinable
     public consuming func script(_ resource: KvScriptResource) -> some KvView { mapConfiguration { configuration -> Void in
@@ -59,10 +57,7 @@ extension KvView {
     /// Example:
     /// ```swift
     /// EmptyView()
-    ///     .script(at: Bundle.module.url(
-    ///         forResource: "SomeScript",
-    ///         withExtension: "js"
-    ///     )!)
+    ///     .script(at: URL(string: "https://example.com/some_script.js")!)
     /// ```
     @inlinable
     public consuming func script(at url: URL) -> some KvView { script(KvScriptResource.url(url)) }

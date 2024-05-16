@@ -42,21 +42,21 @@ class KvHtmlContext {
     private(set) var cssAsset: KvCssAsset
 
 
-    let rootPath: KvUrlPath?
     let navigationPath: KvNavigationPath
-
-    /// Joined `.rootPath` and `.navigationPath.urlPath`.
-    private(set) lazy var absolutePath: KvUrlPath = { urlPath in
-        rootPath.map { $0 + urlPath } ?? urlPath
-    }(navigationPath.urlPath)
 
 
     let localizationContext: KvLocalization.Context
 
 
+    let defaultBundle: Bundle
+
+
     let authorsTag: Text?
 
 
+
+    /// Metadata accumulated from the views.
+    private(set) var metadata: Metadata = .init()
 
     /// First non-nil navigation title.
     private(set) var navigationTitle: KvText?
@@ -70,26 +70,31 @@ class KvHtmlContext {
 
     init(_ assets: KvHttpBundleAssets,
          cssAsset: KvCssAsset,
-         rootPath: KvUrlPath?,
          navigationPath: KvNavigationPath,
          localizationContext: KvLocalization.Context,
+         defaultBundle: Bundle?,
          authorsTag: Text?,
          extraHeaders: [String]? = nil
     ) {
         self.assets = assets
         self.cssAsset = cssAsset
-        self.rootPath = rootPath
         self.navigationPath = navigationPath
         self.localizationContext = localizationContext
+        self.defaultBundle = defaultBundle ?? .main
         self.authorsTag = authorsTag
         self.extraHeaders = extraHeaders ?? [ ]
+
+        if localizationContext.languageTag != nil {
+            insert(KvScriptResource.resource("Localization", withExtension: "js", bundle: .module, subdirectory: "Scripts"),
+                   defaultBundle: .module)
+        }
     }
 
 
 
     private var extraHeaders: [String]
 
-    private var resourceHeaders: KvAccumulatingOrderedSet<KvHtmlResource.Header> = .init()
+    private var resourceHeaders: KvOrderedIdentitySet<KvHtmlResource.Header> = .init()
 
     private var gFonts: GFonts = .init()
 
@@ -98,12 +103,53 @@ class KvHtmlContext {
 
 
 
+    // MARK: .Metadata
+
+    struct Metadata {
+
+        /// First non-nil description.
+        private(set) var description: KvText?
+        /// All declared keywords.
+        private(set) var keywords: KvViewConfiguration.MetadataKeywords?
+
+
+        init() { }
+
+
+        // MARK: Operations
+
+        mutating func process(description: KvText?) {
+            guard self.description == nil,
+                  description != nil
+            else { return }
+
+            self.description = description
+        }
+
+
+        mutating func insert(keywords: KvViewConfiguration.MetadataKeywords?) {
+            guard let keywords else { return }
+
+            switch self.keywords {
+            case .some:
+                keywords.forEach {
+                    self.keywords!.insert($0)
+                }
+            case .none:
+                self.keywords = keywords
+            }
+        }
+
+    }
+
+
+
     // MARK: Operations
 
     /// All HTML headers registered in the receiver.
     var headers: String {
         var headers: String = resourceHeaders
-            .lazy.map { $0.html(basePath: self.rootPath) }
+            .lazy.map { $0.html() }
             .joined()
 
         if !cssAsset.isEmpty {
@@ -160,28 +206,56 @@ class KvHtmlContext {
     }
 
 
-    func insert(_ scriptResource: KvScriptResource) {
-        guard scriptIDs.insert(scriptResource.id).inserted == true else { return }
+    func insert(_ scriptResource: KvScriptResource, defaultBundle: @autoclosure () -> Bundle) {
 
-        switch scriptResource.content {
-        case .sourceCode(let sourceCode, _):
-            extraHeaders.append(KvHtmlKit.Tag.script.html(innerHTML: sourceCode))
-
-        case .url(let url):
+        func Insert(at url: URL) {
             guard let uri = FileKit.uri(forFileAt: url, relativeTo: "script/", preserveExtension: true)
             else { return KvDebug.pause("Warning: failed to access script at «\(url)» URL") }
 
             insert(KvHtmlResource.externalScript(.local(.url(url), .init(path: uri))))
         }
+
+
+        guard scriptIDs.insert(scriptResource.id).inserted == true else { return }
+
+        switch scriptResource.content {
+        case let .resource(resource, extension: `extension`, bundle: bundle, subdirectory: subdirectory):
+            let bundle = bundle ?? defaultBundle()
+            guard let url = bundle.url(forResource: resource, withExtension: `extension`, subdirectory: subdirectory)
+            else { return KvDebug.pause("Warning: failed to access script resource «\(KvStringKit.with(resource))» with «\(KvStringKit.with(`extension`))» extension in \(bundle) at «\(KvStringKit.with(subdirectory))» subdirectory") }
+
+            Insert(at: url)
+
+        case .sourceCode(let sourceCode, _):
+            extraHeaders.append(KvHtmlKit.Tag.script.html(innerHTML: sourceCode))
+
+        case .url(let url):
+            Insert(at: url)
+        }
     }
 
 
-    func processViewConfiguration(_ viewConfiguration: borrowing KvViewConfiguration) {
+    func processViewConfiguration(_ viewConfiguration: borrowing KvViewConfiguration, defaultBundle: @autoclosure () -> Bundle) {
+        var cachedDefaultBundle: Bundle!
+
+        func CachedDefaultBundle() -> Bundle {
+            if cachedDefaultBundle == nil {
+                cachedDefaultBundle = defaultBundle()
+            }
+            return cachedDefaultBundle
+        }
+
+
+        metadata.process(description: viewConfiguration.metadataDescription)
+        metadata.insert(keywords: viewConfiguration.metadataKeywords)
+
         navigationTitle = navigationTitle ?? viewConfiguration.navigationTitle
         navigationDestinations = .merged(navigationDestinations, viewConfiguration.navigationDestinations)
         backgroundStyle = backgroundStyle ?? viewConfiguration.background?.eraseToAnyShapeStyle()
 
-        viewConfiguration.scriptResources?.forEach(self.insert(_:))
+        viewConfiguration.scriptResources?.forEach {
+            insert($0, defaultBundle: CachedDefaultBundle())
+        }
     }
 
 }
@@ -318,7 +392,7 @@ extension KvHtmlContext {
 
             expression = ColorKit.cssExpression(id: id,
                                                 opacity: color.opacity,
-                                                options: needsAlpha ? .useAplhaVariable : [ ])
+                                                options: needsAlpha ? .useAlphaVariable : [ ])
         }
 
         return expression
@@ -356,7 +430,7 @@ extension KvHtmlContext {
 
         static func cssExpression(id: String, opacity: Double?, options: CssOptions = [ ]) -> String {
             let alpha = opacity.map { String(format: "%.3g", $0) }
-            ?? (options.contains(.useAplhaVariable) ? "var(\(ColorKit.variableName(id: id, suffix: .a)))" : nil)
+            ?? (options.contains(.useAlphaVariable) ? "var(\(ColorKit.variableName(id: id, suffix: .a)))" : nil)
 
             switch alpha {
             case .some(let alpha):
@@ -386,7 +460,7 @@ extension KvHtmlContext {
 
         struct CssOptions : OptionSet {
 
-            static let useAplhaVariable = Self(rawValue: 1 << 0)
+            static let useAlphaVariable = Self(rawValue: 1 << 0)
 
             let rawValue: UInt
 
@@ -418,7 +492,7 @@ extension KvHtmlContext {
 
 extension KvHtmlContext {
 
-    func cssExpression(for font: KvFont) -> String {
+    func cssExpression(for font: KvFont, defaultBundle: @autoclosure @escaping () -> Bundle) -> String {
         let familyID: String
 
         switch font.family {
@@ -431,12 +505,12 @@ extension KvHtmlContext {
             resource.faces.forEach { (faceKey, sources) in
                 let cssSources: String = sources
                     .lazy.map { source in
-                        let (cssFontFaceSource, htmlResource) = FontResourceKit.processSource(source)
+                        let processedSource = FontResourceKit.processSource(source, defaultBundle: defaultBundle())
                         // - NOTE: SIDE EFFECT: font resource is inserted here.
-                        if let htmlResource {
+                        if let htmlResource = processedSource.htmlResource {
                             self.insert(htmlResource)
                         }
-                        return cssFontFaceSource
+                        return processedSource.cssFontFaceSource
                     }
                     .joined(separator: ",")
 
@@ -483,13 +557,15 @@ extension KvHtmlContext {
     fileprivate struct GFonts {
 
         /// [Family : Query].
-        private var elements: [String : Set<QueryItem>] = .init()
+        private var elements: [String : KvOrderedIdentitySet<QueryItem>] = .init()
 
 
         // MARK: .QueryItem
 
         /// - Note: Query items are sorted to meet the 
-        private struct QueryItem : Hashable, Comparable {
+        ///
+        /// Conformance to `Identifiable` is to use `QueryItem` in `KvOrderedIdentitySet` collection.
+        private struct QueryItem : Hashable, Comparable, Identifiable {
 
             var italic: Bool
             var weight: UInt16
@@ -508,6 +584,11 @@ extension KvHtmlContext {
                 }
             }
 
+
+            // MARK: : Identifiable
+
+            var id: QueryItem { self }
+
         }
 
 
@@ -520,7 +601,6 @@ extension KvHtmlContext {
             return elements
                 .lazy.compactMap { family, query in
                     let tuples = query
-                        .sorted()
                         .lazy.map { "\($0.italic ? "1" : "0"),\($0.weight)" }
                         .joined(separator: ";")
 
@@ -528,7 +608,7 @@ extension KvHtmlContext {
 
                     return KvHtmlResource.css(.external(urlComponents.url!))
                         .header?
-                        .html(basePath: nil) // URLs to external resources are not resolved against base URL.
+                        .html()
                 }
                 .joined()
         }
@@ -545,24 +625,46 @@ extension KvHtmlContext {
 
     private struct FontResourceKit { private init() { }
 
-        static func processSource(_ source: KvFontResource.Source) -> (cssFontFaceSource: String, htmlResource: KvHtmlResource?) {
+        struct ProcessedSource {
+
+            let cssFontFaceSource: String
+            let htmlResource: KvHtmlResource?
+
+
+            static func error(_ message: @autoclosure () -> String) -> ProcessedSource {
+                return KvDebug.pause(code: .init(cssFontFaceSource: "error://", htmlResource: nil), message())
+            }
+        }
+
+
+        static func processSource(_ source: KvFontResource.Source, defaultBundle: @autoclosure () -> Bundle) -> ProcessedSource {
             switch source {
             case .local(name: let name):
-                return ("local(\"\(name)\")", nil)
+                return .init(cssFontFaceSource: "local(\"\(name)\")", htmlResource: nil)
+
+            case let .resource(resource, extension: `extension`, bundle: bundle, subdirectory: subdirectory, format: format):
+                let bundle = bundle ?? defaultBundle()
+                guard let url = bundle.url(forResource: resource, withExtension: `extension`, subdirectory: subdirectory)
+                else { return .error("Failed to find font resource «\(KvStringKit.with(resource))» with «\(KvStringKit.with(`extension`))» extension in \(bundle) at «\(KvStringKit.with(subdirectory))» subdirectory") }
+
+                return processSource(at: url, format: format)
 
             case .url(let url, let format):
-                let url = URL(string: url)!
-
-                guard let fontID = FileKit.id(forFileAt: url)
-                else { return KvDebug.pause(code: ("error://", nil), "Failed to access font at «\(url)» URL") }
-
-                let uri = FileKit.uri(forFileID: fontID, relativeTo: "font/", extension: url.pathExtension)
-                let (format, contentType) = processSourceFormat(url, format)
-
-                // - NOTE: Assuming path .. leads to the bundle's root.
-                return (cssFontFaceSource: "url(\"../\(uri)\")\(format?.css ?? "")",
-                        htmlResource: .init(content: .local(.url(url), .init(path: uri)), contentType: contentType))
+                return processSource(at: url, format: format)
             }
+        }
+
+
+        private static func processSource(at url: URL, format: KvFontResource.Source.Format?) -> ProcessedSource {
+            guard let fontID = FileKit.id(forFileAt: url)
+            else { return .error("Failed to access font at «\(url)» URL") }
+
+            let uri = FileKit.uri(forFileID: fontID, relativeTo: "font/", extension: url.pathExtension)
+            let (format, contentType) = processSourceFormat(url, format)
+
+            // - NOTE: Assuming path .. leads to the bundle's root.
+            return .init(cssFontFaceSource: "url(\"../\(uri)\")\(format?.css ?? "")",
+                         htmlResource: .init(content: .local(.url(url), .init(path: uri)), contentType: contentType))
         }
 
 

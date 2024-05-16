@@ -59,6 +59,9 @@ struct ColorCatalogView : View {
         .navigationDestination(for: StandardColorID.self, destination: ColorDetailView.init(colorID:))
         .navigationDestination(for: WebColorID.self, destination: ColorDetailView.init(colorID:))
         .navigationDestination(for: HexColorID.self, destination: ColorDetailView.init(colorID:))
+        /// This modifier provides keyword metadata for the resulting navigation destination.
+        /// If several views declare keyword metadata in a navigation destination then all the keywords are joined.
+        .metadata(keywords: Text("navigation"), Text("colors"))
     }
 
 

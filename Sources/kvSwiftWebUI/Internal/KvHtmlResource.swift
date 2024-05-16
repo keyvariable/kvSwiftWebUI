@@ -189,7 +189,7 @@ struct KvHtmlResource {
 
         // MARK: HTML
 
-        func html(basePath: KvUrlPath?) -> String {
+        func html(basePath: KvUrlPath? = nil) -> String {
             switch self {
             case .externalScript(let uri):
                 return KvHtmlKit.Tag.script.html(attributes: .init { uri.setSrc(to: &$0, basePath: basePath) })

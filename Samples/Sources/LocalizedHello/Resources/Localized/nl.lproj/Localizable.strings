@@ -22,3 +22,5 @@
 */
 
 "HELLO" = "Hallo!";
+
+"METADATA.DESCRIPTION" = "Lokalisatie is een belangrijk onderdeel van de ontwikkeling van gebruiksvriendelijke interfaces. GelokaliseerdHello-voorbeeld geeft «Hallo!» weer label in het Engels, Chinees, Hindi en vele andere talen.";

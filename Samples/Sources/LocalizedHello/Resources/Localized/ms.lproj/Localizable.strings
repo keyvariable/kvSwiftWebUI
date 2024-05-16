@@ -22,3 +22,5 @@
 */
 
 "HELLO" = "hello!";
+
+"METADATA.DESCRIPTION" = "Penyetempatan adalah bahagian penting dalam membangunkan antara muka mesra pengguna. Contoh LocalizedHello memaparkan «Hello!» label dalam bahasa Inggeris, Cina, Hindi dan banyak bahasa lain.";

@@ -22,3 +22,5 @@
 */
 
 "HELLO" = "Halo!";
+
+"METADATA.DESCRIPTION" = "Lokalisasi adalah bagian penting dalam pengembangan antarmuka yang ramah pengguna. Contoh LocalizedHello menampilkan «Halo!» label dalam bahasa Inggris, Cina, Hindi, dan banyak bahasa lainnya.";

@@ -22,3 +22,5 @@
 */
 
 "HELLO" = "你好！";
+
+"METADATA.DESCRIPTION" = "本地化是开发用户友好界面的重要组成部分。 LocalizedHello 示例显示 «你好！» 英语、汉语、印地语和许多其他语言的问候语。";

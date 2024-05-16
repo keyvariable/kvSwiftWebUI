@@ -25,6 +25,8 @@
 
 import Foundation
 
+import kvKit
+
 
 
 public typealias Link = KvLink
@@ -93,7 +95,7 @@ extension KvLink : KvHtmlRenderable {
         context.representation { context, htmlAttributes in
             let fragment = label.htmlRepresentation(in: context)
 
-            return KvLinkKit.representation(url: url, htmlAttributes: htmlAttributes, innerHTML: fragment)
+            return KvLinkKit.representation(url: url, htmlAttributes: htmlAttributes, innerHTML: fragment, in: context)
         }
     }
 
@@ -108,22 +110,85 @@ struct KvLinkKit {
     /// This code is extracted to be reused, e.g. in ``KvText`` having link attribute.
     static func representation(url: URL,
                                htmlAttributes: KvHtmlKit.Attributes? = nil,
-                               innerHTML: KvHtmlRepresentation.Fragment
+                               innerHTML: KvHtmlRepresentation.Fragment,
+                               in context: borrowing KvHtmlRepresentationContext
+    ) -> KvHtmlRepresentation.Fragment {
+        representation(
+            linkAttributes: linkAttributes(url: url, in: context),
+            htmlAttributes: htmlAttributes,
+            innerHTML: innerHTML
+        )
+    }
+
+
+    static func representation(urlComponents: URLComponents,
+                               htmlAttributes: KvHtmlKit.Attributes? = nil,
+                               innerHTML: KvHtmlRepresentation.Fragment,
+                               in context: borrowing KvHtmlRepresentationContext
+    ) -> KvHtmlRepresentation.Fragment {
+        representation(
+            linkAttributes: linkAttributes(urlComponents: urlComponents, in: context),
+            htmlAttributes: htmlAttributes,
+            innerHTML: innerHTML
+        )
+    }
+
+
+    private static func representation(linkAttributes: KvHtmlKit.Attributes,
+                                       htmlAttributes: KvHtmlKit.Attributes? = nil,
+                                       innerHTML: KvHtmlRepresentation.Fragment
     ) -> KvHtmlRepresentation.Fragment {
         .tag(
             .a,
-            attributes: .union(
-                htmlAttributes,
-                .init {
-                    $0.set(href: url)
-                    // - NOTE: URLs having explicit host are considered external so `target="_blank"` attribute is set.
-                    if url.host != nil {
-                        $0[.target] = "_blank"
-                    }
-                }
-            ),
+            attributes: .union(htmlAttributes, linkAttributes),
             innerHTML: innerHTML
         )
+    }
+
+
+    private static func linkAttributes(url: URL,
+                                       in context: borrowing KvHtmlRepresentationContext
+    ) -> KvHtmlKit.Attributes {
+        guard let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: true) else {
+            return .init {
+                $0.set(href: url)
+
+                // - NOTE: URLs having explicit host are considered external so `target="_blank"` attribute is set.
+                if url.host != nil {
+                    $0[.target] = "_blank"
+                }
+            }
+        }
+
+        return linkAttributes(urlComponents: urlComponents, in: context)
+    }
+
+
+    private static func linkAttributes(urlComponents: URLComponents,
+                                       in context: borrowing KvHtmlRepresentationContext
+    ) -> KvHtmlKit.Attributes {
+        .init {
+            // - NOTE: URLs having explicit host are considered external so `target="_blank"` attribute is set.
+            let isExternal = urlComponents.host != nil
+            let languageTag = !isExternal ? context.localizationContext.languageTag : nil
+
+            var urlComponents = urlComponents
+
+            if let languageTag,
+               urlComponents.queryItems?.contains(where: { $0.name == KvHttpBundle.Constants.languageTagsUrlQueryItemName }) != true
+            {
+                KvUrlKit.append(&urlComponents, withUrlQueryItem: .init(name: KvHttpBundle.Constants.languageTagsUrlQueryItemName, value: languageTag))
+            }
+
+            if let url = urlComponents.url {
+                $0.set(href: url)
+            }
+            else { KvDebug.pause("WARNING: failed to compose an URL from \(urlComponents) components") }
+
+            if isExternal {
+                $0[.target] = "_blank"
+            }
+        }
     }
 
 }
