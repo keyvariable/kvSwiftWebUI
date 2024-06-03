@@ -379,6 +379,7 @@ public struct KvText : Equatable {
             case foregroundStyle
             case help
             case isItalic
+            case tag
         }
 
 
@@ -399,6 +400,10 @@ public struct KvText : Equatable {
             var result = base
 
             result.regular.merge(addition.regular, uniquingKeysWith: { lhs, rhs in rhs })
+
+            // Regular properties below are replaced.
+            result.tag = addition.tag
+
             result.wrappers.merge(addition.wrappers, uniquingKeysWith: { lhs, rhs in rhs })
 
             return result
@@ -427,6 +432,8 @@ public struct KvText : Equatable {
                     guard cast(lhs, as: \.help) == rhs.help else { return false }
                 case .isItalic:
                     guard cast(lhs, as: \.isItalic) == rhs.isItalic else { return false }
+                case .tag:
+                    guard cast(lhs, as: \.tag) == rhs.tag else { return false }
                 }
             }
 
@@ -491,6 +498,9 @@ public struct KvText : Equatable {
         @usableFromInline
         var linkURL: URL? { get { self[.linkURL] } set { self[.linkURL] = newValue } }
 
+        @usableFromInline
+        var tag: AnyHashable? { get { self[.tag] } set { self[.tag] = newValue } }
+
 
         // MARK: .CharacterStyle
 
@@ -543,6 +553,9 @@ public struct KvText : Equatable {
 
                     case .isItalic:
                         htmlAttributes.append(optionalStyles: Attributes.cast(value, as: \.isItalic) == true ? "font-style:italic" : nil)
+
+                    case .tag:
+                        htmlAttributes[.id] = KvViewConfiguration.idAttributeValue(value)
                     }
                 }
 
@@ -794,6 +807,15 @@ public struct KvText : Equatable {
     public consuming func link(_ url: URL) -> KvText { withModifiedAttributes {
         $0.linkURL = url
     } }
+
+
+    /// An overload of ``KvView/tag(_:)`` modifier that preserves `KvText` return type.
+    @inlinable
+    public consuming func tag<T>(_ tag: T) -> KvText
+    where T : Hashable
+    {
+        withModifiedAttributes { $0.tag = tag }
+    }
 
 
 

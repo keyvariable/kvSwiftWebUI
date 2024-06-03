@@ -27,7 +27,7 @@
 
 extension KvView {
 
-    /// This modifier associates given *tag* value with the receiver. It's assumed that views have unique tags.
+    /// This modifier associates given *tag* value with the receiver.
     ///
     /// Tag is passed as `id` HTML attribute, when:
     /// - `tag` is a `String`;

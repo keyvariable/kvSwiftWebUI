@@ -485,18 +485,7 @@ extension KvEnvironmentValues {
                         attributes.append(styles: "text-align:\(Self.cast(value, as: \.multilineTextAlignment).cssTextAlign.css)")
 
                     case .tag:
-                        let id: String? = switch value {
-                        case let string as String: string
-                        case let value as LosslessStringConvertible: value.description
-                        case let value as any RawRepresentable:
-                            switch value.rawValue {
-                            case let string as String: string
-                            case let value as LosslessStringConvertible: value.description
-                            default: nil
-                            }
-                        default: nil
-                        }
-                        attributes[.id] = id.map { .string($0) }
+                        attributes[.id] = ViewConfiguration.idAttributeValue(value)
 
                     case .textCase:
                         attributes.append(styles: "text-transform:\(Self.cast(value, as: \.textCase).cssTextTransform)")
@@ -521,6 +510,24 @@ extension KvEnvironmentValues {
             }
 
             return !attributes.isEmpty ? attributes : nil
+        }
+
+
+        /// - Note: This method is reused.
+        static func idAttributeValue(_ value: Any) -> KvHtmlKit.Attributes.Value? {
+            let id: String? = switch value {
+            case let string as String: string
+            case let value as LosslessStringConvertible: value.description
+            case let value as any RawRepresentable:
+                switch value.rawValue {
+                case let string as String: string
+                case let value as LosslessStringConvertible: value.description
+                default: nil
+                }
+            default: nil
+            }
+
+            return id.map { .string($0) }
         }
 
 

@@ -109,4 +109,15 @@ final class KvTextTests : XCTestCase {
                expected: (KvText("Italic ") + KvText("bold").fontWeight(.semibold) + KvText(" link")).link(URL(string: "https://c.com")!).italic())
     }
 
+
+
+    // MARK: - .testTagModifier()
+
+    func testTagModifier() {
+        let input = KvText("A \(KvText("b \(KvText("C").italic())").tag("1")) D E")
+        let expectation = "<p>A <span id=\"1\">b <span style=\"font-style:italic\">C</span></span> D E</p>"
+
+        XCTAssertEqual(KvTestKit.renderHTML(for: input), expectation)
+    }
+
 }
