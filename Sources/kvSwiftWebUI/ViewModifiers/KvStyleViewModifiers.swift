@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 //
-//  Copyright (c) 2023 Svyatoslav Popov (info@keyvar.com).
+//  Copyright (c) 2024 Svyatoslav Popov (info@keyvar.com).
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 //  License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
@@ -17,35 +17,29 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvDefaults.swift
+//  KvStyleViewModifiers.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 12.11.2023.
+//  Created by Svyatoslav Popov on 30.05.2024.
 //
 
-import kvCssKit
+// MARK: Style Modifiers
 
+extension KvView {
 
+    /// - SeeAlso: <doc:/documentation/kvSwiftWebUI/KvView/listStyle(_:)-76ph0>.
+    @inlinable
+    public consuming func listStyle(_ style: KvAnyListStyle) -> some KvView { mapConfiguration { configuration -> Void in
+        configuration!.listStyle = style
+    } }
+    
 
-@usableFromInline
-struct KvDefaults {
-
-    private init() { }
-
-
-
-    // MARK: Layout
-
-    static let gridHorizontalSpacing: KvCssLength = .em(0.75)
-    static let gridVerticalSpacing: KvCssLength = .em(0.75)
-
-    /// Spacing between items in HTML specific list styles: marked, ordered.
-    static let htmlListSpacing: KvCssLength = .em(0.35)
-
-    @usableFromInline
-    static let padding: KvCssLength = .em(1)
-
-    static let hStackSpacing: KvCssLength = .em(1.5)
-    static let vStackSpacing: KvCssLength = .em(1.5)
+    /// This modifier sets the style for lists within the receiver.
+    @inlinable
+    public consuming func listStyle<S>(_ style: S) -> some KvView
+    where S : ListStyle
+    {
+        listStyle(style.eraseToAnyListStyle())
+    }
 
 }

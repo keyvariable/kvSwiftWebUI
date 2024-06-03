@@ -17,37 +17,51 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvAccessibilityViewModifiers.swift
+//  KvList.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 12.05.2024.
+//  Created by Svyatoslav Popov on 22.05.2024.
 //
 
-import Foundation
+public typealias List = KvList
 
 
 
-// MARK: Contextual Help Modifiers
+// TODO: DOC
+/// - SeeAlso: ``KvListStyle``, ``KvView/listStyle(_:)-76ph0``.
+public struct KvList<Content> : KvView
+where Content : KvView
+{
 
-extension KvView {
+    @usableFromInline
+    let content: Content
 
-    // TODO: DOC
+
+
     @inlinable
-    public consuming func help(_ text: KvText) -> some KvView { mapConfiguration {
-        $0!.help = text
-    } }
+    public init(@KvViewBuilder content: () -> Content) {
+        self.content = content()
+    }
 
 
-    /// An overload of <doc:/documentation/kvSwiftWebUI/KvView/help(_:)-68to3> modifier.
-    @inlinable
-    public consuming func help(_ key: KvLocalizedStringKey) -> some KvView { help(KvText(key)) }
+
+    // MARK: : KvView
+
+    public var body: KvNeverView { Body() }
+
+}
 
 
-    /// An overload of <doc:/documentation/kvSwiftWebUI/KvView/help(_:)-68to3> modifier.
-    @_disfavoredOverload
-    @inlinable
-    public consuming func help<S>(_ string: S) -> some KvView
-    where S : StringProtocol
-    { help(KvText(string)) }
+
+// MARK: : KvHtmlRenderable
+
+extension KvList : KvHtmlRenderable {
+
+    func renderHTML(in context: KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment {
+        let spacing = context.environmentNode?.values[viewConfiguration: \.listRowSpacing]
+        let listStyle = context.environmentNode?.values[viewConfiguration: \.listStyle] ?? KvDefaultListStyle.sharedErased
+
+        return listStyle.listContainerBlock(context, spacing, content.htmlRepresentation(in:))
+    }
 
 }

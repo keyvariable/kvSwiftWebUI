@@ -115,6 +115,20 @@ extension KvView {
 
 
 
+// MARK: List Row Spacing
+
+extension KvView {
+
+    // TODO: DOC
+    @inlinable
+    public consuming func listRowSpacing(_ spacing: KvCssLength?) -> some KvView { mapConfiguration {
+        $0!.listRowSpacing = spacing
+    } }
+
+}
+
+
+
 // MARK: Shape Modifiers
 
 extension KvView {

@@ -181,7 +181,7 @@ struct BasicsView : View {
                     .padding()
                 }
                 /// This modifier provides text for a tooltip.
-                .help("This view is made programmatically uzing ZStack")
+                .help("This view is made programmatically using ZStack")
             }
 
             Section2(header: Text("Grid")) {
@@ -247,7 +247,7 @@ struct BasicsView : View {
                 }
             }
 
-            Section2(header: Text("Template Redering Mode")) {
+            Section2(header: Text("Template Rendering Mode")) {
                 Preview(caption: Text("current foreground style")) {
                     Image("img/circles.svg")
                         .renderingMode(.template)
@@ -305,7 +305,7 @@ struct BasicsView : View {
             }
 
             Section2(header: Text("Interpolations")) {
-                /// `KvLocalizedStringKey` supports string interpolations.
+                /// `LocalizedStringKey` supports string interpolations.
                 Text("`Double.pi` is \(Double.pi) (\(Double.pi, format: "%.16g")).")
                 /// `Text` can be passed to `KvLocalizedStringKey` string interpolations as an argument.
                 /// It helps to avoid usage of hard-to-read concatenations and use better localization keys.
@@ -316,6 +316,62 @@ struct BasicsView : View {
                     /// `Text` interpolations support `.help(_:)` modifier.
                     .help("An interpolation argument")
                 Text("\(argument) is interpolated into another text.")
+            }
+
+            Section2(header: Text("Marked Lists")) {
+                /// `List` supports non-standard styles: `.ordered` and `.marked`.
+                /// Below is an example of a list with automatic marked style and default layout.
+                /// - Note: `MarkedListStyle` supports various markers.
+                List {
+                    Text("Primary item 1")
+                    /// Lists can be nested.
+                    List {
+                        Text("Secondary item 1")
+                        Text("Secondary item 2")
+                    }
+                    Text("Primary item 2")
+                    List {
+                        Text("Secondary item 1")
+                    }
+                }
+                .listStyle(.marked)
+            }
+
+            Section2(header: Text("Ordered Lists")) {
+                /// Below is an example of a list with various ordered styles and customized row spacing.
+                /// - Note: `OrderedListStyle` supports various numbering types.
+                List {
+                    /// This group is used to apply row spacing to child lists.
+                    Group {
+                        /// `VStack` is used here to provide smaller spacing between header item and it's child items.
+                        VStack(alignment: .leading, spacing: .em(0.35)) {
+                            Text("Decimal item 1")
+                            List {
+                                ForEach(1..<4) { index in
+                                    Text("Uppercased latin item \(index)")
+                                }
+                            }
+                            /// Here ordered style with uppercase latin numbering is applied.
+                            .listStyle(.ordered(.latin(case: .uppercase)))
+                        }
+                        VStack(alignment: .leading, spacing: .em(0.35)) {
+                            Text("Decimal item 2")
+                            List {
+                                ForEach(1..<4) { index in
+                                    Text("Chinese item \(index)")
+                                }
+                            }
+                            /// Here ordered style with default Chinese numbering (Han decimal) is applied.
+                            /// - Note: There are various Chinese numberings supported.
+                            .listStyle(.ordered(.chinese()))
+                        }
+                    }
+                    /// This modifier changes list row spacing.
+                    .listRowSpacing(.em(0.2))
+                }
+                /// Here automatic ordered style is applied.
+                .listStyle(.ordered)
+                .listRowSpacing(.em(0.75))
             }
         }
     }

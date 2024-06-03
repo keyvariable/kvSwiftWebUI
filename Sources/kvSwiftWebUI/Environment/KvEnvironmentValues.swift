@@ -182,6 +182,8 @@ extension KvEnvironmentValues {
             case gridCellColumnSpan
             case gridColumnAlignment
             case help
+            case listRowSpacing
+            case listStyle
             case metadataDescription
             case metadataKeywords
             case multilineTextAlignment
@@ -247,8 +249,8 @@ extension KvEnvironmentValues {
                 case .scriptResources:
                     // Accumulation
                     result.scriptResources = .union(result.scriptResources, Self.cast(value, as: \.scriptResources))
-                case .font, .foregroundStyle, .gridCellColumnSpan, .gridColumnAlignment, .help, .metadataDescription,
-                        .multilineTextAlignment, .navigationTitle, .tag, .textCase:
+                case .font, .foregroundStyle, .gridCellColumnSpan, .gridColumnAlignment, .help, .listRowSpacing, .listStyle,
+                        .metadataDescription, .multilineTextAlignment, .navigationTitle, .tag, .textCase:
                     // Replacement
                     result.regularValues[key] = value
                 }
@@ -300,6 +302,12 @@ extension KvEnvironmentValues {
 
         @usableFromInline
         var help: KvText? { get { self[.help] } set { self[.help] = newValue } }
+
+        @usableFromInline
+        var listRowSpacing: KvCssLength? { get { self[.listRowSpacing] } set { self[.listRowSpacing] = newValue } }
+
+        @usableFromInline
+        var listStyle: KvAnyListStyle? { get { self[.listStyle] } set { self[.listStyle] = newValue } }
 
         @usableFromInline
         var metadataDescription: KvText? { get { self[.metadataDescription] } set { self[.metadataDescription] = newValue } }
@@ -493,7 +501,7 @@ extension KvEnvironmentValues {
                     case .textCase:
                         attributes.append(styles: "text-transform:\(Self.cast(value, as: \.textCase).cssTextTransform)")
 
-                    case .metadataDescription, .metadataKeywords, .navigationTitle, .scriptResources:
+                    case .listRowSpacing, .listStyle, .metadataDescription, .metadataKeywords, .navigationTitle, .scriptResources:
                         break
                     }
                 }

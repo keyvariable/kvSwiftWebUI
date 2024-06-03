@@ -127,6 +127,7 @@ class KvCssAsset {
         case color(id: String)
         case flexClasses
         case fontResource(name: String, key: KvFontResource.Face.Key)
+        case itemSpacing(id: String)
 
 
         // MARK: : Comparable
@@ -136,6 +137,7 @@ class KvCssAsset {
             case .color(_): .color
             case .flexClasses: .flexClasses
             case .fontResource(_, _): .font
+            case .itemSpacing(_): .itemSpacing
             }
         }
 
@@ -162,6 +164,10 @@ class KvCssAsset {
                 else if rKey.weight < lKey.weight { return false }
 
                 return !lKey.isItalic && rKey.isItalic // false is 0, true is 1
+
+            case .itemSpacing(id: let lhs):
+                guard case .itemSpacing(id: let rhs) = rhs else { return GroupOrderKey.itemSpacing < rhs.groupOrderKey }
+                return lhs < rhs
             }
         }
 
@@ -173,6 +179,7 @@ class KvCssAsset {
             case color
             case flexClasses
             case font
+            case itemSpacing
 
             // MARK: : Comparable
 
@@ -191,6 +198,7 @@ class KvCssAsset {
         typealias ID = EntryID
 
 
+        /// E.g. ":root" for variables.
         let selector: String?
         /// Identifier used to filter duplicates and provide the same CSS for the same declarations.
         let id: ID

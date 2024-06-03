@@ -274,8 +274,10 @@ extension KvHtmlKit {
         case div
         case h1, h2, h3, h4, h5, h6
         case img
+        case li
         case link
         case meta
+        case ol
         case p
         case pre
         case script
@@ -284,6 +286,7 @@ extension KvHtmlKit {
         case sub
         case sup
         case title
+        case ul
 
         case raw(_ name: String, _ properties: Properties)
 
@@ -315,8 +318,10 @@ extension KvHtmlKit {
             case .h5: "h5"
             case .h6: "h6"
             case .img: "img"
+            case .li: "li"
             case .link: "link"
             case .meta: "meta"
+            case .ol: "ol"
             case .p: "p"
             case .pre: "pre"
             case .script: "script"
@@ -325,6 +330,7 @@ extension KvHtmlKit {
             case .sub: "sub"
             case .sup: "sup"
             case .title: "title"
+            case .ul: "ul"
 
             case .raw(let name, _): name
             }
@@ -332,7 +338,8 @@ extension KvHtmlKit {
 
         var properties: Properties {
             switch self {
-            case .a, .body, .div, .h1, .h2, .h3, .h4, .h5, .h6, .p, .pre, .script, .span, .style, .sub, .sup, .title: .requiresEndingTag
+            case .a, .body, .div, .h1, .h2, .h3, .h4, .h5, .h6, .li, .ol, .p, .pre, .script, .span, .style, .sub, .sup, .title, .ul:
+                .requiresEndingTag
             case .br, .img, .link, .meta: [ ]
             case .raw(_, let properties): properties
             }

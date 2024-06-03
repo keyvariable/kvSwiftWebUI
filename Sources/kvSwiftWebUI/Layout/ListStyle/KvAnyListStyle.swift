@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 //
-//  Copyright (c) 2023 Svyatoslav Popov (info@keyvar.com).
+//  Copyright (c) 2024 Svyatoslav Popov (info@keyvar.com).
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 //  License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
@@ -17,35 +17,29 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvDefaults.swift
+//  KvAnyListStyle.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 12.11.2023.
+//  Created by Svyatoslav Popov on 22.05.2024.
 //
 
 import kvCssKit
 
 
 
-@usableFromInline
-struct KvDefaults {
+public struct KvAnyListStyle : KvListStyle {
 
-    private init() { }
-
+    typealias WrappingBlock = (borrowing KvHtmlRepresentationContext, _ rowSpacing: KvCssLength?, (borrowing KvHtmlRepresentationContext) -> KvHtmlRepresentation.Fragment) -> KvHtmlRepresentation.Fragment
 
 
-    // MARK: Layout
 
-    static let gridHorizontalSpacing: KvCssLength = .em(0.75)
-    static let gridVerticalSpacing: KvCssLength = .em(0.75)
+    /// This block is used to wrap HTML list items. E.g. items of a bullet HTML list are wrapped into `<ul>` tag.
+    let listContainerBlock: WrappingBlock
 
-    /// Spacing between items in HTML specific list styles: marked, ordered.
-    static let htmlListSpacing: KvCssLength = .em(0.35)
 
-    @usableFromInline
-    static let padding: KvCssLength = .em(1)
 
-    static let hStackSpacing: KvCssLength = .em(1.5)
-    static let vStackSpacing: KvCssLength = .em(1.5)
+    // MARK: : KvListStyle
+
+    public func eraseToAnyListStyle() -> KvAnyListStyle { self }
 
 }

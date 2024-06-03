@@ -4,11 +4,12 @@ html{
 text-size-adjust:none;
 }
 
-body,div,h1,h2,h3,h4,h5,h6,html,p{
+body,div,h1,h2,h3,h4,h5,h6,html,li,ol,p,ul{
 margin:0;padding:0;
 font-size:inherit;font-stretch:inherit;font-style:inherit;font-weight:inherit;
 box-sizing:border-box;
 }
+ol,ul{padding-left:1.75em;}
 p{-moz-hyphens:auto;-webkit-hyphens:auto;-ms-hyphens:auto;hyphens:auto;}
 
 a:link,a:visited,a:hover,a:active{color:inherit;}

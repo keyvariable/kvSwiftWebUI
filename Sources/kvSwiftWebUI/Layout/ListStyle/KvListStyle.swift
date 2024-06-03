@@ -1,6 +1,6 @@
 //===----------------------------------------------------------------------===//
 //
-//  Copyright (c) 2023 Svyatoslav Popov (info@keyvar.com).
+//  Copyright (c) 2024 Svyatoslav Popov (info@keyvar.com).
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 //  License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
@@ -17,35 +17,24 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvDefaults.swift
+//  KvListStyle.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 12.11.2023.
+//  Created by Svyatoslav Popov on 22.05.2024.
 //
 
-import kvCssKit
+public typealias ListStyle = KvListStyle
 
 
 
-@usableFromInline
-struct KvDefaults {
+/// A protocol that describes the behavior and appearance of a list.
+///
+/// ## Built-in List Styles:
+/// - ``automatic`` (``KvDefaultListStyle``).
+/// - ``marked`` (``KvMarkedListStyle``).
+/// - ``ordered`` (``KvOrderedListStyle``).
+public protocol KvListStyle {
 
-    private init() { }
-
-
-
-    // MARK: Layout
-
-    static let gridHorizontalSpacing: KvCssLength = .em(0.75)
-    static let gridVerticalSpacing: KvCssLength = .em(0.75)
-
-    /// Spacing between items in HTML specific list styles: marked, ordered.
-    static let htmlListSpacing: KvCssLength = .em(0.35)
-
-    @usableFromInline
-    static let padding: KvCssLength = .em(1)
-
-    static let hStackSpacing: KvCssLength = .em(1.5)
-    static let vStackSpacing: KvCssLength = .em(1.5)
+    func eraseToAnyListStyle() -> KvAnyListStyle
 
 }

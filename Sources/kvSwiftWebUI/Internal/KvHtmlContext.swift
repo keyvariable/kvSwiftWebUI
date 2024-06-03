@@ -25,6 +25,8 @@
 
 import Foundation
 
+import kvCssKit
+
 import Crypto
 import kvHttpKit
 import kvKit
@@ -706,6 +708,26 @@ extension KvHtmlContext {
         }
 
         return KvDebug.pause(code: "error://", "Failed to find image for resource \(imageResource)")
+    }
+
+}
+
+
+
+// MARK: Item Spacing
+
+extension KvHtmlContext {
+
+    /// - Returns: A CSS class defining given *spacing* between children.
+    func cssItemSpacingClass(_ spacing: KvCssLength) -> String {
+        let spacingCss = spacing.css
+        let id = "is_\(KvBase64.encodeAsString(spacingCss.data(using: .utf8)!, alphabet: .urlSafe))" // «is» means item spacing.
+
+        insert(KvCssAsset.Entry(id: .itemSpacing(id: id), default: {
+            ".\(id)>*:not(:last-child){margin-bottom:\(spacingCss);}"
+        }))
+
+        return id
     }
 
 }

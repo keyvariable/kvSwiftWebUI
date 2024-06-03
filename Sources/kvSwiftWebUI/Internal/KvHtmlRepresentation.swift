@@ -88,36 +88,54 @@ struct KvHtmlRepresentation {
         private var first: Node?
         private var last: Node?
 
+        private(set) var attributes: Attributes
 
-        init() { }
+
+        init(attributes: Attributes = .empty) {
+            self.attributes = attributes
+        }
 
 
-        init(_ payload: Payload) {
+        init(_ payload: Payload, attributes: Attributes = .empty) {
             first = .init(with: payload)
             last = first
+            self.attributes = attributes
         }
 
 
-        init(_ string: String) { self.init(.string(string)) }
+        init(_ string: String, attributes: Attributes = .empty) {
+            self.init(.string(string), attributes: attributes)
+        }
 
 
-        init(fragmentBlock: @escaping () -> Fragment) { self.init(.fragmentBlock(fragmentBlock)) }
+        init(attributes: Attributes = .empty, fragmentBlock: @escaping () -> Fragment) {
+            self.init(.fragmentBlock(fragmentBlock), attributes: attributes)
+        }
 
 
-        init<S>(_ payload: S) where S : Sequence, S.Element == Payload {
+        init<S>(_ payload: S, attributes: Attributes = .empty)
+        where S : Sequence, S.Element == Payload
+        {
+            self.attributes = attributes
             payload.forEach { append($0) }
         }
 
 
-        init(_ payload: Payload...) { self.init(payload) }
+        init(_ payload: Payload..., attributes: Attributes = .empty) {
+            self.init(payload, attributes: attributes)
+        }
 
 
-        init<S>(_ payload: S) where S : Sequence, S.Element == Fragment {
+        init<S>(_ payload: S, attributes: Attributes = .empty)
+        where S : Sequence, S.Element == Fragment
+        {
+            self.attributes = attributes
             payload.forEach { append($0) }
         }
 
 
-        init(_ payload: Fragment...) {
+        init(_ payload: Fragment..., attributes: Attributes = .empty) {
+            self.attributes = attributes
             payload.forEach { append($0) }
         }
 
@@ -128,8 +146,12 @@ struct KvHtmlRepresentation {
 
 
         /// - Note: Assuming one of arguments are non-empty.
-        private static func tag(opening: consuming Payload, innerHTML: consuming Fragment?, closing: consuming Payload?) -> Fragment {
-            var fragment = Fragment(opening)
+        private static func tag(opening: consuming Payload,
+                                innerHTML: consuming Fragment?,
+                                closing: consuming Payload?,
+                                attributes: Attributes
+        ) -> Fragment {
+            var fragment = Fragment(opening, attributes: attributes)
             if let innerHTML {
                 fragment.append(innerHTML)
             }
@@ -140,15 +162,24 @@ struct KvHtmlRepresentation {
         }
 
 
+        /// - Note: Given tag is added to ``attributes`` of the resulting fragment.
         static func tag(_ tag: KvHtmlKit.Tag, attributes: KvHtmlKit.Attributes, innerHTML: consuming Fragment? = nil) -> Fragment {
             let hasContent = innerHTML != nil
             let opening = tag.opening(attributes: attributes, hasContent: hasContent)
             let closing = tag.closing(hasContent: hasContent)
 
-            return self.tag(opening: .string(opening), innerHTML: innerHTML, closing: closing.map(Payload.string(_:)))
+            return self.tag(
+                opening: .string(opening),
+                innerHTML: innerHTML,
+                closing: closing.map(Payload.string(_:)),
+                attributes: .init {
+                    $0.htmlTag = tag
+                }
+            )
         }
 
 
+        /// - Note: Given tag is added to ``attributes`` of the resulting fragment.
         static func tag(_ tag: KvHtmlKit.Tag,
                         attributes: @escaping () -> KvHtmlKit.Attributes = { .empty },
                         innerHTML: consuming Fragment? = nil
@@ -157,7 +188,14 @@ struct KvHtmlRepresentation {
             let opening = Payload.stringBlock { tag.opening(attributes: attributes(), hasContent: hasContent) }
             let closing = tag.closing(hasContent: hasContent)
 
-            return self.tag(opening: opening, innerHTML: innerHTML, closing: closing.map(Payload.string(_:)))
+            return self.tag(
+                opening: opening,
+                innerHTML: innerHTML,
+                closing: closing.map(Payload.string(_:)),
+                attributes: .init {
+                    $0.htmlTag = tag
+                }
+            )
         }
 
 
@@ -203,6 +241,46 @@ struct KvHtmlRepresentation {
             init(with payload: Payload) {
                 self.payload = payload
             }
+
+        }
+
+
+        // MARK: .Attributes
+
+        struct Attributes {
+
+            static let empty = Attributes()
+
+
+            init() { }
+
+
+            /// Initializes an instance and invokes given *transform* for the instance.
+            init(_ transform: (inout Attributes) -> Void) {
+                transform(&self)
+            }
+
+
+            private var values: [Attribute : Any] = .init()
+
+
+            // MARK: .Attribute
+
+            enum Attribute : Hashable {
+                /// HTML tag the content is wrapped into.
+                case htmlTag
+            }
+
+
+            // MARK: Access
+
+            private subscript<T>(key: Attribute) -> T? {
+                get { values[key] as! T? }
+                set { values[key] = newValue }
+            }
+
+
+            var htmlTag: KvHtmlKit.Tag? { get { self[.htmlTag] } set { self[.htmlTag] = newValue } }
 
         }
 
@@ -403,25 +481,50 @@ class KvHtmlRepresentationContext {
 
     final class ContainerAttributes {
 
-        let layout: Layout?
+        typealias WrappingBlock = (borrowing KvHtmlKit.Attributes, borrowing KvHtmlRepresentation.Fragment) -> KvHtmlRepresentation.Fragment
 
+
+
+        let layout: Layout?
         let layoutDirection: KvLayoutDirection?
 
+        /// This block is applied to each child view in a group.
+        fileprivate let wrapperBlock: WrappingBlock?
 
 
-        private init(layout: Layout? = nil, layoutDirection: KvLayoutDirection? = nil) {
+
+        private init(layout: Layout? = nil, layoutDirection: KvLayoutDirection? = nil, wrapperBlock: WrappingBlock? = nil) {
             self.layout = layout
             self.layoutDirection = layoutDirection
+            self.wrapperBlock = wrapperBlock
         }
 
 
 
         // MARK: Fabrics
 
-        static func grid() -> Self { .init(layout: .grid(.init()), layoutDirection: .horizontal) }
+        static func grid() -> ContainerAttributes { .init(layout: .grid(.init()), layoutDirection: .horizontal) }
 
 
-        static func stack(_ direction: KvLayoutDirection) -> Self { .init(layoutDirection: direction) }
+        /// A list that is rendered as `<ol>` and `<ul>` HTML tags.
+        static var htmlList: ContainerAttributes {
+            .init(layoutDirection: .vertical, wrapperBlock: { htmlAttributes, innerFragment in
+                let containerTag: KvHtmlKit.Tag? = switch innerFragment.attributes.htmlTag {
+                case .ul, .ol:
+                    /// These tags should not be wrapped into `<li>` container.
+                    !htmlAttributes.isEmpty ? .div : nil
+                default:
+                    .li
+                }
+
+                guard let containerTag else { return innerFragment }
+
+                return .tag(containerTag, attributes: htmlAttributes, innerHTML: innerFragment)
+            })
+        }
+
+
+        static func stack(_ direction: KvLayoutDirection) -> ContainerAttributes { .init(layoutDirection: direction) }
 
 
 
@@ -680,7 +783,7 @@ class KvHtmlRepresentationContext {
         // Here `self.containerAttributes` is passed to apply it in the extracted CSS.
         var context = self.descendant(containerAttributes: self.containerAttributes)
 
-        // TODO: Pass frame CSS to descendant context in come cases.
+        // TODO: Pass frame CSS to descendant context in some cases.
         let needsContainer = !options.contains(.noContainer) && viewConfiguration?.frame != nil
         let containerHtmlAttributes: KvHtmlKit.Attributes?
 
@@ -704,7 +807,10 @@ class KvHtmlRepresentationContext {
             fragment = body(context, innerCSS)
         }
 
-        if let containerHtmlAttributes {
+        if let wrappingBlock = self.containerAttributes?.wrapperBlock {
+            fragment = wrappingBlock(containerHtmlAttributes ?? .empty, fragment)
+        }
+        else if let containerHtmlAttributes {
             fragment = .tag(.div, attributes: containerHtmlAttributes, innerHTML: fragment)
         }
 
