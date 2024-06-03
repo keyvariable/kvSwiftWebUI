@@ -632,20 +632,28 @@ extension KvHtmlKit {
         // MARK: `class`
 
         mutating func insert(classes: Set<String>) {
-            self.classes?.formUnion(classes)
-            ?? (self.classes = classes)
+            switch self.classes {
+            case .some:
+                self.classes!.formUnion(classes)
+            case .none:
+                guard !classes.isEmpty else { break }
+                self.classes = classes
+            }
         }
 
 
-        mutating func insert(classes: String...) {
-            self.classes?.formUnion(classes)
-            ?? (self.classes = .init(classes))
-        }
+        mutating func insert(classes: String...) { insert(classes: classes) }
 
 
         mutating func insert<S>(classes: S) where S : Sequence, S.Element == String {
-            self.classes?.formUnion(classes)
-            ?? (self.classes = .init(classes))
+            switch self.classes {
+            case .some:
+                self.classes!.formUnion(classes)
+            case .none:
+                let classes = Set(classes)
+                guard !classes.isEmpty else { break }
+                self.classes = classes
+            }
         }
 
 
@@ -682,14 +690,25 @@ extension KvHtmlKit {
         // MARK: `style`
 
         mutating func append(styles: [String]) {
-            self.styles?.append(contentsOf: styles)
-            ?? (self.styles = styles)
+            switch self.styles {
+            case .some:
+                self.styles!.append(contentsOf: styles)
+            case .none:
+                guard !styles.isEmpty else { break }
+                self.styles = styles
+            }
         }
 
 
         mutating func append<S>(styles: S) where S : Sequence, S.Element == String {
-            self.styles?.append(contentsOf: styles)
-            ?? (self.styles = Array(styles))
+            switch self.styles {
+            case .some:
+                self.styles!.append(contentsOf: styles)
+            case .none:
+                let styles = Array(styles)
+                guard !styles.isEmpty else { break }
+                self.styles = styles
+            }
         }
 
 
