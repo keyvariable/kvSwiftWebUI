@@ -127,6 +127,7 @@ class KvCssAsset {
         case color(id: String)
         case flexClasses
         case fontResource(name: String, key: KvFontResource.Face.Key)
+        case hyphenationClasses
         case itemSpacing(id: String)
 
 
@@ -137,6 +138,7 @@ class KvCssAsset {
             case .color(_): .color
             case .flexClasses: .flexClasses
             case .fontResource(_, _): .font
+            case .hyphenationClasses: .hyphenationClasses
             case .itemSpacing(_): .itemSpacing
             }
         }
@@ -165,6 +167,9 @@ class KvCssAsset {
 
                 return !lKey.isItalic && rKey.isItalic // false is 0, true is 1
 
+            case .hyphenationClasses:
+                return lhs.groupOrderKey < rhs.groupOrderKey
+
             case .itemSpacing(id: let lhs):
                 guard case .itemSpacing(id: let rhs) = rhs else { return GroupOrderKey.itemSpacing < rhs.groupOrderKey }
                 return lhs < rhs
@@ -179,6 +184,7 @@ class KvCssAsset {
             case color
             case flexClasses
             case font
+            case hyphenationClasses
             case itemSpacing
 
             // MARK: : Comparable

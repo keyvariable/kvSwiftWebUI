@@ -378,6 +378,7 @@ public struct KvText : Equatable {
             case fontWeight
             case foregroundStyle
             case help
+            case hyphenation
             case isItalic
             case tag
         }
@@ -399,11 +400,10 @@ public struct KvText : Equatable {
         static func merged(_ addition: borrowing Attributes, over base: Attributes) -> Attributes {
             var result = base
 
+            // Some properties are not cascaded.
+            result.tag = nil
+
             result.regular.merge(addition.regular, uniquingKeysWith: { lhs, rhs in rhs })
-
-            // Regular properties below are replaced.
-            result.tag = addition.tag
-
             result.wrappers.merge(addition.wrappers, uniquingKeysWith: { lhs, rhs in rhs })
 
             return result
@@ -430,6 +430,8 @@ public struct KvText : Equatable {
                     guard cast(lhs, as: \.foregroundStyle) == rhs.foregroundStyle else { return false }
                 case .help:
                     guard cast(lhs, as: \.help) == rhs.help else { return false }
+                case .hyphenation:
+                    guard cast(lhs, as: \.hyphenation) == rhs.hyphenation else { return false }
                 case .isItalic:
                     guard cast(lhs, as: \.isItalic) == rhs.isItalic else { return false }
                 case .tag:
@@ -468,29 +470,32 @@ public struct KvText : Equatable {
 
         // MARK: Properties
 
-        /// .none — unset, .some(nil) — explicitely cleared.
+        /// .none — unset, .some(nil) — explicitly cleared.
         @usableFromInline
         var font: KvFont?? { get { self[.font] } set { self[.font] = newValue } }
 
-        /// .none — unset, .some(nil) — explicitely cleared.
+        /// .none — unset, .some(nil) — explicitly cleared.
         @usableFromInline
         var fontDesign: KvFont.Design?? { get { self[.fontDesign] } set { self[.fontDesign] = newValue } }
 
-        /// .none — unset, .some(nil) — explicitely cleared.
+        /// .none — unset, .some(nil) — explicitly cleared.
         @usableFromInline
         var fontWeight: KvFont.Weight?? { get { self[.fontWeight] } set { self[.fontWeight] = newValue } }
 
         @usableFromInline
-        var help: KvText?{ get { self[.help] } set { self[.help] = newValue } }
+        var help: KvText? { get { self[.help] } set { self[.help] = newValue } }
+
+        @usableFromInline
+        var hyphenation: Hyphenation? { get { self[.hyphenation] } set { self[.hyphenation] = newValue } }
 
         @usableFromInline
         var isItalic: Bool? { get { self[.isItalic] } set { self[.isItalic] = newValue } }
 
-        /// .none — unset, .some(nil) — explicitely cleared.
+        /// .none — unset, .some(nil) — explicitly cleared.
         @usableFromInline
         var characterStyle: CharacterStyle? { get { self[.characterStyle] } set { self[.characterStyle] = newValue } }
 
-        /// .none — unset, .some(nil) — explicitely cleared.
+        /// .none — unset, .some(nil) — explicitly cleared.
         @usableFromInline
         var foregroundStyle: KvColor?? { get { self[.foregroundStyle] } set { self[.foregroundStyle] = newValue } }
 
@@ -551,6 +556,9 @@ public struct KvText : Equatable {
                     case .help:
                         htmlAttributes[.title] = .string(Attributes.cast(value, as: \.help).plainText(in: context.localizationContext))
 
+                    case .hyphenation:
+                        htmlAttributes.insert(classes: context.html.cssHyphenationClass(for: Attributes.cast(value, as: \.hyphenation)))
+
                     case .isItalic:
                         htmlAttributes.append(optionalStyles: Attributes.cast(value, as: \.isItalic) == true ? "font-style:italic" : nil)
 
@@ -560,7 +568,7 @@ public struct KvText : Equatable {
                 }
 
 
-                func Resovle(fontDesign: KvFont.Design?, against fontFamily: KvFont.Family?) -> KvFont.Design? {
+                func Resolve(fontDesign: KvFont.Design?, against fontFamily: KvFont.Family?) -> KvFont.Design? {
                     guard let fontDesign,
                           case .system(let currentDesign) = fontFamily,
                           fontDesign != currentDesign
@@ -572,7 +580,7 @@ public struct KvText : Equatable {
 
                 switch fontAccumulator.font {
                 case .some(var font):
-                    font.family = Resovle(fontDesign: fontAccumulator.design, against: font.family)
+                    font.family = Resolve(fontDesign: fontAccumulator.design, against: font.family)
                         .map { .system($0) }
                     ?? font.family
 
@@ -581,7 +589,7 @@ public struct KvText : Equatable {
                     htmlAttributes.append(optionalStyles: font.cssStyle(in: context))
 
                 case .none:
-                    let resolvedDesign = Resovle(fontDesign: fontAccumulator.design, against: scope.font??.family)
+                    let resolvedDesign = Resolve(fontDesign: fontAccumulator.design, against: scope.font??.family)
                     htmlAttributes.append(optionalStyles: (consume resolvedDesign).map { "font-family:\(KvHtmlContext.systemFontCSS(design: $0))" })
 
                     htmlAttributes.append(optionalStyles: fontAccumulator.weight.map { "font-weight:\($0.cssValue)" })
@@ -623,7 +631,7 @@ public struct KvText : Equatable {
     // MARK: .Case
 
     // TODO: DOC
-    public enum Case : Hashable {
+    public enum Case : Hashable, CaseIterable {
 
         // TODO: DOC
         case uppercase
@@ -640,6 +648,18 @@ public struct KvText : Equatable {
             }
         }
 
+    }
+
+
+
+    // MARK: .Hyphenation
+
+    /// This type declares available variants of hyphenation in multiline texts.
+    public enum Hyphenation : Hashable, CaseIterable {
+        /// Browsers will use built-in algorithms.
+        case automatic
+        /// Hyphens can appear only at explicitly declared positions.
+        case manual
     }
 
 
@@ -753,6 +773,13 @@ public struct KvText : Equatable {
     public consuming func help<S>(_ string: S) -> KvText
     where S : StringProtocol
     { help(KvText(string)) }
+
+
+    /// This modifier declares hyphenation applied to multiline texts inside this view.
+    @inlinable
+    public consuming func hyphenation(_ hyphenation: Hyphenation) -> KvText { withModifiedAttributes {
+        $0.hyphenation = hyphenation
+    } }
 
 
     // TODO: DOC
@@ -892,7 +919,7 @@ extension KvText : KvHtmlRenderable {
             let textStyle = scope.font??.textStyle ?? text.attributes.font??.textStyle
 
             return .tag(
-                Self.tag(for: textStyle),
+                KvText.tag(for: textStyle),
                 attributes: htmlAttributes ?? .empty,
                 innerHTML: text.attributes.wrapping(innerFragment, in: context)
             )

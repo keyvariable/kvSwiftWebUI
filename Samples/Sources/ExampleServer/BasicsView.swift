@@ -373,6 +373,23 @@ struct BasicsView : View {
                 .listStyle(.ordered)
                 .listRowSpacing(.em(0.75))
             }
+
+            Section2(header: Text("Hyphenation")) {
+                let example = VStack(alignment: .leading, spacing: .em(0.35)) {
+                    Text("Automatic or Manual")
+                        .font(.title3)
+                    Text("Hyphenation, hyphenation, hyphenation.")
+                }
+                .frame(width: .em(10))
+
+                Preview(caption: Text("Default")) { example }
+                ForEach(Text.Hyphenation.allCases, id: \.self) { hyphenation in
+                    Preview(caption: Text("`.\(String(describing: hyphenation))`")) {
+                        example
+                            .hyphenation(hyphenation)
+                    }
+                }
+            }
         }
     }
 

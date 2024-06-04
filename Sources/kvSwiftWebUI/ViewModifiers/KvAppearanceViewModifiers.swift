@@ -69,6 +69,13 @@ extension KvView {
         $0!.textCase = textCase
     } }
 
+
+    /// This modifier declares hyphenation applied to multiline texts inside this view.
+    @inlinable
+    public consuming func hyphenation(_ hyphenation: KvText.Hyphenation) -> some KvView { mapConfiguration {
+        $0!.hyphenation = hyphenation
+    } }
+
 }
 
 

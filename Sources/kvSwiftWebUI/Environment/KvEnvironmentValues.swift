@@ -182,6 +182,7 @@ extension KvEnvironmentValues {
             case gridCellColumnSpan
             case gridColumnAlignment
             case help
+            case hyphenation
             case listRowSpacing
             case listStyle
             case metadataDescription
@@ -249,7 +250,7 @@ extension KvEnvironmentValues {
                 case .scriptResources:
                     // Accumulation
                     result.scriptResources = .union(result.scriptResources, Self.cast(value, as: \.scriptResources))
-                case .font, .foregroundStyle, .gridCellColumnSpan, .gridColumnAlignment, .help, .listRowSpacing, .listStyle,
+                case .font, .foregroundStyle, .gridCellColumnSpan, .gridColumnAlignment, .help, .hyphenation, .listRowSpacing, .listStyle,
                         .metadataDescription, .multilineTextAlignment, .navigationTitle, .tag, .textCase:
                     // Replacement
                     result.regularValues[key] = value
@@ -302,6 +303,9 @@ extension KvEnvironmentValues {
 
         @usableFromInline
         var help: KvText? { get { self[.help] } set { self[.help] = newValue } }
+
+        @usableFromInline
+        var hyphenation: KvText.Hyphenation? { get { self[.hyphenation] } set { self[.hyphenation] = newValue } }
 
         @usableFromInline
         var listRowSpacing: KvCssLength? { get { self[.listRowSpacing] } set { self[.listRowSpacing] = newValue } }
@@ -480,6 +484,9 @@ extension KvEnvironmentValues {
 
                     case .help:
                         attributes[.title] = .string(Self.cast(value, as: \.help).plainText(in: context.localizationContext))
+
+                    case .hyphenation:
+                        attributes.insert(classes: context.html.cssHyphenationClass(for: Self.cast(value, as: \.hyphenation)))
 
                     case .multilineTextAlignment:
                         attributes.append(styles: "text-align:\(Self.cast(value, as: \.multilineTextAlignment).cssTextAlign.css)")

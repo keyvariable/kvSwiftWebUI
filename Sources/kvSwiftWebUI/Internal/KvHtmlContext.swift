@@ -690,6 +690,26 @@ extension KvHtmlContext {
 
 
 
+// MARK: Hyphenation Classes
+
+extension KvHtmlContext {
+
+    func cssHyphenationClass(for hyphenation: KvText.Hyphenation) -> String {
+        insert(KvCssAsset.Entry(
+            id: .hyphenationClasses,
+            default: { ".hyphens,.hyphens>p,.hyphens :not(.mnl-hyphens) p{-moz-hyphens:auto;-webkit-hyphens:auto;-ms-hyphens:auto;hyphens:auto;}.mnl-hyphens,.mnl-hyphens>p,.mnl-hyphens :not(.hyphens) p{-moz-hyphens:manual;-webkit-hyphens:manual;-ms-hyphens:manual;hyphens:manual;}" }
+        ))
+
+        return switch hyphenation {
+        case .automatic: "hyphens"
+        case .manual: "mnl-hyphens"
+        }
+    }
+
+}
+
+
+
 // MARK: Images
 
 extension KvHtmlContext {
