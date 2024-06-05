@@ -17,21 +17,17 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  KvOrderedIdentitySet.swift
+//  KvOrderedSet.swift
 //  kvSwiftWebUI
 //
-//  Created by Svyatoslav Popov on 01.02.2024.
+//  Created by Svyatoslav Popov on 05.06.2024.
 //
 
-/// A simple implementation of an ordered set containing `Identifiable` elements.
-/// Two elements are considered equal when they have the same ID.
-///
-/// - Note: It only accumulates elements, no removal or move operations.
-@usableFromInline
-struct KvOrderedIdentitySet<Element> where Element : Identifiable {
+
+/// A trivial implementation of an ordered set.
+struct KvOrderedSet<Element> where Element : Hashable {
 
     /// Initializes an empty instance.
-    @usableFromInline
     init() { }
 
 
@@ -43,8 +39,8 @@ struct KvOrderedIdentitySet<Element> where Element : Identifiable {
 
 
     private var elements: [Element] = .init()
-
-    private var ids: Set<Element.ID> = .init()
+    
+    private var set: Set<Element> = .init()
 
 
 
@@ -61,7 +57,7 @@ struct KvOrderedIdentitySet<Element> where Element : Identifiable {
     @discardableResult
     @usableFromInline
     mutating func insert(_ element: Element) -> Bool {
-        guard ids.insert(element.id).inserted else { return false }
+        guard set.insert(element).inserted else { return false }
 
         elements.append(element)
 
@@ -69,10 +65,19 @@ struct KvOrderedIdentitySet<Element> where Element : Identifiable {
     }
 
 
-    func union(_ rhs: borrowing KvOrderedIdentitySet) -> KvOrderedIdentitySet {
+    func union(_ rhs: borrowing KvOrderedSet) -> KvOrderedSet {
         var copy = self
         rhs.forEach { copy.insert($0) }
         return copy
+    }
+
+
+    mutating func formUnion<S>(_ rhs: S)
+    where S : Sequence, S.Element == Element
+    {
+        rhs.forEach {
+            self.insert($0)
+        }
     }
 
 }
@@ -81,7 +86,7 @@ struct KvOrderedIdentitySet<Element> where Element : Identifiable {
 
 // MARK: : ExpressibleByArrayLiteral
 
-extension KvOrderedIdentitySet : ExpressibleByArrayLiteral {
+extension KvOrderedSet : ExpressibleByArrayLiteral {
 
     @usableFromInline
     init(arrayLiteral elements: Element...) {
@@ -94,7 +99,7 @@ extension KvOrderedIdentitySet : ExpressibleByArrayLiteral {
 
 // MARK: : Sequence
 
-extension KvOrderedIdentitySet : Sequence {
+extension KvOrderedSet : Sequence {
 
     @usableFromInline
     typealias Element = Element
@@ -111,11 +116,11 @@ extension KvOrderedIdentitySet : Sequence {
 
 // MARK: : Equatable
 
-extension KvOrderedIdentitySet : Equatable {
+extension KvOrderedSet : Equatable {
 
     @usableFromInline
-    static func ==(lhs: KvOrderedIdentitySet, rhs: KvOrderedIdentitySet) -> Bool {
-        lhs.ids == rhs.ids
+    static func ==(lhs: KvOrderedSet, rhs: KvOrderedSet) -> Bool {
+        lhs.elements == rhs.elements
     }
 
 }
@@ -124,11 +129,11 @@ extension KvOrderedIdentitySet : Equatable {
 
 // MARK: : Hashable
 
-extension KvOrderedIdentitySet : Hashable {
+extension KvOrderedSet : Hashable {
 
     @usableFromInline
     func hash(into hasher: inout Hasher) {
-        ids.hash(into: &hasher)
+        elements.hash(into: &hasher)
     }
 
 }
@@ -137,16 +142,16 @@ extension KvOrderedIdentitySet : Hashable {
 
 // MARK: Auxiliaries
 
-extension KvOrderedIdentitySet {
+extension KvOrderedSet {
 
-    static func union(_ lhs: KvOrderedIdentitySet?, _ rhs: KvOrderedIdentitySet?) -> KvOrderedIdentitySet? {
+    static func union(_ lhs: KvOrderedSet?, _ rhs: KvOrderedSet?) -> KvOrderedSet? {
         guard let lhs else { return rhs }
         guard let rhs else { return lhs }
         return lhs.union(rhs)
     }
 
 
-    static func union(_ lhs: KvOrderedIdentitySet?, _ rhs: KvOrderedIdentitySet) -> KvOrderedIdentitySet {
+    static func union(_ lhs: KvOrderedSet?, _ rhs: KvOrderedSet) -> KvOrderedSet {
         lhs?.union(rhs) ?? rhs
     }
 

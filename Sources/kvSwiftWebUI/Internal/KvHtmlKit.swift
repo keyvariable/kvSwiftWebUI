@@ -562,7 +562,7 @@ extension KvHtmlKit {
                 switch attribute {
                 case .class:
                     assertionFailure("Don't use subscript to set raw class value, use dedicated methods instead.")
-                    classes = newValue?.asString.map { Set($0.split(separator: " ").lazy.map(String.init(_:))) }
+                    classes = newValue?.asString.map { KvOrderedSet($0.split(separator: " ").lazy.map(String.init(_:))) }
                 case .style:
                     assertionFailure("Don't use subscript to set raw style value, use dedicated methods instead.")
                     styles = newValue?.asString.map { [ $0 ] }
@@ -624,14 +624,14 @@ extension KvHtmlKit {
 
         // MARK: Dedicated Properties
 
-        private var classes: Set<String>? { get { self[casting: .class] } set { self[casting: .class] = newValue } }
+        private var classes: KvOrderedSet<String>? { get { self[casting: .class] } set { self[casting: .class] = newValue } }
 
         private var styles: [String]? { get { self[casting: .style] } set { self[casting: .style] = newValue } }
 
 
         // MARK: `class`
 
-        mutating func insert(classes: Set<String>) {
+        mutating func insert(classes: KvOrderedSet<String>) {
             switch self.classes {
             case .some:
                 self.classes!.formUnion(classes)
@@ -650,7 +650,7 @@ extension KvHtmlKit {
             case .some:
                 self.classes!.formUnion(classes)
             case .none:
-                let classes = Set(classes)
+                let classes = KvOrderedSet(classes)
                 guard !classes.isEmpty else { break }
                 self.classes = classes
             }
