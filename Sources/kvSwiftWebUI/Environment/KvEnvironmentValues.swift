@@ -243,13 +243,13 @@ extension KvEnvironmentValues {
                 switch key {
                 case .fixedSize:
                     // Accumulation
-                    result.fixedSize = .union(result.fixedSize, Self.cast(value, as: \.fixedSize))
+                    result.fixedSize = .union(result.fixedSize, ViewConfiguration.cast(value, as: \.fixedSize))
                 case .metadataKeywords:
                     // Accumulation
-                    result.metadataKeywords = .union(result.metadataKeywords, Self.cast(value, as: \.metadataKeywords))
+                    result.metadataKeywords = .union(result.metadataKeywords, ViewConfiguration.cast(value, as: \.metadataKeywords))
                 case .scriptResources:
                     // Accumulation
-                    result.scriptResources = .union(result.scriptResources, Self.cast(value, as: \.scriptResources))
+                    result.scriptResources = .union(result.scriptResources, ViewConfiguration.cast(value, as: \.scriptResources))
                 case .font, .foregroundStyle, .gridCellColumnSpan, .gridColumnAlignment, .help, .hyphenation, .listRowSpacing, .listStyle,
                         .metadataDescription, .multilineTextAlignment, .navigationTitle, .tag, .textCase:
                     // Replacement
@@ -465,37 +465,37 @@ extension KvEnvironmentValues {
                 regularValues.forEach { key, value in
                     switch key {
                     case .fixedSize:
-                        attributes.append(optionalStyles: Self.cast(value, as: \.fixedSize).cssFlexShrink(in: context))
+                        attributes.append(optionalStyles: ViewConfiguration.cast(value, as: \.fixedSize).cssFlexShrink(in: context))
 
                     case .font:
-                        attributes.append(styles: Self.cast(value, as: \.font).cssStyle(in: context))
+                        attributes.append(styles: ViewConfiguration.cast(value, as: \.font).cssStyle(in: context))
 
                     case .foregroundStyle:
-                        attributes.append(styles: Self.cast(value, as: \.foregroundStyle).cssForegroundStyle(context.html, nil))
+                        attributes.append(styles: ViewConfiguration.cast(value, as: \.foregroundStyle).cssForegroundStyle(context.html, nil))
 
                     case .gridCellColumnSpan:
-                        let span = Self.cast(value, as: \.gridCellColumnSpan)
+                        let span = ViewConfiguration.cast(value, as: \.gridCellColumnSpan)
                         guard span > 1 else { break }
 
                         attributes.append(styles: "grid-column:span \(span)")
 
                     case .gridColumnAlignment:
-                        attributes.insert(classes: context.html.cssFlexClass(for: Self.cast(value, as: \.gridColumnAlignment), as: .mainSelf))
+                        attributes.insert(classes: context.html.cssFlexClass(for: ViewConfiguration.cast(value, as: \.gridColumnAlignment), as: .mainSelf))
 
                     case .help:
-                        attributes[.title] = .string(Self.cast(value, as: \.help).plainText(in: context.localizationContext))
+                        attributes[.title] = .string(ViewConfiguration.cast(value, as: \.help).plainText(in: context.localizationContext))
 
                     case .hyphenation:
-                        attributes.insert(classes: context.html.cssHyphenationClass(for: Self.cast(value, as: \.hyphenation)))
+                        attributes.insert(classes: context.html.cssHyphenationClass(for: ViewConfiguration.cast(value, as: \.hyphenation)))
 
                     case .multilineTextAlignment:
-                        attributes.append(styles: "text-align:\(Self.cast(value, as: \.multilineTextAlignment).cssTextAlign.css)")
+                        attributes.append(styles: "text-align:\(ViewConfiguration.cast(value, as: \.multilineTextAlignment).cssTextAlign.css)")
 
                     case .tag:
                         attributes[.id] = ViewConfiguration.idAttributeValue(value)
 
                     case .textCase:
-                        attributes.append(styles: "text-transform:\(Self.cast(value, as: \.textCase).cssTextTransform)")
+                        attributes.append(styles: "text-transform:\(ViewConfiguration.cast(value, as: \.textCase).cssTextTransform)")
 
                     case .listRowSpacing, .listStyle, .metadataDescription, .metadataKeywords, .navigationTitle, .scriptResources:
                         break
@@ -505,13 +505,13 @@ extension KvEnvironmentValues {
                 constrainedValues.forEach { key, value in
                     switch key {
                     case .background:
-                        attributes.append(styles: Self.cast(value, as: \.background).cssBackgroundStyle(context.html, nil))
+                        attributes.append(styles: ViewConfiguration.cast(value, as: \.background).cssBackgroundStyle(context.html, nil))
                     case .clipShape:
-                        attributes.formUnion(Self.cast(value, as: \.clipShape).htmlAttributes)
+                        attributes.formUnion(ViewConfiguration.cast(value, as: \.clipShape).htmlAttributes)
                     case .frame:
-                        attributes.formUnion(Self.cast(value, as: \.frame).htmlAttributes(in: context))
+                        attributes.formUnion(ViewConfiguration.cast(value, as: \.frame).htmlAttributes(in: context))
                     case .padding:
-                        attributes.append(styles: "padding:\(Self.cast(value, as: \.padding).css)")
+                        attributes.append(styles: "padding:\(ViewConfiguration.cast(value, as: \.padding).css)")
                     }
                 }
             }
