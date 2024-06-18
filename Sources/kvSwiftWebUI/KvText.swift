@@ -33,6 +33,7 @@ public typealias Text = KvText
 
 // TODO: DOC
 // TODO: Review and optimize automatic Markdown detection and KvText substitution in localized string interpolations.
+/// - Tip: Unlike *SwiftUI* `KvText` supports conversion to standard `String` with ``plainText(in:)`` method.
 public struct KvText : Equatable {
 
     @usableFromInline
@@ -671,9 +672,7 @@ public struct KvText : Equatable {
 
 
     /// - Returns: The receiver's content without attributes.
-    ///
-    /// - SeeAlso: ``escapedPlainBytes(in:)``.
-    func plainText(in context: borrowing KvLocalization.Context) -> String {
+    public func plainText(in context: borrowing KvLocalization.Context) -> String {
         var string: String
 
         switch content {

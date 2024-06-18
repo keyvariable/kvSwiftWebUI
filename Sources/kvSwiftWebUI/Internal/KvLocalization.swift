@@ -253,7 +253,7 @@ public class KvLocalization {
         public var locale: Locale { resolvedBundles.defaultLocale }
 
 
-        fileprivate convenience init(languageTag: String?, primaryBundle: Bundle) {
+        public convenience init(languageTag: String? = nil, primaryBundle: Bundle) {
             assert(languageTag == nil || primaryBundle.localizations.contains(languageTag!))
 
             self.init(primaryBundle: primaryBundle, resolvedBundles: .init(languageTag: languageTag))
