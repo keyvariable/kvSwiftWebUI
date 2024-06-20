@@ -30,17 +30,19 @@ import Foundation
 /// Representation of CSS background property.
 public struct KvCssBackground {
 
-    public var `repeat`: Repeat
     public var source: Source
     public var position: Position
+    public var size: Size?
+    public var `repeat`: Repeat
 
 
 
     @inlinable
-    public init(`repeat`: Repeat? = nil, source: Source, position: Position? = nil) {
-        self.repeat = `repeat` ?? .repeat
+    public init(source: Source, position: Position? = nil, size: Size? = nil, `repeat`: Repeat? = nil) {
         self.source = source
         self.position = position ?? .init(x: .percents(0), y: .percents(0))
+        self.size = size
+        self.repeat = `repeat` ?? .repeat
     }
 
 
@@ -50,10 +52,18 @@ public struct KvCssBackground {
     /// - Returns: String with CSS representation of the receiver.
     @inlinable
     public var css: String {
-        let `repeat` = !`repeat`.isDefault ? "\(`repeat`.css) " : ""
-        let position = !position.isDefault ? " \(position.css)" : ""
+        let `repeat` = !`repeat`.isDefault ? " \(`repeat`.css) " : ""
 
-        return "\(`repeat`)\(source.css)\(position)"
+        let positionAndSize: String = switch (position.isDefault, size) {
+        case (_, .some(let size)):
+            " \(position.css)/\(size.css)"
+        case (false, nil):
+            " \(position.css)"
+        case (true, nil):
+            ""
+        }
+
+        return "\(source.css)\(positionAndSize)\(`repeat`)"
     }
 
 
@@ -203,6 +213,46 @@ public struct KvCssBackground {
                 }
             }
 
+        }
+
+    }
+
+
+
+    // MARK: .Size
+
+    public enum Size {
+
+        case contain
+        case cover
+        case size(width: KvCssLength, height: KvCssLength)
+
+
+        // MARK: Named Initializers
+
+        public static let auto: Size = .size(width: .auto, height: .auto)
+
+
+        @inlinable
+        public static func size(_ value: KvCssLength) -> Size { .size(width: value, height: value) }
+
+
+        // MARK: CSS
+
+        @inlinable
+        public var css: String {
+            switch self {
+            case .contain:
+                return "contain"
+
+            case .cover:
+                return "cover"
+
+            case .size(width: let width, height: let height):
+                let width = width.css, height = height.css
+
+                return width != height ? "\(width) \(height)" : width
+            }
         }
 
     }

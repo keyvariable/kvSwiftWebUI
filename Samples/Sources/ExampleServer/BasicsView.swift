@@ -257,16 +257,22 @@ struct BasicsView : View {
                         .renderingMode(.template)
                         .foregroundStyle(.coral)
                 }
+
+                let width = tileSize.width + 12
+                let height = tileSize.height - 16
+
                 Preview(caption: Text("`.foregroundStyle(.linearGradient(...))`")) {
                     Image("img/circles.svg")
+                        .resizable()
                         .renderingMode(.template)
+                        .frame(width: width / 2)
                         .foregroundStyle(.linearGradient(colors: [ .indigo, .violet ], endPoint: .trailing))
                 }
                 Preview(caption: Text("`.foregroundStyle(.linearGradient(...))`")) {
                     Image("img/circles.svg")
                         .resizable(resizingMode: .tile)
                         .renderingMode(.template)
-                        .frame(width: tileSize.width + 12, height: tileSize.height - 16)
+                        .frame(width: width, height: height)
                         .foregroundStyle(.linearGradient(stops: [ .init(color: .indigo, location: 0.35), .init(color: .cyan, location: 0.5), .init(color: .violet, location: 0.65) ],
                                                          endPoint: .topTrailing))
                 }

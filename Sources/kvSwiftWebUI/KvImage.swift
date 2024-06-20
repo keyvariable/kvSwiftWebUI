@@ -251,9 +251,20 @@ extension KvImage : KvHtmlRenderable {
 
 
     private func cssBackground(in context: KvHtmlRepresentationContext, alignment: KvAlignment?) -> KvCssBackground {
-        .init(repeat: configuration.resizingMode == .tile ? .repeat : .noRepeat,
-              source: .uri(context.html.uri(for: resource(in: context))),
-              position: alignment?.cssBackgroundPosition)
+        let size: KvCssBackground.Size?
+        let `repeat`: KvCssBackground.Repeat
+
+        switch configuration.resizingMode {
+        case .none, .stretch:
+            (size, `repeat`) = (.contain, .noRepeat)
+        case .tile:
+            (size, `repeat`) = (nil, .repeat)
+        }
+
+        return .init(source: .uri(context.html.uri(for: resource(in: context))),
+                     position: alignment?.cssBackgroundPosition,
+                     size: size,
+                     repeat: `repeat`)
     }
 
 
