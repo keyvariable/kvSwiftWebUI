@@ -371,7 +371,9 @@ public indirect enum KvCssLength : Hashable, ExpressibleByFloatLiteral, Expressi
                 }
 
                 let rhs = lf.contains(.isExpression) ? "(\(ld.rValue()))" : ld.rValue()
-                let flags = scale > 0 ? lf : lf.symmetricDifference(.nonNegative)   // - NOTE: Conditions above are taken into account.
+                var flags = scale > 0 ? lf : lf.symmetricDifference(.nonNegative)   // - NOTE: Conditions above are taken into account.
+
+                flags.formUnion(.isExpression)
 
                 self.init("\(scale) * \(rhs)", flags: flags)
             }
