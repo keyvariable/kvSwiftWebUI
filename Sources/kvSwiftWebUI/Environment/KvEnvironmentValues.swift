@@ -569,11 +569,18 @@ extension KvEnvironmentValues {
             // MARK: Operations
 
             func cssFlexShrink(in context: borrowing KvHtmlRepresentationContext) -> String? {
-                guard (contains(.horizontal) && context.containerAttributes?.layoutDirection == .horizontal)
-                        || (contains(.vertical) && context.containerAttributes?.layoutDirection == .vertical)
-                else { return nil }
+                guard let layoutDirection = context.containerAttributes?.layoutDirection else { return nil }
 
-                return "flex-shrink:0"
+                let isShrinked: (main: Bool, cross: Bool) = switch layoutDirection {
+                case .horizontal:
+                    (contains(.horizontal), contains(.vertical))
+                case .vertical:
+                    (contains(.vertical), contains(.horizontal))
+                }
+
+                let mainCSS = isShrinked.main ? "flex-shrink:0" : "flex-grow:1"
+
+                return isShrinked.cross ? mainCSS : "\(mainCSS);align-self:stretch"
             }
 
         }

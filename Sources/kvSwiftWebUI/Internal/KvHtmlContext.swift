@@ -270,31 +270,17 @@ extension KvHtmlContext {
 
     /// - Returns: A CSS class defining given horizontal *alignment* for flex and grid layouts.
     func cssFlexClass(for alignment: KvHorizontalAlignment, as flexAlignment: FlexAlignment) -> String {
-        let base: FlexClassBase = switch alignment {
-        case .leading: .start
-        case .center: .center
-        case .trailing: .end
-        }
-
-        return cssFlexClass(base, flexAlignment)
+        cssFlexClass(.from(alignment), as: flexAlignment)
     }
 
 
     /// - Returns: A CSS class defining given vertical *alignment* for flex and grid layouts.
     func cssFlexClass(for alignment: KvVerticalAlignment, as flexAlignment: FlexAlignment) -> String {
-        let base: FlexClassBase = switch alignment {
-        case .center: .center
-        case .bottom: .end
-        case .firstTextBaseline: .firstTextBaseline
-        case .lastTextBaseline: .lastTextBaseline
-        case .top: .start
-        }
-
-        return cssFlexClass(base, flexAlignment)
+        cssFlexClass(.from(alignment), as: flexAlignment)
     }
 
 
-    private func cssFlexClass(_ base: FlexClassBase, _ flexAlignment: FlexAlignment) -> String {
+    private func cssFlexClass(_ base: FlexClassBase, as flexAlignment: FlexAlignment) -> String {
         insert(KvCssAsset.Entry(
             id: .flexClasses,
             default: KvHtmlContext.cssFlexClasses
@@ -357,12 +343,35 @@ extension KvHtmlContext {
 
     // MARK: .FlexClassBase
 
-    private enum FlexClassBase : String, CaseIterable {
+    enum FlexClassBase : String, CaseIterable {
+
         case center = "C"
         case end = "E"
         case firstTextBaseline = "FB"
         case lastTextBaseline = "LB"
         case start = "S"
+
+
+        // MARK: Fabrics
+
+        static func from(_ alignment: KvHorizontalAlignment) -> FlexClassBase {
+            switch alignment {
+            case .leading: .start
+            case .center: .center
+            case .trailing: .end
+            }
+        }
+
+
+        static func from(_ alignment: KvVerticalAlignment) -> FlexClassBase {
+            switch alignment {
+            case .center: .center
+            case .bottom: .end
+            case .firstTextBaseline: .firstTextBaseline
+            case .lastTextBaseline: .lastTextBaseline
+            case .top: .start
+            }
+        }
     }
 
 }

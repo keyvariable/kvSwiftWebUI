@@ -56,6 +56,7 @@ struct Section1<Header: View, Content : View> : View {
             header.font(.title)
             content
         }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
 }
@@ -91,6 +92,7 @@ struct Section2<Header: View, Content : View> : View {
             header.font(.title2)
             content
         }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
 }
@@ -113,6 +115,7 @@ struct BodySection<Content : View> : View {
         VStack(alignment: .leading, spacing: .em(0.5)) {
             content
         }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
 }

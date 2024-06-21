@@ -151,13 +151,34 @@ struct BasicsView : View {
                     .background(.systemGray4)
             }
 
-            Section2(header: Text("HStack")) {
+            Section2(header: Text("`HStack`")) {
                 ForEach([ VerticalAlignment.center, .top, .bottom, .firstTextBaseline, .lastTextBaseline ], id: \.self) {
                     HStackDemoView(alignment: $0)
                 }
             }
 
-            Section2(header: Text("ZStack")) {
+            Section2(header: Text("`VStack`")) {
+                Preview(caption: Text("`VStack` and `.fixedSize`")) {
+                    VStack(spacing: .em(0.5)) {
+                        HStack(spacing: .em(0.5)) {
+                            Text("Title")
+                                .fixedSize(horizontal: false, vertical: true)
+                                .background(.gray.tertiary)
+                            Text("Label")
+                                .background(.gray.tertiary)
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
+
+                        Text("Lorem ipsum dolor sit amet")
+                            .fixedSize(horizontal: false, vertical: true)
+                            .background(.gray.tertiary)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Section2(header: Text("`ZStack`")) {
                 ZStack {
                     HStack {
                         Color.green
@@ -184,7 +205,7 @@ struct BasicsView : View {
                 .help("This view is made programmatically using ZStack")
             }
 
-            Section2(header: Text("Grid")) {
+            Section2(header: Text("`Grid`")) {
                 Grid {
                     GridRow {
                         ForEach(0..<3) { column in Text(verbatim: "(1, \(column))") }
