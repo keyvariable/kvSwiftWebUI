@@ -567,6 +567,16 @@ class KvHtmlRepresentationContext {
                 guard case .gridRow(let row) = self else { return nil }
                 return row
             }
+
+
+            // MARK: Operations
+
+            var isGrid: Bool {
+                switch self {
+                case .grid(_), .gridRow(_):
+                    true
+                }
+            }
         }
 
 

@@ -578,7 +578,15 @@ extension KvEnvironmentValues {
                     (contains(.vertical), contains(.horizontal))
                 }
 
-                let mainCSS = isShrinked.main ? "flex-shrink:0" : "flex-grow:1"
+                context.containerAttributes?.layout?.grid
+
+                let mainCSS = if isShrinked.main {
+                    "flex-shrink:0"
+                }
+                else if context.containerAttributes?.layout?.isGrid == true {
+                    "justify-self:stretch"
+                }
+                else { "flex-grow:1" }
 
                 return isShrinked.cross ? mainCSS : "\(mainCSS);align-self:stretch"
             }
